@@ -1,0 +1,6 @@
+strategy,avg_train_sharpe,avg_test_sharpe,avg_test_return_pct,degradation_pct,n_windows,overfit_risk
+TrendMA_Filtered,0.188,1.447,3.55,-671.5,4,LOW
+AggressiveMom,1.083,1.486,2.04,-37.2,4,LOW
+RSIExtreme,-0.615,0.721,0.59,-217.3,4,LOW
+MACD_Histogram,-2.044,0.681,1.56,-133.3,4,LOW
+Ensemble,0.0,0.0,0.0,0.0,4,LOW
