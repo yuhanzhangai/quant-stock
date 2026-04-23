@@ -37,6 +37,7 @@ from src.strategies.short_swing_trail import ShortSwingTrailStrategy
 # 新策略
 from src.strategies.short_vol_atr import ShortVolATRStrategy
 from src.strategies.short_session_filter import ShortSessionFilterStrategy
+from src.strategies.short_multi_tf import ShortMultiTFStrategy
 
 
 COINS = [
@@ -230,6 +231,38 @@ def main() -> None:
     for params in session_params_list:
         candidates.append(("session", sf, params, False))
 
+    # === 新方向3: multi_tf 多时间框架 ===
+    mtf = ShortMultiTFStrategy()
+    # 需要把 4h 数据也传进去
+    # multi_tf 的 generate_signals 可以接受 price_4h 参数
+    # 但 test_strategy_full 目前不支持 —— 我们用 5m 长 MA 替代（策略内部有 fallback）
+    mtf_params_list = [
+        # 三层全开：长MA替代4h + trend_follow + session
+        {"fast_ma": 84, "slow_ma": 180, "use_session": True, "session_start": 20, "session_end": 13, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        # 不用 session（纯双时间框架）
+        {"fast_ma": 84, "slow_ma": 180, "use_session": False, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        # 调整 htf MA
+        {"htf_ma": 30, "fast_ma": 84, "slow_ma": 180, "use_session": True, "session_start": 20, "session_end": 13, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        {"htf_ma": 80, "fast_ma": 84, "slow_ma": 180, "use_session": True, "session_start": 20, "session_end": 13, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        # 不同 5m 参数
+        {"fast_ma": 96, "slow_ma": 180, "use_session": True, "session_start": 20, "session_end": 13, "min_gap": 336, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 0.8},
+        # 随机
+        {
+            "htf_ma": int(np.random.choice([30, 50, 80])),
+            "fast_ma": int(np.random.choice([72, 84, 96])),
+            "slow_ma": int(np.random.choice([160, 180, 200])),
+            "use_session": True,
+            "session_start": int(np.random.choice([19, 20, 21])),
+            "session_end": int(np.random.choice([12, 13, 14])),
+            "min_gap": int(np.random.choice([240, 288, 336])),
+            "stop_pct": float(np.random.choice([2.5, 3.0, 3.5])),
+            "take_profit_pct": float(np.random.choice([8.0, 10.0, 12.0])),
+            "trail_pct": float(np.random.choice([0.8, 1.0, 1.2])),
+        },
+    ]
+    for params in mtf_params_list:
+        candidates.append(("multi_tf", mtf, params, False))
+
     # === 运行所有测试 ===
     results = []
     for name, strat, params, use_vol in candidates:
@@ -261,6 +294,9 @@ def main() -> None:
             key = f"vol={p.get('vol_spike_mult','?')}x atr={p.get('atr_expand_mult','?')}x ma={p.get('trend_ma','')} gap={p['min_gap']}"
         elif name == "session":
             key = f"UTC{p['session_start']}-{p['session_end']} gap={p['min_gap']}"
+        elif name == "multi_tf":
+            sess = f"UTC{p.get('session_start','?')}-{p.get('session_end','?')}" if p.get("use_session") else "noSess"
+            key = f"htf={p.get('htf_ma',50)} {sess} gap={p['min_gap']}"
         else:
             key = str(p)[:50]
 
