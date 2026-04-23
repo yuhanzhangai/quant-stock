@@ -80,6 +80,10 @@ class DynamicSelectorStrategy(StrategyBase):
             hist_vol = window.pct_change().std()
             actual_step = max(step_size // 2, 21) if recent_vol > hist_vol * 2.0 else step_size
 
+            # 市场状态感知：熊市优先选 ExtremeRev
+            window_return = (window.iloc[-1] / window.iloc[0] - 1) if len(window) > 1 else 0
+            is_bearish = window_return < -0.10  # 回看窗口内跌 > 10%
+
             # 评估每个候选策略
             best_name = "none"
             best_sharpe = -999.0
@@ -88,6 +92,12 @@ class DynamicSelectorStrategy(StrategyBase):
                 try:
                     e, x = func(window, **params)
                     sharpe = _quick_sharpe(window, e, x)
+                    # 熊市给 ExtremeRev 加分，趋势策略减分
+                    if is_bearish:
+                        if "Extreme" in name:
+                            sharpe += 0.5
+                        elif name in ("AggrMom", "IchiMom_v2"):
+                            sharpe -= 0.3
                     if sharpe > best_sharpe:
                         best_sharpe = sharpe
                         best_name = name
