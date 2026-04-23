@@ -52,5 +52,111 @@
         "min_gap": 96
       }
     }
+  ],
+  "gen2": [
+    {
+      "name": "v3_base",
+      "avg_sharpe": 2.134,
+      "avg_return": 6.59,
+      "pos_rate": 0.92,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 180,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 144
+      }
+    },
+    {
+      "name": "dual_base",
+      "avg_sharpe": 2.078,
+      "avg_return": 6.59,
+      "pos_rate": 1.0,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 180,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 144
+      }
+    },
+    {
+      "name": "v3_mut1",
+      "avg_sharpe": 1.192,
+      "avg_return": 4.53,
+      "pos_rate": 0.5,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 210,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 120
+      }
+    },
+    {
+      "name": "dual_mut1",
+      "avg_sharpe": 1.125,
+      "avg_return": 4.14,
+      "pos_rate": 0.58,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 160,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 120
+      }
+    },
+    {
+      "name": "fast_fix",
+      "avg_sharpe": 0.518,
+      "avg_return": 1.98,
+      "pos_rate": 0.75,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 150,
+        "stop_pct": 2.0,
+        "take_profit_pct": 7.0,
+        "min_gap": 120
+      }
+    },
+    {
+      "name": "intraday_base",
+      "avg_sharpe": -0.479,
+      "avg_return": 0.78,
+      "pos_rate": 0.58,
+      "n_tests": 12,
+      "params": {
+        "session_bars": 96,
+        "momentum_threshold": 0.008,
+        "hold_bars": 192,
+        "stop_pct": 1.0
+      }
+    },
+    {
+      "name": "fast_base",
+      "avg_sharpe": -0.701,
+      "avg_return": -1.58,
+      "pos_rate": 0.5,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 120,
+        "stop_pct": 2.0,
+        "take_profit_pct": 6.0,
+        "min_gap": 96
+      }
+    },
+    {
+      "name": "intraday_fix",
+      "avg_sharpe": -1.907,
+      "avg_return": -2.99,
+      "pos_rate": 0.33,
+      "n_tests": 12,
+      "params": {
+        "session_bars": 48,
+        "momentum_threshold": 0.005,
+        "hold_bars": 192,
+        "stop_pct": 1.0
+      }
+    }
   ]
 }
