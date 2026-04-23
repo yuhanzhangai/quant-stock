@@ -19,6 +19,9 @@ from src.strategies.momentum_breakout import momentum_breakout_signal
 from src.strategies.mean_reversion_bb import mean_reversion_bb_signal
 from src.strategies.rsi_extreme import rsi_extreme_signal
 from src.strategies.aggressive_momentum import aggressive_momentum_signal, multi_factor_signal
+from src.strategies.keltner_breakout import keltner_signal
+from src.strategies.turtle_trading import turtle_signal
+from src.strategies.momentum_mean_blend import momentum_mean_blend_signal
 
 
 def load_price(symbol: str, timeframe: str) -> pd.Series | None:
@@ -110,6 +113,39 @@ def optimize_symbol(symbol: str) -> None:
     df6, best6 = engine.run_grid_search(price, multi_factor_signal, grid6)
     df6["strategy"] = "MultiFactor"
     all_results.append(df6)
+
+    # 7. Keltner Channel Breakout
+    logger.info("\n--- Keltner Channel Breakout ---")
+    grid7 = {
+        "ema_period": [15, 20, 30],
+        "atr_period": [10, 14, 20],
+        "atr_mult": [1.5, 2.0, 2.5, 3.0],
+    }
+    df7, _ = engine.run_grid_search(price, keltner_signal, grid7)
+    df7["strategy"] = "Keltner"
+    all_results.append(df7)
+
+    # 8. Turtle Trading
+    logger.info("\n--- Turtle Trading ---")
+    grid8 = {
+        "entry_period": [20, 30, 55],
+        "exit_period": [10, 15, 20],
+        "atr_stop_mult": [1.5, 2.0, 3.0],
+    }
+    df8, _ = engine.run_grid_search(price, turtle_signal, grid8)
+    df8["strategy"] = "Turtle"
+    all_results.append(df8)
+
+    # 9. Momentum + Mean Reversion Blend
+    logger.info("\n--- Momentum Mean Blend ---")
+    grid9 = {
+        "ma_period": [30, 50, 100],
+        "rsi_period": [10, 14, 20],
+        "bb_period": [15, 20, 30],
+    }
+    df9, _ = engine.run_grid_search(price, momentum_mean_blend_signal, grid9)
+    df9["strategy"] = "MomMeanBlend"
+    all_results.append(df9)
 
     # 汇总
     combined = pd.concat(all_results, ignore_index=True)
