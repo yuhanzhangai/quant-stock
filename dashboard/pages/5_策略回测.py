@@ -261,10 +261,29 @@ fig.update_layout(
     template="plotly_dark",
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     margin=dict(l=50, r=50, t=80, b=50),
+    dragmode="zoom",  # 默认拖拽缩放
 )
-fig.update_xaxes(type="date")
 
-st.plotly_chart(fig, use_container_width=True)
+# 所有 x 轴启用滚轮缩放
+for i in range(1, n_rows + 1):
+    axis_name = f"xaxis{i}" if i > 1 else "xaxis"
+    fig.update_layout(**{axis_name: dict(type="date")})
+
+# 所有 y 轴固定不缩放（只缩放时间轴）
+for i in range(1, n_rows + 1):
+    axis_name = f"yaxis{i}" if i > 1 else "yaxis"
+    fig.update_layout(**{axis_name: dict(fixedrange=False)})
+
+# 渲染图表，启用滚轮缩放
+chart_config = {
+    "scrollZoom": True,          # 滚轮缩放
+    "displayModeBar": True,      # 显示工具栏
+    "modeBarButtonsToAdd": [
+        "drawline", "drawopenpath", "eraseshape"  # 画线工具
+    ],
+    "modeBarButtonsToRemove": ["lasso2d"],
+}
+st.plotly_chart(fig, use_container_width=True, config=chart_config)
 
 # === Trade Log ===
 if strategy_name != "None (chart only)":
