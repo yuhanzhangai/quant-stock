@@ -1,91 +1,63 @@
-# 策略推荐指南 (v3 Final)
+# Strategy Guide (Audited Final)
 
-经过 **63 轮迭代、41+ 策略、17 币种** 测试后的最终推荐。
+## Short 5m — Per-Coin Routing
 
-## 快速启动
+| Coin Group | Strategy | Sharpe | Why |
+|------------|----------|--------|-----|
+| **SOL/SUI/ATOM** | trend_follow | +2.27 | Session filter hurts these coins |
+| **ARB/NEAR/FIL/DOT/PEPE/OP/ETH** | session_filter (stop=3%) | +2.83 | Exclude UTC 13-20 |
+
+## Long 5m
+
+| # | Strategy | Sharpe | Notes |
+|---|----------|--------|-------|
+| 1 | MinSwing v3 | +2.13 | ETH/SOL/NEAR/ARB, tp=8% gap=144 |
+| 2 | MinSwing Dual | +2.08 | Short-signal exit enhancement |
+| 3 | ExtremeReversal | +0.98 | Crash dip, -5% threshold for ETH |
+
+## 4h Medium-term (OOS Validated)
+
+| # | Strategy | OOS Sharpe | Overfit? |
+|---|----------|-----------|----------|
+| 1 | AggressiveMom | +0.572 | ROBUST (test > train!) |
+| 2 | IchimokuMomentum | +0.443 | ROBUST (degrad 0.11) |
+| 3 | TrendMA_Filtered | +0.146 | ROBUST (degrad 0.13) |
+
+## OVERFIT (removed from production)
+
+| Strategy | Backtest | OOS | Verdict |
+|----------|----------|-----|---------|
+| Ichimoku standalone | +0.89 | -0.37 | FRAUD |
+| MACD_Hist | +0.69 | -0.69 | FRAUD |
+| MomBreakout | +1.15 | -0.68 | FRAUD |
+| RSIExtreme | +0.72 | -0.26 | WEAK |
+
+## Key Audit Findings
+
+1. **session_filter stop=7% is deceptive** — 5x leverage x 7% = 35% loss per trade. Use stop=3% (+2.83 sharpe, safer)
+2. **session vs trend_follow are complementary** — per-coin routing is optimal
+3. **Only 3 strategies survived ALL validation**: AggressiveMom, IchiMom, TrendMA_Filt
+4. **Trend MA is the single most important factor** (+6.2 sharpe contribution)
+5. **5m markets are near-random** (Hurst ~0.49), risk management > signal quality
+
+## Production Scripts
 
 ```bash
-# 1. 每日开盘检查市场状态
-python scripts/market_health.py
-
-# 2. 绿灯/黄灯时启动信号监控
-python scripts/paper_trader.py        # 纸上交易（推荐先跑 1 周验证）
-python scripts/live_signal.py --once  # 或单次扫描
-
-# 3. 收到信号后在 OKX 手动下单
-#    永续合约 → 5x 杠杆 → 市价单 → 设好止损止盈
+# Daily workflow
+python scripts/market_health.py          # Check traffic light + momentum
+python scripts/strategy_monitor.py       # Strategy health (1-month window)
+python scripts/live_signal.py --once     # Long signals
+python scripts/live_signal_dual.py --once # Long + Short signals
+python scripts/paper_trader.py           # Virtual P&L tracking
+python scripts/tournament_live.py        # 32-strategy tournament
 ```
 
-## MinSwing v3 — 分钟线最终版
+## Monte Carlo Reality Check
 
-### 推荐配置
-
-| 币种 | 出场方式 | 参数 | 3月收益 | 夏普 |
-|------|---------|------|---------|------|
-| **ETH** | trailing 2% | tm=180 sl=2% gap=144 | **+134%** | +3.29 |
-| **NEAR** | trailing 2% | tm=180 sl=2% gap=144 | **+140%** | +2.69 |
-| **SOL** | fixed TP 8% | tm=180 sl=2% tp=8% gap=144 | **+86%** | +2.15 |
-| **ARB** | fixed TP 8% | tm=180 sl=2% tp=8% gap=144 | **+88%** | +1.58 |
-
-### 交易规则
-
-1. **只在上升趋势做多**（价格 > 180 期 MA 且 MA 向上）
-2. **入场**：RSI 从 40 回升 或 MACD 金叉
-3. **出场**：
-   - ETH/NEAR：从最高点回撤 2% 平仓（trailing stop）
-   - SOL/ARB：盈利 8% 平仓（fixed TP）
-   - 所有币种：亏损 2% 止损 / 跌破趋势线平仓
-4. **频率**：两笔交易间隔至少 12 小时
-5. **杠杆**：5x（$50 本金，每个币 $12.5 x 5 = $62.5 仓位）
-
-### Monte Carlo 真实预期
-
-基于 349 笔历史交易的 1000 次模拟：
-
-| 指标 | 值 |
-|------|-----|
-| 盈利概率 | **72%** |
-| 中位收益 | **+28%** ($14) |
-| 最差 5% | -39% ($-20) |
-| 最好 5% | +142% ($71) |
-| 胜率 | 34% |
-| 盈亏比 | 3.3:1 |
-
-### 不要做的事
-
-- ❌ 不要加时段过滤（减少交易次数降低收益）
-- ❌ 不要加成交量过滤（同上）
-- ❌ 不要加情绪数据过滤（日级别太粗糙）
-- ❌ 不要用精细参数搜索的结果（过拟合）
-- ❌ 不要交易 BTC 5m（波动率太低不适合）
-- ❌ 不要在红灯市场强行交易
-
-## 63 轮研究核心发现
-
-1. **趋势 MA 是最重要的因子**（贡献 +6.2 sharpe）
-2. **RSI 和 MACD 可互换**（各贡献 +1.2 sharpe）
-3. **5m 市场接近随机**（Hurst ≈ 0.49），风控比信号更重要
-4. **简单参数 > 精细搜索**（过拟合是最大敌人）
-5. **不同币种需要不同出场策略**（ETH 用 trail，SOL 用 fixed）
-6. **做空可行但不稳定**（SOL 做空 3/3 正，其他币不行）
-7. **利空事件后策略反而正**（恐慌后反弹是可靠模式）
-8. **6 个月是最佳评估跨度**（IchimokuMom 92% 正率）
-
-## 可用工具
-
-| 脚本 | 用途 |
-|------|------|
-| `market_health.py` | 每日健康检查（红/黄/绿灯）|
-| `daily_report.py` | 每日市场概览 |
-| `live_signal.py --once` | 做多信号扫描 |
-| `live_signal_dual.py --once` | 多空信号 |
-| `paper_trader.py` | 纸上交易 + Telegram 推送 |
-| `monte_carlo.py` | 收益预期模拟 |
-
-## 项目统计
-
-- 63 轮迭代，68 次提交
-- 41+ 策略开发测试
-- 17 币种扫描，4 个推荐
-- 多维验证：OOS / Walk-Forward / Monte Carlo / 事件回测
-- Tags: v0.1.0-mvp → v1.0.0-production
+| Metric | Value |
+|--------|-------|
+| Profit probability | 72% |
+| Median return | +28% |
+| Worst 5% | -39% |
+| Win rate | 34% |
+| Profit factor | 3.3:1 |
