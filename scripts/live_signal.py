@@ -24,12 +24,12 @@ from src.exchange.whale_detector import WhaleDetector
 from src.exchange.news_sentiment import get_market_sentiment
 from src.strategies.minute_swing import MinuteSwingStrategy
 
-# 监控的币种和最优参数（Round 42 精细搜索结果）
+# 监控的币种和最优参数（全段验证最稳定版本）
 COINS = {
-    "ETH/USDT": {"trend_ma": 210, "stop_pct": 2.0, "take_profit_pct": 5.0, "min_gap": 192},
-    "SOL/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 192},
-    "NEAR/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 10.0, "min_gap": 192},
-    "ARB/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 192},
+    "ETH/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144},
+    "SOL/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144},
+    "NEAR/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144},
+    "ARB/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144},
 }
 
 LEVERAGE = 5
