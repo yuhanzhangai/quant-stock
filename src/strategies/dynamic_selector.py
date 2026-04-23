@@ -60,13 +60,16 @@ class DynamicSelectorStrategy(StrategyBase):
         price: pd.Series,
         lookback: int = 180,  # 回看窗口（4h K线数 = 30天）
         step_size: int = 42,  # 重评估间隔（42 * 4h = 7天）
+        max_loss_pct: float = 5.0,  # 止损阈值：亏损超此比例强制切换
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
-        """动态选择策略生成信号。"""
+        """动态选择策略生成信号（带止损保护）。"""
         entries = pd.Series(False, index=price.index)
         exits = pd.Series(False, index=price.index)
 
         strategy_log = []
+        entry_price = 0.0
+        in_position = False
 
         i = lookback
         while i < len(price):
@@ -74,6 +77,11 @@ class DynamicSelectorStrategy(StrategyBase):
             window_end = i
             window_start = max(0, i - lookback)
             window = price.iloc[window_start:window_end]
+
+            # 检测波动率 -> 剧变时缩短评估周期
+            recent_vol = window.pct_change().tail(20).std()
+            hist_vol = window.pct_change().std()
+            actual_step = max(step_size // 2, 21) if recent_vol > hist_vol * 2.0 else step_size
 
             # 评估每个候选策略
             best_name = "none"
@@ -90,27 +98,42 @@ class DynamicSelectorStrategy(StrategyBase):
                     continue
 
             # 用最优策略生成下一个 step 的信号
-            forward_end = min(i + step_size, len(price))
-            forward = price.iloc[window_start:forward_end]  # 需要足够回看
+            forward_end = min(i + actual_step, len(price))
+            forward = price.iloc[window_start:forward_end]
 
             if best_name != "none" and best_sharpe > 0:
                 func, params = CANDIDATES[best_name]
                 try:
                     e_full, x_full = func(forward, **params)
-                    # 只取 forward 部分的信号
-                    entries.iloc[i:forward_end] = e_full.iloc[i - window_start:forward_end - window_start].values
-                    exits.iloc[i:forward_end] = x_full.iloc[i - window_start:forward_end - window_start].values
+                    fwd_start = i - window_start
+                    fwd_end = forward_end - window_start
+                    entries.iloc[i:forward_end] = e_full.iloc[fwd_start:fwd_end].values
+                    exits.iloc[i:forward_end] = x_full.iloc[fwd_start:fwd_end].values
                 except Exception:
                     pass
+
+            # 止损保护：检查持仓期间是否亏损超阈值
+            for j in range(i, forward_end):
+                if entries.iloc[j]:
+                    entry_price = price.iloc[j]
+                    in_position = True
+                if in_position and entry_price > 0:
+                    loss_pct = (price.iloc[j] - entry_price) / entry_price * 100
+                    if loss_pct < -max_loss_pct:
+                        exits.iloc[j] = True
+                        in_position = False
+                if exits.iloc[j]:
+                    in_position = False
 
             strategy_log.append({
                 "bar": i,
                 "date": str(price.index[i]) if hasattr(price.index[i], "strftime") else i,
                 "best": best_name,
                 "sharpe": round(best_sharpe, 3),
+                "vol_regime": "HIGH" if recent_vol > hist_vol * 1.5 else "NORMAL",
             })
 
-            i += step_size
+            i += actual_step
 
         # 日志
         if strategy_log:
