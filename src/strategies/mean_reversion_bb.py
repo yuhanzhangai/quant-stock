@@ -48,15 +48,21 @@ class MeanReversionBBStrategy(StrategyBase):
         # 入场：价格从上方穿越下轨
         touch_lower = (price < lower) & (price.shift(1) >= lower.shift(1))
 
+        # 趋势过滤：只在横盘/非强趋势区间做均值回归
+        # 用布林带宽度判断：宽度收窄 = 横盘（适合均值回归）
+        bb_width = (upper - lower) / mid
+        bb_width_ma = bb_width.rolling(window=50).mean()
+        is_range_bound = bb_width < bb_width_ma * 1.5  # 带宽不超过均值1.5倍
+
         if rsi_filter:
             delta = price.diff()
             gains = delta.clip(lower=0).rolling(window=rsi_period).mean()
             losses = (-delta).clip(lower=0).rolling(window=rsi_period).mean()
             rs = gains / losses
             rsi = 100 - (100 / (1 + rs))
-            entries = touch_lower & (rsi < rsi_threshold)
+            entries = touch_lower & (rsi < rsi_threshold) & is_range_bound
         else:
-            entries = touch_lower
+            entries = touch_lower & is_range_bound
 
         # 出场
         if exit_at_mid:
