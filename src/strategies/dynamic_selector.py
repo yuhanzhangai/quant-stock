@@ -18,8 +18,10 @@ from src.strategies.rsi_extreme import rsi_extreme_signal
 from src.strategies.momentum_breakout import momentum_breakout_signal
 from src.strategies.mean_reversion_bb import mean_reversion_bb_signal
 from src.strategies.ichimoku import ichimoku_signal
+from src.strategies.ichimoku_momentum import ichimoku_momentum_signal
+from src.strategies.macd_histogram import macd_histogram_signal
 
-# 候选策略池
+# 候选策略池（包含新冠军 IchimokuMomentum 两组参数）
 CANDIDATES = {
     "TrendMA": (trend_ma_filtered_signal, {"short_window": 25, "long_window": 200, "atr_mult": 0.5}),
     "AggrMom": (aggressive_momentum_signal, {"lookback": 50, "consec_bars": 4, "trail_atr_mult": 1.5}),
@@ -27,6 +29,9 @@ CANDIDATES = {
     "Breakout": (momentum_breakout_signal, {"entry_window": 50, "exit_window": 20}),
     "MeanRev": (mean_reversion_bb_signal, {"bb_period": 20, "bb_std": 2.0}),
     "Ichimoku": (ichimoku_signal, {"tenkan": 9, "kijun": 26, "senkou_b": 52}),
+    "IchiMom_v1": (ichimoku_momentum_signal, {"tenkan": 9, "kijun": 26, "lookback": 30, "consec_bars": 3}),
+    "IchiMom_v2": (ichimoku_momentum_signal, {"tenkan": 9, "kijun": 26, "lookback": 50, "consec_bars": 4}),
+    "MACD": (macd_histogram_signal, {"fast": 12, "slow": 26, "signal": 9, "trend_ma": 200}),
 }
 
 
