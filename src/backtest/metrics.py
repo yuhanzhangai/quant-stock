@@ -28,9 +28,15 @@ def compute_metrics(portfolio: vbt.Portfolio) -> dict[str, Any]:
         if val is None:
             return default
         if isinstance(val, (int, float, np.floating)):
-            return float(val)
+            v = float(val)
+            if np.isinf(v) or np.isnan(v):
+                return default
+            return v
         try:
-            return float(val)
+            v = float(val)
+            if np.isinf(v) or np.isnan(v):
+                return default
+            return v
         except (TypeError, ValueError):
             return default
 
