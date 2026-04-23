@@ -33,75 +33,116 @@ from src.strategies.extreme_reversal import extreme_reversal_signal
 from src.strategies.intraday_momentum import intraday_momentum_signal
 from src.strategies.combo.fast_exit import fast_exit_signal
 
-st.set_page_config(page_title="Strategy Backtest", page_icon="📊", layout="wide")
-st.title("📊 K-Line Chart + Strategy Backtest")
+st.set_page_config(page_title="策略回测", page_icon="📊", layout="wide")
+st.title("📊 K线图 + 策略回测")
 
 settings = get_settings()
 writer = ParquetWriter(settings.parquet_dir)
 
-# === Sidebar ===
+# === 侧边栏 ===
 with st.sidebar:
-    st.header("Settings")
+    st.header("基本设置")
 
-    # Coin
+    # 币种
     all_coins = []
-    for tf in ["5m", "15m", "1h", "4h", "1d"]:
-        ohlcv_dir = settings.parquet_dir / "ohlcv" / "spot"
-        if ohlcv_dir.exists():
-            all_coins.extend([d.name for d in ohlcv_dir.iterdir() if d.is_dir()])
-    all_coins = sorted(set(all_coins))
-    coin = st.selectbox("Coin", all_coins, index=all_coins.index("ETH-USDT") if "ETH-USDT" in all_coins else 0)
+    ohlcv_dir = settings.parquet_dir / "ohlcv" / "spot"
+    if ohlcv_dir.exists():
+        all_coins = sorted(set(d.name for d in ohlcv_dir.iterdir() if d.is_dir()))
+    coin = st.selectbox("币种", all_coins, index=all_coins.index("ETH-USDT") if "ETH-USDT" in all_coins else 0)
 
-    # Timeframe
+    # 时间周期
     available_tfs = []
     for tf in ["1m", "5m", "15m", "1h", "4h", "1d"]:
-        df = writer.read_ohlcv(coin, tf)
-        if not df.is_empty():
+        test_df = writer.read_ohlcv(coin, tf)
+        if not test_df.is_empty():
             available_tfs.append(tf)
-    timeframe = st.selectbox("Timeframe", available_tfs, index=available_tfs.index("5m") if "5m" in available_tfs else 0)
+    timeframe = st.selectbox("时间周期", available_tfs, index=available_tfs.index("5m") if "5m" in available_tfs else 0)
 
-    # Bars
-    max_bars = st.slider("K-lines to show", 100, 2000, 500)
+    # 时间区间
+    st.header("回测区间")
 
-    # Strategy
-    st.header("Strategy")
-    strategy_name = st.selectbox("Select Strategy", [
+    # 先加载全部数据获取时间范围
+    _full_df = writer.read_ohlcv(coin, timeframe)
+    _full_pdf = _full_df.to_pandas()
+    _full_pdf["datetime"] = pd.to_datetime(_full_pdf["timestamp"], unit="ms", utc=True)
+    _data_start = _full_pdf["datetime"].min()
+    _data_end = _full_pdf["datetime"].max()
+
+    col_s, col_e = st.columns(2)
+    with col_s:
+        start_date = st.date_input("开始日期", value=_data_start.date())
+    with col_e:
+        end_date = st.date_input("结束日期", value=_data_end.date())
+
+    col_sh, col_eh = st.columns(2)
+    with col_sh:
+        start_hour = st.number_input("开始时(UTC)", 0, 23, 0)
+    with col_eh:
+        end_hour = st.number_input("结束时(UTC)", 0, 23, 23)
+
+    # 快捷按钮
+    col_q1, col_q2, col_q3 = st.columns(3)
+    with col_q1:
+        if st.button("最近1周"):
+            start_date = (_data_end - pd.Timedelta(days=7)).date()
+    with col_q2:
+        if st.button("最近1月"):
+            start_date = (_data_end - pd.Timedelta(days=30)).date()
+    with col_q3:
+        if st.button("全部数据"):
+            start_date = _data_start.date()
+
+    # 策略
+    st.header("策略选择")
+    strategy_name = st.selectbox("策略", [
         "MinSwing v3",
-        "MinSwing + FastExit (ETH)",
-        "MinSwing Dual",
-        "ExtremeReversal",
-        "IntradayMomentum",
-        "None (chart only)",
+        "MinSwing + FastExit (ETH专用)",
+        "MinSwing 双向",
+        "极端反转抄底",
+        "日内动量",
+        "无策略（纯图表）",
     ])
 
-    # Strategy params
-    st.header("Parameters")
-    trend_ma = st.slider("Trend MA", 50, 300, 180)
-    stop_pct = st.slider("Stop Loss %", 0.5, 5.0, 2.0, 0.5)
-    take_profit = st.slider("Take Profit %", 2.0, 20.0, 8.0, 0.5)
-    min_gap = st.slider("Min Gap (bars)", 10, 300, 144)
+    # 策略参数
+    st.header("策略参数")
+    trend_ma = st.slider("趋势均线周期", 50, 300, 180)
+    stop_pct = st.slider("止损 %", 0.5, 5.0, 2.0, 0.5)
+    take_profit = st.slider("止盈 %", 2.0, 20.0, 8.0, 0.5)
+    min_gap = st.slider("最小间隔（K线根数）", 10, 300, 144)
 
-    # Indicators
-    st.header("Indicators")
-    show_ma = st.checkbox("Moving Averages", True)
-    show_rsi = st.checkbox("RSI", True)
-    show_macd = st.checkbox("MACD", False)
-    show_bb = st.checkbox("Bollinger Bands", False)
-    show_volume = st.checkbox("Volume", True)
+    # 指标
+    st.header("技术指标")
+    show_ma = st.checkbox("均线 MA", True)
+    show_rsi = st.checkbox("RSI 相对强弱", True)
+    show_macd = st.checkbox("MACD 指标", False)
+    show_bb = st.checkbox("布林带 BB", False)
+    show_volume = st.checkbox("成交量", True)
 
-    # Leverage
-    leverage = st.selectbox("Leverage", [1, 3, 5, 10], index=2)
-    capital = st.number_input("Capital ($)", value=50, min_value=1)
+    # 资金
+    st.header("资金设置")
+    leverage = st.selectbox("杠杆倍数", [1, 3, 5, 10], index=2)
+    capital = st.number_input("本金 ($)", value=50, min_value=1)
 
-# === Load Data ===
+# === 加载数据（按时间区间筛选）===
 df = writer.read_ohlcv(coin, timeframe)
 if df.is_empty():
-    st.error(f"No data for {coin} {timeframe}")
+    st.error(f"{coin} {timeframe} 无数据")
     st.stop()
 
 pdf = df.to_pandas()
 pdf["datetime"] = pd.to_datetime(pdf["timestamp"], unit="ms", utc=True)
-pdf = pdf.set_index("datetime").sort_index().tail(max_bars)
+pdf = pdf.set_index("datetime").sort_index()
+
+# 按时间区间筛选
+start_dt = pd.Timestamp(f"{start_date} {start_hour:02d}:00:00", tz="UTC")
+end_dt = pd.Timestamp(f"{end_date} {end_hour:02d}:59:59", tz="UTC")
+pdf = pdf.loc[start_dt:end_dt]
+
+if pdf.empty:
+    st.error("所选区间无数据")
+    st.stop()
+
+st.caption(f"数据范围: {pdf.index[0].strftime('%Y-%m-%d %H:%M')} ~ {pdf.index[-1].strftime('%Y-%m-%d %H:%M')} | {len(pdf)} 根K线")
 
 price = pdf["close"]
 
@@ -112,17 +153,17 @@ strategy_params = dict(trend_ma=trend_ma, stop_pct=stop_pct, take_profit_pct=tak
 
 if strategy_name == "MinSwing v3":
     entries, exits = minute_swing_signal(price, **strategy_params)
-elif strategy_name == "MinSwing + FastExit (ETH)":
+elif strategy_name == "MinSwing + FastExit (ETH专用)":
     entries, exits = fast_exit_signal(price, fast_ma=90, profit_thr=0.3, **strategy_params)
-elif strategy_name == "MinSwing Dual":
+elif strategy_name == "MinSwing 双向":
     entries, exits = minute_swing_dual_signal(price, **strategy_params)
-elif strategy_name == "ExtremeReversal":
+elif strategy_name == "极端反转抄底":
     entries, exits = extreme_reversal_signal(price, drop_threshold=-5.0)
-elif strategy_name == "IntradayMomentum":
+elif strategy_name == "日内动量":
     entries, exits = intraday_momentum_signal(price, session_bars=96, momentum_threshold=0.008)
 
 # === Backtest ===
-if strategy_name != "None (chart only)":
+if strategy_name != "无策略（纯图表）":
     engine = BacktestEngine(costs=OKX_SWAP, init_cash=capital * leverage, freq=timeframe)
     portfolio = engine.run(price, entries, exits)
     metrics = compute_metrics(portfolio)
@@ -209,7 +250,7 @@ if show_bb:
                              fill="tonexty", fillcolor="rgba(128,128,128,0.05)"), row=1, col=1)
 
 # Entry/Exit markers
-if strategy_name != "None (chart only)":
+if strategy_name != "无策略（纯图表）":
     entry_pts = entries[entries]
     exit_pts = exits[exits]
 
@@ -286,7 +327,7 @@ chart_config = {
 st.plotly_chart(fig, use_container_width=True, config=chart_config)
 
 # === Trade Log ===
-if strategy_name != "None (chart only)":
+if strategy_name != "无策略（纯图表）":
     st.subheader("Trade Log")
     entry_idx = entries[entries].index
     exit_idx = exits[exits].index
@@ -318,7 +359,7 @@ if strategy_name != "None (chart only)":
         st.info("No trades in this period")
 
 # === Equity Curve ===
-if strategy_name != "None (chart only)":
+if strategy_name != "无策略（纯图表）":
     st.subheader("Equity Curve")
     try:
         equity = portfolio.value()
