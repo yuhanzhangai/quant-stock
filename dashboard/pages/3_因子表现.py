@@ -30,7 +30,18 @@ def load_available_symbols() -> list[str]:
     ohlcv_dir = settings.parquet_dir / "ohlcv" / "spot"
     if not ohlcv_dir.exists():
         return []
-    return [d.name for d in ohlcv_dir.iterdir() if d.is_dir()]
+    return sorted([d.name for d in ohlcv_dir.iterdir() if d.is_dir()])
+
+
+@st.cache_data(ttl=300)
+def get_available_timeframes(symbol: str) -> list[str]:
+    """获取该币种有数据的时间周期。"""
+    available = []
+    for tf in ["1m", "5m", "15m", "1h", "4h", "1d"]:
+        df = writer.read_ohlcv(symbol, tf)
+        if not df.is_empty():
+            available.append(tf)
+    return available
 
 
 @st.cache_data(ttl=60)
@@ -41,18 +52,28 @@ def load_and_compute(symbol: str, timeframe: str) -> pl.DataFrame:
     return compute_all(df)
 
 
+def get_computed_factors(pdf: pd.DataFrame) -> list[str]:
+    """获取实际计算出来的因子列（排除原始数据列）。"""
+    base_cols = {"timestamp", "open", "high", "low", "close", "volume", "symbol", "datetime"}
+    return [c for c in pdf.columns if c not in base_cols and not pdf[c].isna().all()]
+
+
 symbols = load_available_symbols()
-available_factors = [f for f in list_factors() if "funding" not in f]
 
 if not symbols:
     st.warning("暂无数据，请先运行 `python scripts/bootstrap_data.py`")
     st.stop()
 
-# 侧边栏
+# 侧边栏 - 先选币种，再动态加载可用选项
 with st.sidebar:
     symbol = st.selectbox("选择币种", symbols)
-    timeframe = st.selectbox("时间周期", ["1h", "4h", "1d"])
-    selected_factors = st.multiselect("选择因子", available_factors, default=available_factors[:2])
+
+    # 动态时间周期
+    available_tfs = get_available_timeframes(symbol)
+    if not available_tfs:
+        st.warning(f"{symbol} 无数据")
+        st.stop()
+    timeframe = st.selectbox("时间周期", available_tfs, index=min(len(available_tfs) - 1, available_tfs.index("1h") if "1h" in available_tfs else 0))
 
 # 加载并计算
 df = load_and_compute(symbol, timeframe)
@@ -63,6 +84,20 @@ if df.is_empty():
 
 pdf = df.to_pandas()
 pdf["datetime"] = pd.to_datetime(pdf["timestamp"], unit="ms", utc=True)
+
+# 动态因子列表 - 只显示实际计算出来的因子
+computed_factors = get_computed_factors(pdf)
+
+if not computed_factors:
+    st.warning("无可用因子")
+    st.stop()
+
+with st.sidebar:
+    selected_factors = st.multiselect(
+        "选择因子",
+        computed_factors,
+        default=computed_factors[:min(2, len(computed_factors))],
+    )
 
 # 因子 + 价格叠加图
 if selected_factors:
@@ -95,27 +130,27 @@ if selected_factors:
                 row=i + 2, col=1,
             )
 
-    fig.update_layout(height=200 + 200 * len(selected_factors), showlegend=True)
+    fig.update_layout(height=200 + 200 * len(selected_factors), showlegend=True,
+                      template="plotly_dark")
     st.plotly_chart(fig, use_container_width=True)
 
 # 因子统计
 st.subheader("因子统计")
 stats = []
-for factor in available_factors:
-    if factor in pdf.columns:
-        series = pdf[factor].dropna()
-        if len(series) > 0:
-            current_val = series.iloc[-1]
-            mean_val = series.mean()
-            std_val = series.std()
-            zscore = (current_val - mean_val) / std_val if std_val > 0 else 0
-            stats.append({
-                "因子": factor,
-                "当前值": round(current_val, 6),
-                "均值": round(mean_val, 6),
-                "标准差": round(std_val, 6),
-                "当前Z-Score": round(zscore, 2),
-            })
+for factor in computed_factors:
+    series = pdf[factor].dropna()
+    if len(series) > 0:
+        current_val = series.iloc[-1]
+        mean_val = series.mean()
+        std_val = series.std()
+        zscore = (current_val - mean_val) / std_val if std_val > 0 else 0
+        stats.append({
+            "因子": factor,
+            "当前值": round(current_val, 6),
+            "均值": round(mean_val, 6),
+            "标准差": round(std_val, 6),
+            "当前Z-Score": round(zscore, 2),
+        })
 
 if stats:
     st.dataframe(stats, use_container_width=True, hide_index=True)
