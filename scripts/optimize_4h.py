@@ -25,6 +25,7 @@ from src.strategies.momentum_mean_blend import momentum_mean_blend_signal
 from src.strategies.macd_histogram import macd_histogram_signal
 from src.strategies.ichimoku import ichimoku_signal
 from src.strategies.ensemble import ensemble_signal
+from src.strategies.adaptive import adaptive_signal
 
 
 def load_price(symbol: str, timeframe: str) -> pd.Series | None:
@@ -183,6 +184,17 @@ def optimize_symbol(symbol: str) -> None:
     df12, _ = engine.run_grid_search(price, ensemble_signal, grid12)
     df12["strategy"] = "Ensemble"
     all_results.append(df12)
+
+    # 13. Adaptive (regime-switching)
+    logger.info("\n--- Adaptive (regime-switching) ---")
+    grid13 = {
+        "short_ma": [15, 20, 30],
+        "long_ma": [80, 100, 150],
+        "bb_period": [15, 20, 30],
+    }
+    df13, _ = engine.run_grid_search(price, adaptive_signal, grid13)
+    df13["strategy"] = "Adaptive"
+    all_results.append(df13)
 
     # 汇总
     combined = pd.concat(all_results, ignore_index=True)
