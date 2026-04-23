@@ -18,6 +18,7 @@ from config.settings import get_settings
 from src.strategies.trend_ma import trend_ma_signal_func
 from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
 from src.strategies.momentum_breakout import momentum_breakout_signal
+from src.strategies.mean_reversion_bb import mean_reversion_bb_signal
 
 
 def load_price(symbol: str, timeframe: str) -> pd.Series | None:
@@ -67,6 +68,13 @@ def run_strategy_suite(symbol: str, timeframe: str) -> None:
     df3["strategy"] = "MomentumBreakout"
     all_results.append(df3)
 
+    # === 4. 均值回归 BB ===
+    logger.info("\n--- 4. Mean Reversion BB ---")
+    grid4 = {"bb_period": [15, 20, 30], "bb_std": [1.5, 2.0, 2.5]}
+    df4, best4 = engine.run_grid_search(price, mean_reversion_bb_signal, grid4)
+    df4["strategy"] = "MeanRevBB"
+    all_results.append(df4)
+
     # === 汇总 ===
     combined = pd.concat(all_results, ignore_index=True)
     combined = combined.sort_values("sharpe_ratio", ascending=False)
@@ -101,8 +109,10 @@ def main() -> None:
     combos = [
         ("BTC-USDT", "1h"),
         ("BTC-USDT", "4h"),
+        ("BTC-USDT", "1d"),
         ("ETH-USDT", "1h"),
         ("ETH-USDT", "4h"),
+        ("ETH-USDT", "1d"),
     ]
 
     for symbol, tf in combos:
