@@ -41,10 +41,10 @@ async def monitor() -> None:
     ) as client:
         for symbol, coin in coins.items():
             try:
-                # 拉最近 2 周 5m 数据
+                # 拉最近 1 个月 5m 数据（2 周太短有噪音）
                 candles = await client.fetch_ohlcv_range(
                     symbol, timeframe="5m",
-                    since=int(time.time() * 1000) - 14 * 24 * 3600 * 1000,
+                    since=int(time.time() * 1000) - 30 * 24 * 3600 * 1000,
                 )
                 if len(candles) < 500:
                     continue
