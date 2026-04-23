@@ -104,6 +104,30 @@ async def health_check() -> None:
             light += " | ⚠️ 高波动"
 
         logger.info(f"\n  {light}")
+
+        # 动量轮动：推荐本周 Top 2 币种
+        logger.info(f"\n  --- 动量轮动 (集中交易 Top 2) ---")
+        coin_momentum = {}
+        for symbol in COINS:
+            try:
+                candles = await client.fetch_ohlcv_range(
+                    symbol, timeframe="5m",
+                    since=int(time.time() * 1000) - 300 * 5 * 60 * 1000,
+                )
+                if len(candles) > 288:
+                    df = pd.DataFrame(candles, columns=["ts", "o", "h", "l", "close", "v"])
+                    p = df["close"]
+                    mom_7d = (p.iloc[-1] - p.iloc[-2016]) / p.iloc[-2016] * 100 if len(p) > 2016 else (p.iloc[-1] - p.iloc[0]) / p.iloc[0] * 100
+                    coin_momentum[symbol] = mom_7d
+            except Exception:
+                pass
+
+        if coin_momentum:
+            ranked = sorted(coin_momentum.items(), key=lambda x: x[1], reverse=True)
+            for i, (sym, mom) in enumerate(ranked):
+                tag = " << 本周交易" if i < 2 else ""
+                logger.info(f"  #{i+1} {sym:10s} 7日动量: {mom:+.2f}%{tag}")
+
         logger.info(f"{'='*60}")
 
 
