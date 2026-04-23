@@ -154,15 +154,60 @@ async def main():
     db_path.parent.mkdir(exist_ok=True)
     trader = PaperTrader(db_path)
 
-    logger.info("Paper Trader 启动 | MinSwing v3 | $50 x 5x")
+    # 解析参数
+    duration_min = 0
+    for arg in sys.argv:
+        if arg.startswith("--duration"):
+            duration_min = int(arg.split("=")[1]) if "=" in arg else int(sys.argv[sys.argv.index(arg) + 1])
+
+    start_time = datetime.now(timezone.utc)
+    logger.info(f"Paper Trader 启动 | MinSwing v3 | $50 x 5x")
     logger.info(f"Coins: {list(COINS.keys())}")
+    logger.info(f"开始: {start_time.strftime('%H:%M:%S UTC')}")
+    if duration_min:
+        logger.info(f"时长: {duration_min} 分钟")
+
+    scan_log = []
 
     if "--once" in sys.argv:
         await scan_and_trade(trader)
     else:
+        scan_count = 0
         while True:
+            scan_count += 1
             await scan_and_trade(trader)
+
+            # 记录本次扫描
+            scan_log.append({
+                "scan": scan_count,
+                "time": datetime.now(timezone.utc).isoformat(),
+                "summary": trader.get_summary(),
+            })
+
+            # 检查是否到时间
+            elapsed = (datetime.now(timezone.utc) - start_time).total_seconds() / 60
+            if duration_min and elapsed >= duration_min:
+                logger.info(f"\n时长 {duration_min} 分钟已到，自动停止。")
+                break
+
             await asyncio.sleep(300)
+
+    # 保存结果到 JSON（供心跳读取）
+    end_time = datetime.now(timezone.utc)
+    result = {
+        "start": start_time.isoformat(),
+        "end": end_time.isoformat(),
+        "duration_min": round((end_time - start_time).total_seconds() / 60, 1),
+        "scans": len(scan_log),
+        "summary": trader.get_summary(),
+        "log": scan_log,
+    }
+
+    result_path = Path("reports") / "paper_trade_session.json"
+    import json
+    with open(result_path, "w") as f:
+        json.dump(result, f, indent=2, default=str)
+    logger.info(f"结果保存到: {result_path}")
 
 
 if __name__ == "__main__":
