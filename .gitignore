@@ -1,0 +1,49 @@
+# 数据文件
+data/
+*.duckdb
+*.duckdb.wal
+*.sqlite
+*.parquet
+
+# 环境变量
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+wheels/
+
+# 虚拟环境
+.venv/
+venv/
+
+# 测试/缓存
+.pytest_cache/
+.ruff_cache/
+.pyright/
+htmlcov/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志
+logs/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# 报告（可选保留）
+reports/*.html

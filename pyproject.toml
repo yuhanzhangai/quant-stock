@@ -1,0 +1,49 @@
+[project]
+name = "crypto-research"
+version = "0.1.0"
+description = "Research-oriented cryptocurrency quantitative analysis platform (OKX)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "ccxt>=4.0",
+    "python-okx>=0.3",
+    "aiohttp>=3.9",
+    "aiolimiter>=1.1",
+    "tenacity>=8.2",
+    "polars>=1.0",
+    "pandas>=2.1",
+    "duckdb>=1.0",
+    "pyarrow>=15.0",
+    "pydantic-settings>=2.1",
+    "loguru>=0.7",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+    "streamlit>=1.30",
+    "plotly>=5.18",
+    "mplfinance>=0.12",
+    "vectorbt>=0.26",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+    "pyright>=1.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B", "SIM"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

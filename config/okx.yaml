@@ -1,0 +1,40 @@
+# OKX API 配置
+
+base_url: "https://www.okx.com"
+api_version: "v5"
+
+# 各接口限流配置 (次数 / 时间窗口秒)
+rate_limits:
+  market/candles:
+    calls: 40
+    period: 2
+  market/history-candles:
+    calls: 20
+    period: 2
+  market/tickers:
+    calls: 20
+    period: 2
+  public/funding-rate-history:
+    calls: 10
+    period: 2
+  public/open-interest:
+    calls: 20
+    period: 2
+  default:
+    calls: 20
+    period: 2
+
+# 请求配置
+request:
+  timeout: 30
+  max_retries: 5
+  retry_base_delay: 1.0
+  retry_max_delay: 60.0
+
+# 数据采集
+ingestion:
+  ohlcv_batch_size: 100    # 每次请求最多100根K线
+  default_timeframes:
+    - "1H"
+    - "4H"
+    - "1D"

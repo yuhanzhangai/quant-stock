@@ -1,0 +1,15 @@
+# 标的池配置
+
+# MVP 阶段关注的品种
+spot:
+  quote_currency: USDT
+  top_n: 100  # 按24h成交额排名
+
+# 永续合约（第一阶段仅 BTC/ETH）
+swap:
+  symbols:
+    - BTC-USDT-SWAP
+    - ETH-USDT-SWAP
+
+# 默认历史回溯长度（天）
+default_lookback_days: 730  # 2年
