@@ -158,5 +158,215 @@
         "stop_pct": 1.0
       }
     }
+  ],
+  "gen3": [
+    {
+      "name": "v3_base",
+      "avg_sharpe": 2.134,
+      "avg_return": 6.59,
+      "pos_rate": 0.92,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 180,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 144
+      }
+    },
+    {
+      "name": "dual_base",
+      "avg_sharpe": 2.078,
+      "avg_return": 6.59,
+      "pos_rate": 1.0,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 180,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 144
+      }
+    },
+    {
+      "name": "v3_rand",
+      "avg_sharpe": 2.015,
+      "avg_return": 6.94,
+      "pos_rate": 0.92,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 186,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.45,
+        "min_gap": 129
+      }
+    },
+    {
+      "name": "v3_trail",
+      "avg_sharpe": 1.921,
+      "avg_return": 6.38,
+      "pos_rate": 0.92,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 180,
+        "stop_pct": 2.0,
+        "take_profit_pct": 12.0,
+        "min_gap": 144
+      }
+    },
+    {
+      "name": "v3_hybrid",
+      "avg_sharpe": 1.801,
+      "avg_return": 6.02,
+      "pos_rate": 0.75,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 190,
+        "stop_pct": 2.5,
+        "take_profit_pct": 9.0,
+        "min_gap": 132
+      }
+    },
+    {
+      "name": "dual_strict",
+      "avg_sharpe": 1.225,
+      "avg_return": 4.09,
+      "pos_rate": 0.67,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 200,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 168
+      }
+    },
+    {
+      "name": "fast_165",
+      "avg_sharpe": 1.215,
+      "avg_return": 4.5,
+      "pos_rate": 0.58,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 165,
+        "stop_pct": 2.0,
+        "take_profit_pct": 7.5,
+        "min_gap": 130
+      }
+    },
+    {
+      "name": "v3_mut1",
+      "avg_sharpe": 1.192,
+      "avg_return": 4.53,
+      "pos_rate": 0.5,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 210,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 120
+      }
+    },
+    {
+      "name": "dual_mut1",
+      "avg_sharpe": 1.125,
+      "avg_return": 4.14,
+      "pos_rate": 0.58,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 160,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 120
+      }
+    },
+    {
+      "name": "v3_gap110",
+      "avg_sharpe": 1.013,
+      "avg_return": 4.15,
+      "pos_rate": 0.58,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 200,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 110
+      }
+    },
+    {
+      "name": "fast_fix",
+      "avg_sharpe": 0.518,
+      "avg_return": 1.98,
+      "pos_rate": 0.75,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 150,
+        "stop_pct": 2.0,
+        "take_profit_pct": 7.0,
+        "min_gap": 120
+      }
+    },
+    {
+      "name": "dual_rand",
+      "avg_sharpe": 0.475,
+      "avg_return": 1.13,
+      "pos_rate": 0.58,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 146,
+        "stop_pct": 2.0,
+        "take_profit_pct": 9.21,
+        "min_gap": 157
+      }
+    },
+    {
+      "name": "intraday_base",
+      "avg_sharpe": -0.479,
+      "avg_return": 0.78,
+      "pos_rate": 0.58,
+      "n_tests": 12,
+      "params": {
+        "session_bars": 96,
+        "momentum_threshold": 0.008,
+        "hold_bars": 192,
+        "stop_pct": 1.0
+      }
+    },
+    {
+      "name": "fast_base",
+      "avg_sharpe": -0.701,
+      "avg_return": -1.58,
+      "pos_rate": 0.5,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 120,
+        "stop_pct": 2.0,
+        "take_profit_pct": 6.0,
+        "min_gap": 96
+      }
+    },
+    {
+      "name": "intraday_fix",
+      "avg_sharpe": -1.907,
+      "avg_return": -2.99,
+      "pos_rate": 0.33,
+      "n_tests": 12,
+      "params": {
+        "session_bars": 48,
+        "momentum_threshold": 0.005,
+        "hold_bars": 192,
+        "stop_pct": 1.0
+      }
+    },
+    {
+      "name": "intraday_short",
+      "avg_sharpe": -1.958,
+      "avg_return": -2.73,
+      "pos_rate": 0.25,
+      "n_tests": 12,
+      "params": {
+        "session_bars": 24,
+        "momentum_threshold": 0.003,
+        "hold_bars": 144,
+        "stop_pct": 1.5
+      }
+    }
   ]
 }
