@@ -1,0 +1,56 @@
+{
+  "gen1": [
+    {
+      "name": "MinSwing_v3_base",
+      "avg_sharpe": 2.134,
+      "avg_return": 6.59,
+      "pos_rate": 0.92,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 180,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 144
+      }
+    },
+    {
+      "name": "MinSwing_dual",
+      "avg_sharpe": 2.078,
+      "avg_return": 6.59,
+      "pos_rate": 1.0,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 180,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 144
+      }
+    },
+    {
+      "name": "IntradayMom_p4",
+      "avg_sharpe": -0.479,
+      "avg_return": 0.78,
+      "pos_rate": 0.58,
+      "n_tests": 12,
+      "params": {
+        "session_bars": 96,
+        "momentum_threshold": 0.008,
+        "hold_bars": 192,
+        "stop_pct": 1.0
+      }
+    },
+    {
+      "name": "MinSwing_fast",
+      "avg_sharpe": -0.701,
+      "avg_return": -1.58,
+      "pos_rate": 0.5,
+      "n_tests": 12,
+      "params": {
+        "trend_ma": 120,
+        "stop_pct": 2.0,
+        "take_profit_pct": 6.0,
+        "min_gap": 96
+      }
+    }
+  ]
+}
