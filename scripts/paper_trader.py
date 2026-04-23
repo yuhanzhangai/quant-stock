@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config.settings import get_settings
 from src.exchange.ccxt_client import CCXTClient
 from src.strategies.minswing_v3_final import minswing_v3_signal
+from src.notify.telegram import notify_signal
 
 COINS = {
     "ETH/USDT": "ETH",
@@ -135,8 +136,12 @@ async def scan_and_trade(trader: PaperTrader):
 
                 if recent_entry and not trader.has_position(symbol):
                     trader.record_entry(symbol, current)
+                    sl = current * 0.98
+                    tp = current * 1.08
+                    await notify_signal(symbol, "ENTRY", current, sl, tp)
                 elif recent_exit and trader.has_position(symbol):
                     trader.record_exit(symbol, current)
+                    await notify_signal(symbol, "EXIT", current)
 
             except Exception as e:
                 logger.error(f"{symbol}: {e}")
