@@ -1,0 +1,18 @@
+sentiment_score,detected,valid,price_at_event,immediate_change_pct,total_change_pct,vol_ratio,vol_spike,max_up_pct,max_down_pct,date,event_type,title,expected,correct
+-0.1183,bearish,True,390.02,0.15,-3.56,1.73,3.86,3.59,-3.65,2026-04-22,earnings,Q1 2026 财报发布,unknown,
+-0.2147,bearish,True,415.0,-0.06,-3.16,0.26,0.87,0.12,-3.99,2026-02-26,ceo,Musk DOGE 持续争议 / 欧洲抵制扩大,bearish,True
+0.2041,bullish,True,397.28,-0.04,2.01,0.62,0.94,3.69,-0.04,2026-03-10,ceo,Musk 宣布缩减 DOGE 投入 / 回归特斯拉,bullish,True
+-0.2415,bearish,True,390.28,-0.57,-4.37,0.77,0.71,0.74,-4.57,2026-03-25,ceo,Musk 确认全职回归特斯拉 CEO 职务,bullish,False
+-0.0576,neutral,True,402.27,0.11,0.22,2.05,1.68,0.25,-3.1,2026-03-01,product,Model Y Juniper 全球交付开始,bullish,False
+0.2411,bullish,True,390.16,0.21,1.26,2.0,7.21,2.81,-0.03,2026-03-15,product,FSD v13 大规模推送 / 安全数据公布,bullish,True
+0.1312,bullish,True,346.26,0.23,1.81,0.46,0.62,1.92,-0.68,2026-04-10,product,Robotaxi Austin 试运营首周数据,unknown,
+-0.2363,bearish,True,406.48,-0.65,-2.73,0.57,0.81,0.11,-2.73,2026-03-05,regulatory,美国新一轮对华关税生效,bearish,True
+-0.2155,bearish,True,383.2,0.01,-2.96,0.54,1.47,0.13,-3.81,2026-03-20,regulatory,EU 确认对中国 EV 关税 / 利好特斯拉欧洲,bullish,False
+-0.3896,bearish,True,381.55,-2.23,-5.35,1.45,0.75,0.0,-5.61,2026-04-02,regulatory,Trump 全面关税政策升级,bearish,True
+0.1621,bullish,True,342.73,0.22,2.14,1.49,0.51,2.53,-0.98,2026-04-09,regulatory,部分关税 90 天暂停,bullish,True
+0.083,neutral,True,394.19,-0.24,0.78,4.35,4.64,1.12,-2.36,2026-03-08,macro,美股大跌 / 衰退恐慌,bearish,False
+-0.2473,bearish,True,399.81,0.19,-4.15,2.21,1.72,0.84,-4.81,2026-03-18,macro,美联储维持利率 / 鸽派表态,bullish,False
+-0.0909,neutral,True,351.36,-0.5,-2.46,1.06,1.33,3.83,-3.35,2026-04-07,macro,全球股市暴跌 / 关税恐慌升级,bearish,False
+0.4384,bullish,True,353.11,0.35,12.09,1.09,1.51,12.09,0.0,2026-04-14,macro,市场反弹 / 风险偏好回升,bullish,True
+-0.0852,neutral,True,403.16,-0.78,0.82,0.92,1.1,0.82,-3.93,2026-03-03,earnings,2月全球交付数据发布：同比下降,bearish,False
+-0.1859,bearish,True,376.52,-0.49,-3.86,0.64,0.87,1.58,-4.35,2026-04-01,earnings,Q1 全球交付数据：低于预期,bearish,True
