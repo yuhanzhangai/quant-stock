@@ -1,19 +1,19 @@
 {
   "active_factors": [],
   "tested_factors": {
-    "gap_detect": "NEUTRAL",
-    "ema_8_21_cross": "NEGATIVE",
     "atr_dynamic_stop": "NEUTRAL",
     "rsi_14": "NEGATIVE",
     "macd_hist": "NEGATIVE",
-    "volatility_regime": "NEUTRAL",
     "bollinger_20": "NEGATIVE",
-    "consecutive_3bar": "NEUTRAL",
     "volume_surge": "NEUTRAL",
     "range_position_7d": "NEUTRAL",
+    "pre_trend_7d": "NEUTRAL",
     "candle_body": "NEUTRAL",
-    "pre_trend_7d": "NEUTRAL"
+    "volatility_regime": "NEUTRAL",
+    "gap_detect": "NEUTRAL",
+    "ema_8_21_cross": "NEGATIVE",
+    "consecutive_3bar": "NEUTRAL"
   },
-  "iteration": 1467,
-  "timestamp": "2026-04-23T21:12:44.687967+00:00"
+  "iteration": 1473,
+  "timestamp": "2026-04-23T21:14:44.777382+00:00"
 }
