@@ -15,8 +15,10 @@ OPTIMAL_PARAMS: dict[str, dict] = {
     "BTC-USDT": {"tenkan": 9, "kijun": 26, "lookback": 50, "consec_bars": 4},
     "ETH-USDT": {"tenkan": 9, "kijun": 26, "lookback": 50, "consec_bars": 4},
     "SOL-USDT": {"tenkan": 9, "kijun": 26, "lookback": 20, "consec_bars": 2},
-    "DOGE-USDT": {"tenkan": 9, "kijun": 26, "lookback": 30, "consec_bars": 3},
     "XRP-USDT": {"tenkan": 9, "kijun": 26, "lookback": 30, "consec_bars": 3},
+    "LINK-USDT": {"tenkan": 9, "kijun": 20, "lookback": 50, "consec_bars": 4},
+    "ADA-USDT": {"tenkan": 9, "kijun": 20, "lookback": 50, "consec_bars": 2},
+    "AVAX-USDT": {"tenkan": 12, "kijun": 30, "lookback": 30, "consec_bars": 3},
 }
 
 # 未知币种的默认参数（v1 通用参数）
