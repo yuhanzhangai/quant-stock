@@ -6,32 +6,8 @@ from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class OKXSettings(BaseSettings):
-    """OKX API 配置。"""
-
-    model_config = SettingsConfigDict(env_prefix="OKX_")
-
-    api_key: str = ""
-    api_secret: str = ""
-    passphrase: str = ""
-    use_simulated: bool = False
-
-
-class TelegramSettings(BaseSettings):
-    """Telegram 通知配置（可选）。"""
-
-    model_config = SettingsConfigDict(env_prefix="TELEGRAM_")
-
-    bot_token: str = ""
-    chat_id: str = ""
-
-    @property
-    def enabled(self) -> bool:
-        return bool(self.bot_token and self.chat_id)
-
-
 class Settings(BaseSettings):
-    """全局配置入口。"""
+    """全局配置入口，直接从 .env 读取所有变量。"""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -39,15 +15,25 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # OKX API
+    okx_api_key: str = ""
+    okx_api_secret: str = ""
+    okx_passphrase: str = ""
+    okx_use_simulated: bool = False
+
+    # Telegram
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
     # 日志
     log_level: str = "INFO"
 
     # 数据目录
     data_dir: Path = Path("data")
 
-    # 子配置
-    okx: OKXSettings = OKXSettings()
-    telegram: TelegramSettings = TelegramSettings()
+    @property
+    def telegram_enabled(self) -> bool:
+        return bool(self.telegram_bot_token and self.telegram_chat_id)
 
     @property
     def parquet_dir(self) -> Path:

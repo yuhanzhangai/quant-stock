@@ -131,19 +131,19 @@ async def main() -> None:
 
     # OHLCV
     async with CCXTClient(
-        api_key=settings.okx.api_key,
-        api_secret=settings.okx.api_secret,
-        passphrase=settings.okx.passphrase,
-        use_simulated=settings.okx.use_simulated,
+        api_key=settings.okx_api_key,
+        api_secret=settings.okx_api_secret,
+        passphrase=settings.okx_passphrase,
+        use_simulated=settings.okx_use_simulated,
     ) as ccxt_client:
         await bootstrap_ohlcv(ccxt_client, writer, state_tracker)
 
     # Funding
     okx_client = OKXNativeClient(
-        api_key=settings.okx.api_key,
-        api_secret=settings.okx.api_secret,
-        passphrase=settings.okx.passphrase,
-        use_simulated=settings.okx.use_simulated,
+        api_key=settings.okx_api_key,
+        api_secret=settings.okx_api_secret,
+        passphrase=settings.okx_passphrase,
+        use_simulated=settings.okx_use_simulated,
     )
     await bootstrap_funding(okx_client, writer, state_tracker)
 

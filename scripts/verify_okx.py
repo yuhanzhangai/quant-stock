@@ -58,7 +58,7 @@ async def check_api_key() -> bool:
     """检查 API Key 是否有效（需要鉴权的只读接口）。"""
     settings = get_settings()
 
-    if not settings.okx.api_key:
+    if not settings.okx_api_key:
         logger.warning("未配置 OKX_API_KEY，跳过鉴权测试")
         logger.info("请在 .env 文件中配置 OKX_API_KEY、OKX_API_SECRET、OKX_PASSPHRASE")
         return True  # 不算失败
@@ -75,20 +75,20 @@ async def check_api_key() -> bool:
     message = timestamp + method + request_path
     signature = base64.b64encode(
         hmac.new(
-            settings.okx.api_secret.encode(),
+            settings.okx_api_secret.encode(),
             message.encode(),
             hashlib.sha256,
         ).digest()
     ).decode()
 
     headers = {
-        "OK-ACCESS-KEY": settings.okx.api_key,
+        "OK-ACCESS-KEY": settings.okx_api_key,
         "OK-ACCESS-SIGN": signature,
         "OK-ACCESS-TIMESTAMP": timestamp,
-        "OK-ACCESS-PASSPHRASE": settings.okx.passphrase,
+        "OK-ACCESS-PASSPHRASE": settings.okx_passphrase,
     }
 
-    if settings.okx.use_simulated:
+    if settings.okx_use_simulated:
         headers["x-simulated-trading"] = "1"
 
     url = f"{OKX_BASE_URL}{request_path}"

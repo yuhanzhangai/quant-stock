@@ -18,10 +18,10 @@ async def demo_ccxt() -> None:
     settings = get_settings()
 
     async with CCXTClient(
-        api_key=settings.okx.api_key,
-        api_secret=settings.okx.api_secret,
-        passphrase=settings.okx.passphrase,
-        use_simulated=settings.okx.use_simulated,
+        api_key=settings.okx_api_key,
+        api_secret=settings.okx_api_secret,
+        passphrase=settings.okx_passphrase,
+        use_simulated=settings.okx_use_simulated,
     ) as client:
         # 1. 拉 BTC-USDT 最近 10 根 1h K线
         logger.info("--- 拉取 BTC/USDT 1h K线 ---")
@@ -39,10 +39,10 @@ async def demo_okx_native() -> None:
     settings = get_settings()
 
     client = OKXNativeClient(
-        api_key=settings.okx.api_key,
-        api_secret=settings.okx.api_secret,
-        passphrase=settings.okx.passphrase,
-        use_simulated=settings.okx.use_simulated,
+        api_key=settings.okx_api_key,
+        api_secret=settings.okx_api_secret,
+        passphrase=settings.okx_passphrase,
+        use_simulated=settings.okx_use_simulated,
     )
 
     # 1. 资金费率
