@@ -15,6 +15,8 @@ import sys
 import time
 from pathlib import Path
 
+import aiohttp
+
 import pandas as pd
 from loguru import logger
 
@@ -127,6 +129,23 @@ async def health_check() -> None:
             for i, (sym, mom) in enumerate(ranked):
                 tag = " << 本周交易" if i < 2 else ""
                 logger.info(f"  #{i+1} {sym:10s} 7日动量: {mom:+.2f}%{tag}")
+
+        # Taker Volume
+        logger.info(f"\n  --- 资金流向 (OKX Taker Volume 6h) ---")
+        try:
+            for ccy in ["ETH", "SOL"]:
+                url = f"https://www.okx.com/api/v5/rubik/stat/taker-volume?ccy={ccy}&instType=CONTRACTS&period=1H"
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                        data = await resp.json()
+                        if data.get("code") == "0" and data.get("data"):
+                            buys = sum(float(d[1]) for d in data["data"][:6])
+                            sells = sum(float(d[2]) for d in data["data"][:6])
+                            ratio = buys / sells if sells > 0 else 0
+                            tag = "BUY" if ratio > 1.02 else "SELL" if ratio < 0.98 else "NEUTRAL"
+                            logger.info(f"  {ccy}: buy/sell = {ratio:.3f} ({tag})")
+        except Exception:
+            pass
 
         logger.info(f"{'='*60}")
 
