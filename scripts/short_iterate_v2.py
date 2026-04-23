@@ -209,11 +209,20 @@ def main() -> None:
         {"session_start": 7, "session_end": 15, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
         # 排除美盘（UTC 21-13 = 晚间+亚洲+欧洲早盘）— 上轮冠军
         {"session_start": 21, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        # === 新冠军: stop=3.5 出场优化 ===
+        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.5, "take_profit_pct": 12.0, "trail_pct": 1.0},
+        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.5, "take_profit_pct": 8.0, "trail_pct": 1.0},
+        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.5, "take_profit_pct": 10.0, "trail_pct": 0.8},
+        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.5, "take_profit_pct": 12.0, "trail_pct": 0.8},
+        # === 新冠军: stop=7.0(安全网止损) ===
+        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 7.0, "take_profit_pct": 12.0, "trail_pct": 1.0},
+        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 8.0, "take_profit_pct": 12.0, "trail_pct": 1.0},
+        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 7.0, "take_profit_pct": 10.0, "trail_pct": 0.8},
         # 冠军附近微调
-        {"session_start": 21, "session_end": 13, "fast_ma": 96, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
-        {"session_start": 21, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 336, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
-        {"session_start": 21, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 0.8},
-        {"session_start": 21, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 2.5, "take_profit_pct": 12.0, "trail_pct": 1.0},
+        {"session_start": 21, "session_end": 13, "fast_ma": 96, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.5, "take_profit_pct": 12.0, "trail_pct": 1.0},
+        {"session_start": 21, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 336, "stop_pct": 3.5, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        {"session_start": 22, "session_end": 14, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.5, "take_profit_pct": 12.0, "trail_pct": 1.0},
+        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 4.0, "take_profit_pct": 12.0, "trail_pct": 1.0},
         {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
         {"session_start": 22, "session_end": 14, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
         # 随机 session 变体
