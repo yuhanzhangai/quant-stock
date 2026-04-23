@@ -1,7 +1,7 @@
 """python-okx 原生客户端封装，处理资金费率、持仓量等 OKX 特有数据。"""
 
 import time
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 from tenacity import (
@@ -32,9 +32,7 @@ class OKXNativeClient:
 
         flag = "1" if use_simulated else "0"
 
-        self._public_api = PublicData.PublicAPI(
-            api_key, api_secret, passphrase, flag=flag
-        )
+        self._public_api = PublicData.PublicAPI(api_key, api_secret, passphrase, flag=flag)
         self._rate_limiter = RateLimiterManager()
         logger.info("OKX 原生客户端初始化完成")
 
@@ -69,8 +67,8 @@ class OKXNativeClient:
     async def fetch_funding_rate_history(
         self,
         inst_id: str,
-        before: Optional[str] = None,
-        after: Optional[str] = None,
+        before: str | None = None,
+        after: str | None = None,
         limit: str = "100",
     ) -> list[dict[str, Any]]:
         """获取资金费率历史。
@@ -105,8 +103,8 @@ class OKXNativeClient:
     async def fetch_funding_rate_history_range(
         self,
         inst_id: str,
-        since_ts: Optional[int] = None,
-        end_ts: Optional[int] = None,
+        since_ts: int | None = None,
+        end_ts: int | None = None,
     ) -> list[dict[str, Any]]:
         """分页拉取资金费率历史全量数据。
 
@@ -119,7 +117,7 @@ class OKXNativeClient:
             完整资金费率数据列表
         """
         all_data: list[dict[str, Any]] = []
-        after_cursor: Optional[str] = None
+        after_cursor: str | None = None
         page = 0
 
         while True:
@@ -152,7 +150,10 @@ class OKXNativeClient:
             after_cursor = records[-1]["fundingTime"]
 
             if page % 5 == 0:
-                logger.info(f"funding_rate_history_range | {inst_id} | 已拉取 {len(all_data)} 条（第 {page} 页）")
+                logger.info(
+                    f"funding_rate_history_range | {inst_id} | "
+                    f"已拉取 {len(all_data)} 条（第 {page} 页）"
+                )
 
         logger.info(
             f"funding_rate_history_range 完成 | {inst_id} | 共 {len(all_data)} 条 | {page} 页"
@@ -170,7 +171,7 @@ class OKXNativeClient:
     async def fetch_open_interest(
         self,
         inst_type: str = "SWAP",
-        inst_id: Optional[str] = None,
+        inst_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """获取持仓量数据。
 

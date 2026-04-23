@@ -1,7 +1,7 @@
 """异步 CCXT OKX 客户端封装，集成限流和重试。"""
 
 import time
-from typing import Any, Optional
+from typing import Any
 
 import ccxt.async_support as ccxt
 from loguru import logger
@@ -65,7 +65,7 @@ class CCXTClient:
             f"重试 {retry_state.attempt_number}/5: {retry_state.outcome.exception()}"
         ),
     )
-    async def fetch_tickers(self, symbols: Optional[list[str]] = None) -> dict[str, Any]:
+    async def fetch_tickers(self, symbols: list[str] | None = None) -> dict[str, Any]:
         """获取 Ticker 数据。
 
         Args:
@@ -95,7 +95,7 @@ class CCXTClient:
         self,
         symbol: str,
         timeframe: str = "1h",
-        since: Optional[int] = None,
+        since: int | None = None,
         limit: int = 100,
     ) -> list[list]:
         """获取单页 K 线数据。
@@ -127,8 +127,8 @@ class CCXTClient:
         self,
         symbol: str,
         timeframe: str = "1h",
-        since: Optional[int] = None,
-        end: Optional[int] = None,
+        since: int | None = None,
+        end: int | None = None,
         batch_size: int = 100,
     ) -> list[list]:
         """分页拉取大范围 K 线数据。
@@ -172,11 +172,13 @@ class CCXTClient:
                 break
 
             if page % 10 == 0:
-                logger.info(f"fetch_ohlcv_range | {symbol} {timeframe} | 已拉取 {len(all_candles)} 根（第 {page} 页）")
+                logger.info(
+                    f"fetch_ohlcv_range | {symbol} {timeframe} | "
+                    f"已拉取 {len(all_candles)} 根（第 {page} 页）"
+                )
 
         logger.info(
-            f"fetch_ohlcv_range 完成 | {symbol} {timeframe} | "
-            f"共 {len(all_candles)} 根 | {page} 页"
+            f"fetch_ohlcv_range 完成 | {symbol} {timeframe} | 共 {len(all_candles)} 根 | {page} 页"
         )
         return all_candles
 

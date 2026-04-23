@@ -1,7 +1,7 @@
 """DuckDB 客户端封装，自动创建视图读取 Parquet 文件。"""
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import duckdb
 import polars as pl
@@ -15,7 +15,7 @@ class DuckDBClient:
     启动时自动注册 Parquet 文件为可查询视图。
     """
 
-    def __init__(self, db_path: Path, parquet_dir: Optional[Path] = None) -> None:
+    def __init__(self, db_path: Path, parquet_dir: Path | None = None) -> None:
         self._db_path = db_path
         self._parquet_dir = parquet_dir
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -35,7 +35,9 @@ class DuckDBClient:
         ohlcv_pattern = str(self._parquet_dir / "ohlcv" / "*" / "*" / "*" / "*.parquet")
         try:
             self._conn.execute(
-                f"CREATE OR REPLACE VIEW ohlcv AS SELECT * FROM read_parquet('{ohlcv_pattern}', union_by_name=true, filename=true)"
+                "CREATE OR REPLACE VIEW ohlcv AS "
+                f"SELECT * FROM read_parquet('{ohlcv_pattern}', "
+                "union_by_name=true, filename=true)"
             )
             logger.debug("注册视图: ohlcv")
         except duckdb.IOException:
@@ -45,13 +47,15 @@ class DuckDBClient:
         funding_pattern = str(self._parquet_dir / "funding" / "*.parquet")
         try:
             self._conn.execute(
-                f"CREATE OR REPLACE VIEW funding AS SELECT * FROM read_parquet('{funding_pattern}', union_by_name=true, filename=true)"
+                "CREATE OR REPLACE VIEW funding AS "
+                f"SELECT * FROM read_parquet('{funding_pattern}', "
+                "union_by_name=true, filename=true)"
             )
             logger.debug("注册视图: funding")
         except duckdb.IOException:
             logger.debug("Funding Parquet 文件尚未创建，跳过视图注册")
 
-    def execute(self, sql: str, params: Optional[list[Any]] = None) -> None:
+    def execute(self, sql: str, params: list[Any] | None = None) -> None:
         """执行 SQL 语句。
 
         Args:
@@ -63,7 +67,7 @@ class DuckDBClient:
         else:
             self._conn.execute(sql)
 
-    def query_df(self, sql: str, params: Optional[list[Any]] = None) -> pl.DataFrame:
+    def query_df(self, sql: str, params: list[Any] | None = None) -> pl.DataFrame:
         """执行查询并返回 Polars DataFrame。
 
         Args:
@@ -73,13 +77,10 @@ class DuckDBClient:
         Returns:
             查询结果 DataFrame
         """
-        if params:
-            result = self._conn.execute(sql, params)
-        else:
-            result = self._conn.execute(sql)
+        result = self._conn.execute(sql, params) if params else self._conn.execute(sql)
         return result.pl()
 
-    def query_scalar(self, sql: str, params: Optional[list[Any]] = None) -> Any:
+    def query_scalar(self, sql: str, params: list[Any] | None = None) -> Any:
         """执行查询并返回单个标量值。
 
         Args:

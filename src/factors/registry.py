@@ -1,17 +1,16 @@
 """因子注册表。"""
 
 from pathlib import Path
-from typing import Optional, Type
 
 import polars as pl
 from loguru import logger
 
 from src.factors.base import FactorBase
 
-_REGISTRY: dict[str, Type[FactorBase]] = {}
+_REGISTRY: dict[str, type[FactorBase]] = {}
 
 
-def register_factor(cls: Type[FactorBase]) -> Type[FactorBase]:
+def register_factor(cls: type[FactorBase]) -> type[FactorBase]:
     """注册因子的装饰器。
 
     Args:
@@ -32,7 +31,7 @@ def list_factors() -> list[str]:
     return list(_REGISTRY.keys())
 
 
-def get_factor(name: str, cache_dir: Optional[Path] = None) -> FactorBase:
+def get_factor(name: str, cache_dir: Path | None = None) -> FactorBase:
     """获取指定因子实例。
 
     Args:
@@ -54,8 +53,8 @@ def compute_all(
     df: pl.DataFrame,
     symbol: str = "",
     timeframe: str = "",
-    cache_dir: Optional[Path] = None,
-    factor_names: Optional[list[str]] = None,
+    cache_dir: Path | None = None,
+    factor_names: list[str] | None = None,
 ) -> pl.DataFrame:
     """批量计算所有（或指定的）因子。
 

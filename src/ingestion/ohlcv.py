@@ -1,9 +1,8 @@
 """OHLCV K 线数据采集器。"""
 
-from typing import Any, Optional
+from typing import Any
 
 import polars as pl
-from loguru import logger
 
 from src.exchange.ccxt_client import CCXTClient
 from src.ingestion.base import IngestorBase
@@ -36,7 +35,7 @@ class OHLCVIngestor(IngestorBase):
         self,
         symbol: str,
         timeframe: str,
-        since: Optional[int] = None,
+        since: int | None = None,
         **kwargs: Any,
     ) -> list[list]:
         """从 OKX 拉取 K 线数据。

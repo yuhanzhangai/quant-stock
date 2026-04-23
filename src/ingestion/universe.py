@@ -59,7 +59,5 @@ class UniverseUpdater:
             )
 
         result = [s.replace("/", "-") for s, _ in top_symbols]
-        logger.info(
-            f"标的池更新完成 | Top 5: {result[:5]} | 共 {len(result)} 个"
-        )
+        logger.info(f"标的池更新完成 | Top 5: {result[:5]} | 共 {len(result)} 个")
         return result

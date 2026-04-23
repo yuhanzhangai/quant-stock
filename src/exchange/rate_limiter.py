@@ -1,7 +1,6 @@
 """基于 aiolimiter 的按接口独立限流器。"""
 
 from pathlib import Path
-from typing import Optional
 
 import yaml
 from aiolimiter import AsyncLimiter
@@ -14,7 +13,7 @@ class RateLimiterManager:
     从 config/okx.yaml 读取限流配置，为每个接口创建独立的 AsyncLimiter。
     """
 
-    def __init__(self, config_path: Optional[Path] = None) -> None:
+    def __init__(self, config_path: Path | None = None) -> None:
         if config_path is None:
             config_path = Path(__file__).resolve().parent.parent.parent / "config" / "okx.yaml"
 

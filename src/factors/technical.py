@@ -2,7 +2,6 @@
 
 import math
 from pathlib import Path
-from typing import Optional
 
 import polars as pl
 
@@ -14,7 +13,7 @@ from src.factors.registry import register_factor
 class MomentumFactor(FactorBase):
     """N 日收益率（动量因子）。"""
 
-    def __init__(self, period: int = 20, cache_dir: Optional[Path] = None) -> None:
+    def __init__(self, period: int = 20, cache_dir: Path | None = None) -> None:
         super().__init__(cache_dir)
         self._period = period
 
@@ -28,16 +27,14 @@ class MomentumFactor(FactorBase):
 
     def compute(self, df: pl.DataFrame) -> pl.Series:
         """计算 N 日收益率。"""
-        return (
-            df["close"].pct_change(self._period)
-        ).alias(self.name)
+        return (df["close"].pct_change(self._period)).alias(self.name)
 
 
 @register_factor
 class VolatilityFactor(FactorBase):
     """N 日年化波动率。"""
 
-    def __init__(self, period: int = 20, cache_dir: Optional[Path] = None) -> None:
+    def __init__(self, period: int = 20, cache_dir: Path | None = None) -> None:
         super().__init__(cache_dir)
         self._period = period
 
@@ -62,7 +59,7 @@ class VolatilityFactor(FactorBase):
 class RSIFactor(FactorBase):
     """相对强弱指数 (RSI)。"""
 
-    def __init__(self, period: int = 14, cache_dir: Optional[Path] = None) -> None:
+    def __init__(self, period: int = 14, cache_dir: Path | None = None) -> None:
         super().__init__(cache_dir)
         self._period = period
 
@@ -93,7 +90,7 @@ class RSIFactor(FactorBase):
 class VolumeZScoreFactor(FactorBase):
     """成交量 Z-Score。"""
 
-    def __init__(self, period: int = 20, cache_dir: Optional[Path] = None) -> None:
+    def __init__(self, period: int = 20, cache_dir: Path | None = None) -> None:
         super().__init__(cache_dir)
         self._period = period
 
@@ -117,7 +114,7 @@ class VolumeZScoreFactor(FactorBase):
 class ATRFactor(FactorBase):
     """平均真实波幅 (ATR)。"""
 
-    def __init__(self, period: int = 14, cache_dir: Optional[Path] = None) -> None:
+    def __init__(self, period: int = 14, cache_dir: Path | None = None) -> None:
         super().__init__(cache_dir)
         self._period = period
 

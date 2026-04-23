@@ -1,7 +1,6 @@
 """衍生品因子。"""
 
 from pathlib import Path
-from typing import Optional
 
 import polars as pl
 
@@ -13,7 +12,7 @@ from src.factors.registry import register_factor
 class FundingRateMAFactor(FactorBase):
     """资金费率 N 期均值。"""
 
-    def __init__(self, period: int = 7, cache_dir: Optional[Path] = None) -> None:
+    def __init__(self, period: int = 7, cache_dir: Path | None = None) -> None:
         super().__init__(cache_dir)
         self._period = period
 

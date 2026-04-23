@@ -92,9 +92,7 @@ class TestCCXTClient:
                 return page1
             return page2
 
-        with patch.object(
-            mock_ccxt_client._exchange, "fetch_ohlcv", side_effect=mock_fetch_ohlcv
-        ):
+        with patch.object(mock_ccxt_client._exchange, "fetch_ohlcv", side_effect=mock_fetch_ohlcv):
             result = await mock_ccxt_client.fetch_ohlcv_range("BTC/USDT", "1h")
 
             assert len(result) == 150

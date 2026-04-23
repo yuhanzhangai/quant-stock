@@ -2,11 +2,11 @@
 
 from pathlib import Path
 
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import pandas as pd
+import plotly.graph_objects as go
 import vectorbt as vbt
 from loguru import logger
+from plotly.subplots import make_subplots
 
 from src.backtest.metrics import compute_metrics
 
@@ -33,7 +33,8 @@ def generate_report(
 
     # 创建多子图
     fig = make_subplots(
-        rows=3, cols=1,
+        rows=3,
+        cols=1,
         subplot_titles=["累计收益", "回撤", "权益曲线"],
         vertical_spacing=0.08,
         row_heights=[0.4, 0.3, 0.3],
@@ -50,7 +51,8 @@ def generate_report(
             name="累计收益 %",
             line=dict(color="#2196F3"),
         ),
-        row=1, col=1,
+        row=1,
+        col=1,
     )
 
     # 2. 回撤曲线
@@ -65,7 +67,8 @@ def generate_report(
             fill="tozeroy",
             line=dict(color="#F44336"),
         ),
-        row=2, col=1,
+        row=2,
+        col=1,
     )
 
     # 3. 权益曲线
@@ -79,7 +82,8 @@ def generate_report(
             name="权益",
             line=dict(color="#4CAF50"),
         ),
-        row=3, col=1,
+        row=3,
+        col=1,
     )
 
     # 添加指标注释

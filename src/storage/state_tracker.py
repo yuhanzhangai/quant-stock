@@ -3,7 +3,6 @@
 import sqlite3
 import time
 from pathlib import Path
-from typing import Optional
 
 from loguru import logger
 
@@ -45,9 +44,7 @@ class StateTracker:
         """)
         self._conn.commit()
 
-    def get_last_timestamp(
-        self, source: str, symbol: str, timeframe: str
-    ) -> Optional[int]:
+    def get_last_timestamp(self, source: str, symbol: str, timeframe: str) -> int | None:
         """获取最后采集的时间戳。
 
         Args:
@@ -59,7 +56,8 @@ class StateTracker:
             最后采集的毫秒时间戳，若无记录返回 None
         """
         cursor = self._conn.execute(
-            "SELECT last_timestamp FROM ingestion_state WHERE source=? AND symbol=? AND timeframe=?",
+            "SELECT last_timestamp FROM ingestion_state "
+            "WHERE source=? AND symbol=? AND timeframe=?",
             (source, symbol, timeframe),
         )
         row = cursor.fetchone()
@@ -87,13 +85,10 @@ class StateTracker:
             (source, symbol, timeframe, last_timestamp, now),
         )
         self._conn.commit()
-        logger.debug(
-            f"状态更新 | {source}/{symbol}/{timeframe} -> {last_timestamp}"
-        )
+        logger.debug(f"状态更新 | {source}/{symbol}/{timeframe} -> {last_timestamp}")
 
     def update_universe(
-        self, symbol: str, market_type: str, quote_currency: str,
-        volume_24h: float, rank: int
+        self, symbol: str, market_type: str, quote_currency: str, volume_24h: float, rank: int
     ) -> None:
         """更新标的池信息。
 
@@ -110,7 +105,8 @@ class StateTracker:
             INSERT INTO universe (symbol, market_type, quote_currency, volume_24h, rank, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT (symbol)
-            DO UPDATE SET volume_24h=excluded.volume_24h, rank=excluded.rank, updated_at=excluded.updated_at
+            DO UPDATE SET volume_24h=excluded.volume_24h,
+                rank=excluded.rank, updated_at=excluded.updated_at
             """,
             (symbol, market_type, quote_currency, volume_24h, rank, now),
         )
@@ -127,12 +123,12 @@ class StateTracker:
             标的信息列表
         """
         cursor = self._conn.execute(
-            "SELECT symbol, volume_24h, rank FROM universe WHERE market_type=? ORDER BY rank LIMIT ?",
+            "SELECT symbol, volume_24h, rank FROM universe "
+            "WHERE market_type=? ORDER BY rank LIMIT ?",
             (market_type, top_n),
         )
         return [
-            {"symbol": row[0], "volume_24h": row[1], "rank": row[2]}
-            for row in cursor.fetchall()
+            {"symbol": row[0], "volume_24h": row[1], "rank": row[2]} for row in cursor.fetchall()
         ]
 
     def close(self) -> None:

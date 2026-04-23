@@ -33,21 +33,21 @@ class TestDuckDBClient:
             assert len(df) == 1
             assert df["val"][0] == 42
 
-    def test_read_parquet_view(
-        self, db_path: Path, parquet_dir: Path
-    ) -> None:
+    def test_read_parquet_view(self, db_path: Path, parquet_dir: Path) -> None:
         """测试通过视图读取 Parquet 数据。"""
         # 先写一些 Parquet 数据
         writer = ParquetWriter(parquet_dir)
-        df = pl.DataFrame({
-            "timestamp": [1704067200000, 1704070800000],
-            "open": [42000.0, 42100.0],
-            "high": [42500.0, 42600.0],
-            "low": [41800.0, 41900.0],
-            "close": [42100.0, 42200.0],
-            "volume": [100.0, 200.0],
-            "symbol": ["BTC-USDT"] * 2,
-        })
+        df = pl.DataFrame(
+            {
+                "timestamp": [1704067200000, 1704070800000],
+                "open": [42000.0, 42100.0],
+                "high": [42500.0, 42600.0],
+                "low": [41800.0, 41900.0],
+                "close": [42100.0, 42200.0],
+                "volume": [100.0, 200.0],
+                "symbol": ["BTC-USDT"] * 2,
+            }
+        )
         writer.write_ohlcv(df, "BTC-USDT", "1h")
 
         # 用 DuckDB 直接查

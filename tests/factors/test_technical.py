@@ -3,35 +3,38 @@
 import polars as pl
 import pytest
 
-from src.factors.registry import compute_all, get_factor, list_factors
+import src.factors.derivatives  # noqa: F401
 
 # 导入以触发注册
 import src.factors.technical  # noqa: F401
-import src.factors.derivatives  # noqa: F401
+from src.factors.registry import compute_all, get_factor, list_factors
 
 
 @pytest.fixture
 def sample_ohlcv() -> pl.DataFrame:
     """生成测试用 OHLCV 数据（50行）。"""
     import random
+
     random.seed(42)
 
     n = 50
     base_price = 42000.0
     prices = []
-    for i in range(n):
+    for _i in range(n):
         base_price += random.uniform(-200, 200)
         prices.append(base_price)
 
-    return pl.DataFrame({
-        "timestamp": list(range(1704067200000, 1704067200000 + n * 3600000, 3600000)),
-        "open": prices,
-        "high": [p + random.uniform(50, 300) for p in prices],
-        "low": [p - random.uniform(50, 300) for p in prices],
-        "close": [p + random.uniform(-100, 100) for p in prices],
-        "volume": [random.uniform(100, 1000) for _ in range(n)],
-        "symbol": ["BTC-USDT"] * n,
-    })
+    return pl.DataFrame(
+        {
+            "timestamp": list(range(1704067200000, 1704067200000 + n * 3600000, 3600000)),
+            "open": prices,
+            "high": [p + random.uniform(50, 300) for p in prices],
+            "low": [p - random.uniform(50, 300) for p in prices],
+            "close": [p + random.uniform(-100, 100) for p in prices],
+            "volume": [random.uniform(100, 1000) for _ in range(n)],
+            "symbol": ["BTC-USDT"] * n,
+        }
+    )
 
 
 class TestFactorRegistry:
@@ -110,9 +113,7 @@ class TestComputeAll:
 
     def test_compute_specific(self, sample_ohlcv: pl.DataFrame) -> None:
         """计算指定因子。"""
-        result = compute_all(
-            sample_ohlcv, factor_names=["momentum_20", "rsi_14"]
-        )
+        result = compute_all(sample_ohlcv, factor_names=["momentum_20", "rsi_14"])
         assert "momentum_20" in result.columns
         assert "rsi_14" in result.columns
 

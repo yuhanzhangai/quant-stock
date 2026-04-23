@@ -1,9 +1,8 @@
 """资金费率数据采集器。"""
 
-from typing import Any, Optional
+from typing import Any
 
 import polars as pl
-from loguru import logger
 
 from src.exchange.okx_client import OKXNativeClient
 from src.ingestion.base import IngestorBase
@@ -30,7 +29,7 @@ class FundingIngestor(IngestorBase):
         self,
         symbol: str,
         timeframe: str = "",
-        since: Optional[int] = None,
+        since: int | None = None,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
         """从 OKX 拉取资金费率历史。
@@ -59,8 +58,7 @@ class FundingIngestor(IngestorBase):
                 "funding_time": [int(r["fundingTime"]) for r in raw_data],
                 "funding_rate": [float(r["fundingRate"]) for r in raw_data],
                 "realized_rate": [
-                    float(r["realizedRate"]) if r.get("realizedRate") else None
-                    for r in raw_data
+                    float(r["realizedRate"]) if r.get("realizedRate") else None for r in raw_data
                 ],
                 "symbol": [symbol] * len(raw_data),
             }

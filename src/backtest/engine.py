@@ -1,13 +1,12 @@
 """基于 vectorbt 的回测引擎封装。"""
 
-from typing import Any, Optional
+from typing import Any
 
-import numpy as np
 import pandas as pd
 import vectorbt as vbt
 from loguru import logger
 
-from src.backtest.costs import TradingCosts, OKX_SPOT
+from src.backtest.costs import OKX_SPOT, TradingCosts
 
 
 class BacktestEngine:
@@ -85,12 +84,13 @@ class BacktestEngine:
         results = []
 
         for combo in combinations:
-            params = dict(zip(keys, combo))
+            params = dict(zip(keys, combo, strict=True))
             entries, exits = signal_func(price, **params)
 
             portfolio = self.run(price, entries, exits)
 
             from src.backtest.metrics import compute_metrics
+
             metrics = compute_metrics(portfolio)
             metrics.update(params)
             results.append(metrics)

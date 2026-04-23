@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
 
 import polars as pl
 from loguru import logger
@@ -15,7 +14,7 @@ class FactorBase(ABC):
     支持因子值缓存到 Parquet。
     """
 
-    def __init__(self, cache_dir: Optional[Path] = None) -> None:
+    def __init__(self, cache_dir: Path | None = None) -> None:
         self._cache_dir = cache_dir
 
     @property
@@ -62,9 +61,7 @@ class FactorBase(ABC):
                 if max_cached_ts >= max_input_ts:
                     logger.debug(f"因子缓存命中 | {self.name} | {symbol} {timeframe}")
                     # 按输入的 timestamp 对齐返回
-                    merged = df.select("timestamp").join(
-                        cached, on="timestamp", how="left"
-                    )
+                    merged = df.select("timestamp").join(cached, on="timestamp", how="left")
                     return merged[self.name]
 
         # 计算
