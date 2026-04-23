@@ -130,6 +130,23 @@ async def health_check() -> None:
                 tag = " << 本周交易" if i < 2 else ""
                 logger.info(f"  #{i+1} {sym:10s} 7日动量: {mom:+.2f}%{tag}")
 
+        # OI 变化预警
+        logger.info(f"\n  --- 持仓量 (OI) 变化 ---")
+        try:
+            for inst in ["ETH-USDT-SWAP", "SOL-USDT-SWAP"]:
+                url = f"https://www.okx.com/api/v5/rubik/stat/contracts/open-interest-history?instId={inst}&period=1H"
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                        data = await resp.json()
+                        if data.get("code") == "0" and data.get("data") and len(data["data"]) >= 12:
+                            oi_now = float(data["data"][0][3])
+                            oi_12h = float(data["data"][11][3])
+                            change = (oi_now - oi_12h) / oi_12h * 100
+                            warn = " WARNING!" if abs(change) > 5 else ""
+                            logger.info(f"  {inst[:8]:8s}: ${oi_now/1e9:.2f}B | 12h: {change:+.1f}%{warn}")
+        except Exception:
+            pass
+
         # Taker Volume
         logger.info(f"\n  --- 资金流向 (OKX Taker Volume 6h) ---")
         try:
