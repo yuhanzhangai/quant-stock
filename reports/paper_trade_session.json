@@ -1,0 +1,44 @@
+{
+  "start": "2026-04-23T08:32:30.933308+00:00",
+  "end": "2026-04-23T09:03:02.687534+00:00",
+  "duration_min": 30.5,
+  "scans": 7,
+  "summary": "Total trades: 0, Open positions: 0",
+  "log": [
+    {
+      "scan": 1,
+      "time": "2026-04-23T08:32:35.266547+00:00",
+      "summary": "Total trades: 0, Open positions: 0"
+    },
+    {
+      "scan": 2,
+      "time": "2026-04-23T08:37:39.659058+00:00",
+      "summary": "Total trades: 0, Open positions: 0"
+    },
+    {
+      "scan": 3,
+      "time": "2026-04-23T08:42:44.179781+00:00",
+      "summary": "Total trades: 0, Open positions: 0"
+    },
+    {
+      "scan": 4,
+      "time": "2026-04-23T08:47:48.717393+00:00",
+      "summary": "Total trades: 0, Open positions: 0"
+    },
+    {
+      "scan": 5,
+      "time": "2026-04-23T08:52:53.522794+00:00",
+      "summary": "Total trades: 0, Open positions: 0"
+    },
+    {
+      "scan": 6,
+      "time": "2026-04-23T08:57:58.025389+00:00",
+      "summary": "Total trades: 0, Open positions: 0"
+    },
+    {
+      "scan": 7,
+      "time": "2026-04-23T09:03:02.685534+00:00",
+      "summary": "Total trades: 0, Open positions: 0"
+    }
+  ]
+}
