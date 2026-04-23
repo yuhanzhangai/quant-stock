@@ -24,12 +24,14 @@ from src.exchange.whale_detector import WhaleDetector
 from src.exchange.news_sentiment import get_market_sentiment
 from src.strategies.minute_swing import MinuteSwingStrategy
 
-# 监控的币种和最优参数（全段验证最稳定版本）
+# 监控的币种和最优参数（Round 55 验证版）
+# ETH/NEAR: trailing stop 2% (让趋势利润跑)
+# SOL/ARB: fixed TP 8% (波动大用固定止盈)
 COINS = {
-    "ETH/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144},
-    "SOL/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144},
-    "NEAR/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144},
-    "ARB/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144},
+    "ETH/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144, "trail": True, "trail_pct": 2.0},
+    "SOL/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144, "trail": False},
+    "NEAR/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144, "trail": True, "trail_pct": 2.0},
+    "ARB/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144, "trail": False},
 }
 
 LEVERAGE = 5
