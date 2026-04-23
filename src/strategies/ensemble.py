@@ -56,14 +56,19 @@ class EnsembleStrategy(StrategyBase):
             price, rsi_period=rsi_period, oversold=rsi_oversold, overbought=rsi_overbought
         )
 
-        # 投票
-        entry_votes = e1.astype(int) + e2.astype(int) + e3.astype(int)
+        # 窗口投票：在最近 N 根 K 线内有信号算 1 票（解决同时触发难题）
+        vote_window = 5
+        v1 = e1.astype(int).rolling(window=vote_window, min_periods=1).max()
+        v2 = e2.astype(int).rolling(window=vote_window, min_periods=1).max()
+        v3 = e3.astype(int).rolling(window=vote_window, min_periods=1).max()
+        entry_votes = v1 + v2 + v3
+
         exit_votes = x1.astype(int) + x2.astype(int) + x3.astype(int)
 
-        # 入场：至少 min_agree 个策略同意
+        # 入场：至少 min_agree 个策略在窗口内同意
         entries = entry_votes >= min_agree
 
-        # 出场：任一策略出场（保守）
+        # 出场：任一策略出场
         exits = exit_votes >= 1
 
         # 边沿触发

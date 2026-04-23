@@ -22,6 +22,9 @@ from src.strategies.aggressive_momentum import aggressive_momentum_signal, multi
 from src.strategies.keltner_breakout import keltner_signal
 from src.strategies.turtle_trading import turtle_signal
 from src.strategies.momentum_mean_blend import momentum_mean_blend_signal
+from src.strategies.macd_histogram import macd_histogram_signal
+from src.strategies.ichimoku import ichimoku_signal
+from src.strategies.ensemble import ensemble_signal
 
 
 def load_price(symbol: str, timeframe: str) -> pd.Series | None:
@@ -146,6 +149,40 @@ def optimize_symbol(symbol: str) -> None:
     df9, _ = engine.run_grid_search(price, momentum_mean_blend_signal, grid9)
     df9["strategy"] = "MomMeanBlend"
     all_results.append(df9)
+
+    # 10. MACD Histogram
+    logger.info("\n--- MACD Histogram ---")
+    grid10 = {
+        "fast": [8, 12, 16],
+        "slow": [21, 26, 34],
+        "signal": [7, 9, 12],
+        "trend_ma": [100, 200],
+    }
+    df10, _ = engine.run_grid_search(price, macd_histogram_signal, grid10)
+    df10["strategy"] = "MACD_Hist"
+    all_results.append(df10)
+
+    # 11. Ichimoku Cloud
+    logger.info("\n--- Ichimoku Cloud ---")
+    grid11 = {
+        "tenkan": [7, 9, 12],
+        "kijun": [22, 26, 30],
+        "senkou_b": [44, 52, 60],
+    }
+    df11, _ = engine.run_grid_search(price, ichimoku_signal, grid11)
+    df11["strategy"] = "Ichimoku"
+    all_results.append(df11)
+
+    # 12. Ensemble
+    logger.info("\n--- Ensemble (Top 3 voting) ---")
+    grid12 = {
+        "min_agree": [1, 2],
+        "tf_short": [20, 25, 30],
+        "tf_long": [150, 200],
+    }
+    df12, _ = engine.run_grid_search(price, ensemble_signal, grid12)
+    df12["strategy"] = "Ensemble"
+    all_results.append(df12)
 
     # 汇总
     combined = pd.concat(all_results, ignore_index=True)
