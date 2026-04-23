@@ -65,7 +65,7 @@ st.metric(
 # 历史曲线
 st.subheader("资金费率历史")
 pdf = df.to_pandas()
-pdf["datetime"] = pdf["funding_time"].apply(lambda x: pl.from_epoch(x, time_unit="ms"))
+pdf["datetime"] = pd.to_datetime(pdf["funding_time"], unit="ms", utc=True)
 pdf["rate_pct"] = pdf["funding_rate"] * 100
 
 fig = px.line(pdf, x="datetime", y="rate_pct", title=f"{selected} 资金费率 (%)")
@@ -80,7 +80,7 @@ threshold_decimal = threshold / 100
 anomalies = df.filter(
     (pl.col("funding_rate").abs() > threshold_decimal)
 ).with_columns(
-    pl.from_epoch("funding_time", time_unit="ms").alias("datetime"),
+    (pl.col("funding_time").cast(pl.Datetime("ms"))).alias("datetime"),
     (pl.col("funding_rate") * 100).round(4).alias("rate_pct"),
 ).select(["datetime", "funding_rate", "rate_pct"])
 

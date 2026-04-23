@@ -87,7 +87,7 @@ for i, sym in enumerate(selected_symbols[:3]):
         df = load_latest_data(sym, timeframe, bars=100)
         if not df.is_empty():
             pdf = df.to_pandas()
-            pdf["datetime"] = pdf["timestamp"].apply(lambda x: pl.from_epoch(x, time_unit="ms"))
+            pdf["datetime"] = pd.to_datetime(pdf["timestamp"], unit="ms", utc=True)
             fig = px.line(pdf, x="datetime", y="close", title=sym)
             fig.update_layout(height=300, showlegend=False)
             st.plotly_chart(fig, use_container_width=True)

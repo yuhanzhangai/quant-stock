@@ -61,7 +61,7 @@ if df.is_empty():
     st.stop()
 
 pdf = df.to_pandas()
-pdf["datetime"] = pdf["timestamp"].apply(lambda x: pl.from_epoch(x, time_unit="ms"))
+pdf["datetime"] = pd.to_datetime(pdf["timestamp"], unit="ms", utc=True)
 
 # 因子 + 价格叠加图
 if selected_factors:
