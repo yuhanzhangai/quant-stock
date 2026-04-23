@@ -74,9 +74,9 @@ class LongShortAutoStrategy(StrategyBase):
         long_sl: float = 2.0,
         long_gap: int = 144,
         # 做空参数 (trend_follow)
-        short_fast_ma: int = 84,
-        short_slow_ma: int = 180,
-        short_gap: int = 288,
+        short_fast_ma: int = 60,
+        short_slow_ma: int = 120,
+        short_gap: int = 144,
         short_trail: float = 1.0,
         short_stop: float = 3.0,
         short_tp: float = 12.0,
@@ -106,7 +106,13 @@ class LongShortAutoStrategy(StrategyBase):
         sig = macd.ewm(span=9, adjust=False).mean()
         macd_death = (macd < sig) & (macd.shift(1) >= sig.shift(1))
 
-        e_short_raw = death_cross & macd_death & (trend == "DOWN")
+        # 做空入场：OR 逻辑（死叉 或 MACD死叉）+ 趋势向下
+        e_short_raw = (death_cross | macd_death) & (trend == "DOWN")
+
+        # session filter：排除 UTC 13-20（美盘下午噪音大）
+        if hasattr(price.index, 'hour'):
+            us_afternoon = price.index.hour.isin(range(13, 21))
+            e_short_raw = e_short_raw & (~us_afternoon)
 
         # 做空限频
         e_short = pd.Series(False, index=price.index)
