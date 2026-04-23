@@ -1,8 +1,45 @@
 # 做空策略研究报告
 
-> 12轮迭代 | 10币种 | 4h样本外验证 | 2024-2026数据
+> V1 12轮 + V2 11轮 = 23轮迭代 | 10币种 | 4h样本外验证 | 2024-2026数据
 
-## 最终4策略
+## 最终冠军 (V2)
+
+### session_filter — Sharpe +3.143
+
+**核心: trend_follow + 排除美盘下午(UTC13-20) + 安全网止损**
+
+```
+入场:
+  双均线死叉(fast=84, slow=180) + MACD死叉
+  时段: UTC 20:00 ~ 13:00 (排除美盘下午)
+  间隔: min_gap=288 (24小时)
+
+出场:
+  trail_pct = 1.0%    (从低点反弹1%锁利)
+  take_profit = 12%   (大趋势止盈)
+  stop_pct = 7.0%     (安全网, 几乎不触发)
+  趋势反转: 短MA > 长MA 时出场
+```
+
+**26/30 正收益段 | Avg收益 +8.22%**
+
+**币种Sharpe (全部 > +3.0):**
+| 币种 | Sharpe | 币种 | Sharpe |
+|------|--------|------|--------|
+| ARB  | +5.0   | SOL  | +3.3   |
+| PEPE | +4.3   | FIL  | +3.3   |
+| OP   | +3.8   | ETH  | +3.2   |
+
+**关键洞察:**
+1. 美盘下午(UTC13-20)是做空毒药(Sharpe=-0.35), 排除后+0.87提升
+2. stop应设为安全网(7%+), 不是紧止损 — trail+趋势反转主导出场
+3. stop=3%→7%: Sharpe +2.83→+3.14 (stop=7~20结果相同, 证明几乎不触发)
+
+---
+
+## V1 锚点策略 (作为baseline对照)
+
+## V1 最终4策略
 
 ### 1. trend_follow (冠军) — Avg Sharpe +2.35
 
@@ -127,21 +164,37 @@ FIL上3/3正收益Sharpe=+1.13, NEAR上微正。
   src/strategies/short_trend_follow.py   # 冠军策略
   src/strategies/short_swing_trail.py    # trailing版做空
   src/strategies/short_rsi_overbought.py # RSI超买做空
-  src/strategies/short_bounce_fade.py    # 淘汰
-  src/strategies/short_momentum_break.py # 淘汰
-  src/strategies/short_ma_reject.py      # 淘汰
-  src/strategies/short_spike_fade.py     # 淘汰
+  src/strategies/short_session_filter.py  # V2冠军! Sharpe +3.14
+  src/strategies/short_vol_atr.py        # V2 量价策略 Sharpe +0.7
+  src/strategies/short_multi_tf.py       # V2 多时间框架 (淘汰)
+  src/strategies/short_bounce_fade.py    # V1 淘汰
+  src/strategies/short_momentum_break.py # V1 淘汰
+  src/strategies/short_ma_reject.py      # V1 淘汰
+  src/strategies/short_spike_fade.py     # V1 淘汰
 
 脚本:
-  scripts/short_aggressive_backtest.py   # 初始大比拼
-  scripts/short_iterate.py              # 迭代优化器
+  scripts/short_aggressive_backtest.py   # V1 初始大比拼
+  scripts/short_iterate.py              # V1 迭代优化器
+  scripts/short_iterate_v2.py           # V2 新因子迭代器 + jsonl记录
   scripts/short_robustness_test.py      # 鲁棒性验证
   scripts/short_find_bear_periods.py    # 熊市区间扫描
 ```
 
+## 进化轨迹
+
+```
+V1 #1   trend_follow              Sharpe=+0.651   基线
+V1 #2   trend_follow fast=84      Sharpe=+1.914   MA优化
+V1 #4   trend_follow 10币         Sharpe=+2.269   扩大验证
+V2 #1   session UTC20-13          Sharpe=+2.530   时段过滤突破
+V2 #2   session UTC20-13          Sharpe=+2.826   参数收敛
+V2 #9   session stop=3.5          Sharpe=+2.929   出场优化
+V2 #9+  session stop=7.0          Sharpe=+3.143   安全网止损 ← 最终
+```
+
 ## 下一步建议
 
-1. 将trend_follow集成到paper_trader做模拟盘验证
+1. 将session_filter集成到paper_trader做模拟盘验证
 2. 在当前熊市(RSI=30, OI下降)实时跑信号
-3. 考虑trend_follow + MinSwing v3多空组合(分配资金)
-4. NEAR做空效果差,建议该币只做多不做空
+3. 考虑session_filter + MinSwing v3多空组合(分配资金)
+4. 所有币种做空都有效(ARB最强+5.0), NEAR最弱但也有正Sharpe
