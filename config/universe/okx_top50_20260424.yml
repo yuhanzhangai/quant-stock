@@ -1,0 +1,76 @@
+# OKX Top50 USDT Spot Universe
+# Generated: 2026-04-24
+# Source: OKX 24h volume ranking (public API)
+# Market type: SPOT only (no swap)
+
+market_type: spot
+quote: USDT
+generated_at: "2026-04-24"
+
+selected:
+  - {symbol: BTC-USDT, volume_24h: 641427375, spread_bps: 0.0, data_available: true}
+  - {symbol: ETH-USDT, volume_24h: 254268775, spread_bps: 0.0, data_available: true}
+  - {symbol: SOL-USDT, volume_24h: 55176024, spread_bps: 1.2, data_available: true}
+  - {symbol: DOGE-USDT, volume_24h: 38796769, spread_bps: 1.0, data_available: true}
+  - {symbol: XRP-USDT, volume_24h: 22919018, spread_bps: 0.7, data_available: true}
+  # BASED-USDT excluded: only 100 bars (token too new for 90d history)
+  - {symbol: SPK-USDT, volume_24h: 17298055, spread_bps: 2.2, data_available: false}
+  - {symbol: TRX-USDT, volume_24h: 15938008, spread_bps: 0.3, data_available: false}
+  - {symbol: PEPE-USDT, volume_24h: 12076251, spread_bps: 2.6, data_available: true}
+  - {symbol: ORDI-USDT, volume_24h: 8559560, spread_bps: 2.1, data_available: false}
+  - {symbol: HYPE-USDT, volume_24h: 8336412, spread_bps: 1.5, data_available: false}
+  - {symbol: ZEC-USDT, volume_24h: 7342605, spread_bps: 3.5, data_available: false}
+  - {symbol: SUI-USDT, volume_24h: 7052007, spread_bps: 1.1, data_available: true}
+  - {symbol: ENJ-USDT, volume_24h: 5616139, spread_bps: 8.4, data_available: false}
+  - {symbol: ADA-USDT, volume_24h: 5436863, spread_bps: 4.0, data_available: true}
+  - {symbol: STRK-USDT, volume_24h: 5154027, spread_bps: 2.4, data_available: false}
+  - {symbol: BNB-USDT, volume_24h: 5057474, spread_bps: 1.6, data_available: false}
+  - {symbol: TON-USDT, volume_24h: 4999718, spread_bps: 7.6, data_available: false}
+  - {symbol: CHZ-USDT, volume_24h: 4862302, spread_bps: 4.2, data_available: false}
+  - {symbol: IP-USDT, volume_24h: 4324745, spread_bps: 1.9, data_available: false}
+  - {symbol: LINK-USDT, volume_24h: 4293957, spread_bps: 1.1, data_available: true}
+  - {symbol: AAVE-USDT, volume_24h: 4127098, spread_bps: 1.1, data_available: true}
+  - {symbol: PENGU-USDT, volume_24h: 4115827, spread_bps: 2.4, data_available: false}
+  - {symbol: WIF-USDT, volume_24h: 3837163, spread_bps: 5.6, data_available: false}
+  - {symbol: XLM-USDT, volume_24h: 3704909, spread_bps: 1.1, data_available: false}
+  - {symbol: TRUMP-USDT, volume_24h: 3522168, spread_bps: 3.5, data_available: false}
+  - {symbol: XPL-USDT, volume_24h: 3340656, spread_bps: 1.0, data_available: false}
+  - {symbol: OKB-USDT, volume_24h: 3228810, spread_bps: 2.4, data_available: false}
+  - {symbol: LTC-USDT, volume_24h: 3108883, spread_bps: 1.8, data_available: false}
+  - {symbol: FIL-USDT, volume_24h: 2884643, spread_bps: 2.1, data_available: true}
+  - {symbol: PI-USDT, volume_24h: 2811895, spread_bps: 5.9, data_available: false}
+  - {symbol: UNI-USDT, volume_24h: 2403773, spread_bps: 3.1, data_available: true}
+  - {symbol: AVAX-USDT, volume_24h: 2379497, spread_bps: 1.1, data_available: true}
+  - {symbol: ENA-USDT, volume_24h: 2056475, spread_bps: 0.9, data_available: false}
+  - {symbol: DOT-USDT, volume_24h: 2051987, spread_bps: 8.1, data_available: true}
+  - {symbol: WLD-USDT, volume_24h: 2037083, spread_bps: 3.8, data_available: true}
+  - {symbol: PYTH-USDT, volume_24h: 1824649, spread_bps: 5.9, data_available: false}
+  - {symbol: CFX-USDT, volume_24h: 1815586, spread_bps: 1.6, data_available: false}
+  - {symbol: POL-USDT, volume_24h: 1775977, spread_bps: 1.1, data_available: false}
+  - {symbol: LIT-USDT, volume_24h: 1652893, spread_bps: 2.1, data_available: false}
+  - {symbol: PUMP-USDT, volume_24h: 1590742, spread_bps: 5.6, data_available: false}
+  - {symbol: ONDO-USDT, volume_24h: 1560720, spread_bps: 3.8, data_available: false}
+  - {symbol: NEAR-USDT, volume_24h: 1536659, spread_bps: 7.1, data_available: true}
+  # ROBO-USDT excluded: only 100 bars (token too new for 90d history)
+  - {symbol: DYDX-USDT, volume_24h: 1416769, spread_bps: 7.5, data_available: false}
+  - {symbol: MASK-USDT, volume_24h: 1366177, spread_bps: 1.9, data_available: false}
+  - {symbol: BCH-USDT, volume_24h: 1347220, spread_bps: 2.2, data_available: false}
+  - {symbol: APE-USDT, volume_24h: 1304531, spread_bps: 5.5, data_available: false}
+  - {symbol: ARB-USDT, volume_24h: 1283222, spread_bps: 0.8, data_available: true}
+
+excluded:
+  - {symbol: KAT-USDT, reason: "spread > 9bps + meme/low history"}
+  - {symbol: USDG-USDT, reason: "stablecoin_like"}
+  - {symbol: CORE-USDT, reason: "spread > 10bps"}
+  - {symbol: XAUT-USDT, reason: "gold_token (not crypto)"}
+  - {symbol: BIO-USDT, reason: "spread > 9bps"}
+  - {symbol: OFC-USDT, reason: "spread > 10bps"}
+  - {symbol: PAXG-USDT, reason: "gold_token (not crypto)"}
+  - {symbol: MON-USDT, reason: "new token, low history"}
+  - {symbol: MERL-USDT, reason: "spread > 10bps"}
+  - {symbol: HUMA-USDT, reason: "new token, low history"}
+  - {symbol: WLFI-USDT, reason: "political token, unusual dynamics"}
+
+notes:
+  - "New symbols use default exit config (trailing 2%, SL 2%), no per-coin optimization"
+  - "49 selected (1 short of 50 due to exclusions reaching into top 60)"
