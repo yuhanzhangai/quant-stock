@@ -9,7 +9,9 @@
 ## 当前状态
 
 ```
-Active:    MinSwing v3 production papertrade observation
+Active:    v2.5A Top50 Paper Observation (泛用性测试)
+           - v2.5A-1: Universe 选币 + 数据拉取 + 质量检查 ← 进行中
+           - v2.5A-2: Top50 Paper Observation (v2.5A-1 通过后)
 Deferred:  v2.5 True OOS Shadow Paper (等新数据, cutoff 2026-04-24)
 Blocked:   v2.6 Evidence Review (等 v2.5)
 ```
@@ -197,6 +199,18 @@ Blocked:   v2.6 Evidence Review (等 v2.5)
 - 状态: **DEFERRED**
 - Cutoff: 2026-04-24T00:00:00Z
 - 恢复条件: 下载 cutoff 后的新数据, 新 entry ≥ 30, overlap = 0
+
+### v2.5A Top50 Paper Observation
+
+**v2.5A-top50-paper-observation (2026-04-24 启动)**
+- 原因: 测试 MinSwing v3 在 Top50 USDT 市场的泛用性
+- 不是 v2.5 hybrid OOS，不升级策略，只观察
+- v2.5A-1: Universe 选币 + 数据拉取 + 质量检查 ← 进行中
+- v2.5A-2: Top50 Paper Observation (v2.5A-1 通过后)
+- 选币: OKX 24h 成交量 Top50 USDT Spot (排除稳定币/杠杆/低流动性)
+- 已有 17 币 + 需新拉 32 币
+- 新币统一 default exit config，不做 per-coin 优化
+- IPv4 强制修复已完成 (解决 OKX IPv6 白名单问题)
 
 ### v2.6 Evidence Review
 
