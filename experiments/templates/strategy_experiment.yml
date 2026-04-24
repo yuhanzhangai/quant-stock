@@ -1,0 +1,45 @@
+# Strategy Experiment Template
+# Copy this to experiments/active/ and fill in your hypothesis BEFORE running.
+
+experiment_name: ""
+strategy_name: ""
+strategy_version: ""
+
+hypothesis: >
+  [Write your hypothesis BEFORE running the experiment.
+  What do you expect to happen and why?]
+
+research_question:
+  - ""
+
+data:
+  symbols: []
+  timeframe: ""
+  start: ""
+  end: ""
+  data_version: "latest"
+
+params:
+  fixed: {}
+  search: {}
+
+validation:
+  oos: true
+  walk_forward: true
+  cost_stress: true
+  random_baseline: true
+  monte_carlo: true
+  event_backtest: true
+
+success_criteria:
+  min_oos_profit_factor: 1.25
+  min_oos_trade_count: 30
+  max_drawdown_limit: -0.20
+  min_walk_forward_positive_windows: 0.60
+
+conclusion:
+  status: ""  # accepted | rejected | inconclusive
+  reason: ""
+  next_action: ""
+
+notes: []

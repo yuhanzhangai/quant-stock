@@ -1,0 +1,35 @@
+conclusion:
+  concluded_at: '2026-04-24T01:43:26.966027+00:00'
+  reason: Test experiment for verification
+  status: rejected
+data:
+  data_version: latest
+  end: ''
+  start: ''
+  symbols: []
+  timeframe: ''
+experiment_name: trailing_stop_test
+hypothesis: '[Write your hypothesis BEFORE running the experiment. What do you expect
+  to happen and why?]
+
+  '
+notes: []
+params:
+  fixed: {}
+  search: {}
+research_question:
+- ''
+strategy_name: minswing_v3
+strategy_version: ''
+success_criteria:
+  max_drawdown_limit: -0.2
+  min_oos_profit_factor: 1.25
+  min_oos_trade_count: 30
+  min_walk_forward_positive_windows: 0.6
+validation:
+  cost_stress: true
+  event_backtest: true
+  monte_carlo: true
+  oos: true
+  random_baseline: true
+  walk_forward: true
