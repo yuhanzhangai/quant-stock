@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.2-paper-calibration (2026-04-24)
+
+Paper trading calibration against live OKX data.
+
+- API preflight: all 4 checks PASS (public, private, K-line, freshness)
+- Data refreshed: ETH/SOL/NEAR/ARB +1099 new 5m candles
+- Data quality: 7/7 PASS on refreshed ETH/SOL
+- MinSwing v3 paper session: ETH $62.23 (+24.5%), SOL $54.71 (+9.4%)
+- FastExit ETH paper session: $63.57 (+27.1%)
+- RiskEngine: 12 rejections (all cooldown_after_losses), 0 false kills
+- Signal count matches backtest (93 paper vs 92 backtest)
+- Cost ~42% of gross edge — significant but survivable
+- MinSwing v3: confirmed Production
+- FastExit ETH: remain_candidate
+
 ## v2.1-validation-hardening (2026-04-24)
 
 Core validation goals achieved, paper calibration deferred to v2.2.
