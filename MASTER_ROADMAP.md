@@ -78,7 +78,9 @@ short strategies:  candidate_blocked (pipeline 不支持)
 
 [x] v2.4 Hybrid Exit Candidate Validation (CONDITIONAL PASS)
 [x] v2.4.1 Decision Amendment (conditional_promote_to_shadow_paper)
-[ ] v2.5 Day 0/Day 1 Pilot (pipeline验证)  ←── 当前
-[ ] v2.5 True OOS Shadow Paper (30天/100entries + stricter gates)
-[ ] v2.6 Evidence Review (not Promotion Review)
+[x] v2.5 OOS eligibility check (result: 0 new OOS, all overlap)
+[-] v2.5 True OOS Shadow Paper — DEFERRED (cutoff 2026-04-24, waiting for new data)
+[-] v2.6 Evidence Review — BLOCKED (waiting for v2.5)
+
+Active track: MinSwing v3 production papertrade observation
 ```

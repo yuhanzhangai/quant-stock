@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.5-oos-deferred (2026-04-24)
+
+v2.5 True OOS Shadow Paper deferred — no new OOS data available.
+- Historical data (90 days) fully consumed by v2.3R/v2.4
+- Recent 30d overlap = 31/31 = 100%, new OOS entries = 0
+- Cutoff: 2026-04-24T00:00:00Z (only future entries count)
+- v2.5/v2.6 blocked until new data accumulates (~30+ days)
+- Active track pivots to MinSwing v3 production papertrade observation
+
 ## v2.4.1-decision-amendment (2026-04-24)
 
 Amended v2.4 decision: conditional_promote_to_shadow_paper (not strong pass).
