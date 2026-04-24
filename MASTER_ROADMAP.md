@@ -78,6 +78,7 @@ short strategies:  candidate_blocked (pipeline 不支持)
 
 [x] v2.4 Hybrid Exit Candidate Validation (CONDITIONAL PASS)
 [x] v2.4.1 Decision Amendment (conditional_promote_to_shadow_paper)
-[ ] v2.5 True OOS Shadow Paper (stricter gates from v2.4.1)
+[ ] v2.5 Day 0/Day 1 Pilot (pipeline验证)  ←── 当前
+[ ] v2.5 True OOS Shadow Paper (30天/100entries + stricter gates)
 [ ] v2.6 Evidence Review (not Promotion Review)
 ```
