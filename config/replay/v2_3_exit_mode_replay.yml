@@ -1,0 +1,78 @@
+version: v2.3R-historical-replay-maturity
+experiment_name: minswing_exit_mode_replay
+parent_strategy: minswing_v3
+baseline_commit: e3c5352
+baseline_data_version: manifest_20260424_031446
+
+purpose: >
+  Test whether FastExit should be treated as a MinSwing exit_mode candidate
+  rather than an independent strategy. FastExit has 96% entry overlap with
+  MinSwing v3 — the only difference is exit timing.
+
+rules:
+  freeze_entry_logic: true
+  freeze_strategy_params: true
+  no_parameter_optimization: true
+  no_strategy_promotion: true
+  db_required: true
+
+data:
+  symbols:
+    - ETH-USDT
+  timeframe: "5m"
+  data_version: manifest_20260424_031446
+
+entry:
+  source_strategy: minswing_v3
+  source_strategy_version: "1.1.0"
+  entry_mode: standard
+  config_path: config/strategies/minswing_v3.yml
+
+exit_modes:
+  - name: current_exit
+    description: "Standard MinSwing v3 exit (SL 2%, TP 8% or trailing 2%)"
+    source: src/strategies/minswing_v3_final.py
+    status: production_default
+
+  - name: fast_exit
+    description: "Fast MA(90) death cross early exit when profit > 0.3%"
+    source: src/strategies/combo/fast_exit.py
+    status: candidate
+
+  - name: trailing_exit
+    description: "Trailing stop 2% (ETH config from minswing_v3)"
+    source: src/strategies/minswing_v3_final.py
+    status: research
+
+  - name: hybrid_exit
+    description: "SL priority → fast_exit → trailing (experimental)"
+    source: null
+    status: experimental
+
+cost_model:
+  normal:
+    maker_fee: 0.0002
+    taker_fee: 0.0005
+    slippage_bps: 3.0
+    fee_multiplier: 1.0
+    slippage_multiplier: 1.0
+  pessimistic:
+    maker_fee: 0.0002
+    taker_fee: 0.0005
+    slippage_bps: 3.0
+    fee_multiplier: 1.5
+    slippage_multiplier: 2.0
+
+windows:
+  - name: full_sample
+    type: full
+  - name: recent_30d
+    lookback_days: 30
+  - name: recent_60d
+    lookback_days: 60
+  - name: recent_90d
+    lookback_days: 90
+
+outputs:
+  base_dir: data/research/replay
+  report_dir: reports/v2_3_replay_maturity
