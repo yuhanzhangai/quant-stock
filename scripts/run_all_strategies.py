@@ -13,17 +13,15 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.backtest.costs import OKX_SPOT
-from src.backtest.engine import BacktestEngine
-from src.backtest.metrics import compute_metrics
-from src.backtest.reports import generate_report
-from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
-
+from src.strategies.mean_reversion_bb import mean_reversion_bb_signal
+from src.strategies.momentum_breakout import momentum_breakout_signal
 from src.strategies.trend_ma import trend_ma_signal_func
 from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
-from src.strategies.momentum_breakout import momentum_breakout_signal
-from src.strategies.mean_reversion_bb import mean_reversion_bb_signal
+
+from config.settings import get_settings
+from src.backtest.costs import OKX_SPOT
+from src.backtest.engine import BacktestEngine
+from src.storage.parquet_writer import ParquetWriter
 
 
 def load_price(symbol: str, timeframe: str) -> pd.Series | None:
@@ -44,9 +42,9 @@ def run_strategy_suite(symbol: str, timeframe: str) -> None:
         logger.warning(f"数据不足: {symbol} {timeframe}")
         return
 
-    logger.info(f"\n{'='*60}")
+    logger.info(f"\n{'=' * 60}")
     logger.info(f"策略对比 | {symbol} {timeframe} | {len(price)} bars")
-    logger.info(f"{'='*60}")
+    logger.info(f"{'=' * 60}")
 
     engine = BacktestEngine(costs=OKX_SPOT, init_cash=100_000, freq="1h" if "h" in timeframe else "1d")
 
@@ -84,11 +82,11 @@ def run_strategy_suite(symbol: str, timeframe: str) -> None:
     combined = pd.concat(all_results, ignore_index=True)
     combined = combined.sort_values("sharpe_ratio", ascending=False)
 
-    logger.info(f"\n{'='*60}")
+    logger.info(f"\n{'=' * 60}")
     logger.info(f"全部结果排名 (按夏普)  | {symbol} {timeframe}")
-    logger.info(f"{'='*60}")
+    logger.info(f"{'=' * 60}")
 
-    for i, row in combined.head(15).iterrows():
+    for _i, row in combined.head(15).iterrows():
         logger.info(
             f"  [{row['strategy']:20s}] "
             f"收益: {row['total_return_pct']:+7.2f}% | "

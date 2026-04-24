@@ -12,26 +12,33 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
-from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.short_rsi_overbought import ShortRSIOverboughtStrategy
+from src.strategies.short_swing_trail import ShortSwingTrailStrategy
+from src.strategies.short_trend_follow import ShortTrendFollowStrategy
+
+from config.settings import get_settings
 from src.backtest.costs import OKX_SWAP
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
 from src.strategies.short_swing import ShortSwingStrategy, invert_price
-from src.strategies.short_trend_follow import ShortTrendFollowStrategy
-from src.strategies.short_swing_trail import ShortSwingTrailStrategy
-from src.strategies.short_rsi_overbought import ShortRSIOverboughtStrategy
 
-
-COINS_5M = ["ETH-USDT", "SOL-USDT", "NEAR-USDT", "ARB-USDT",
-            "DOT-USDT", "OP-USDT", "SUI-USDT", "ATOM-USDT", "PEPE-USDT", "FIL-USDT"]
-COINS_4H = ["ETH-USDT", "SOL-USDT", "NEAR-USDT", "ARB-USDT",
-            "DOT-USDT", "OP-USDT", "SUI-USDT", "PEPE-USDT", "FIL-USDT"]
+COINS_5M = [
+    "ETH-USDT",
+    "SOL-USDT",
+    "NEAR-USDT",
+    "ARB-USDT",
+    "DOT-USDT",
+    "OP-USDT",
+    "SUI-USDT",
+    "ATOM-USDT",
+    "PEPE-USDT",
+    "FIL-USDT",
+]
+COINS_4H = ["ETH-USDT", "SOL-USDT", "NEAR-USDT", "ARB-USDT", "DOT-USDT", "OP-USDT", "SUI-USDT", "PEPE-USDT", "FIL-USDT"]
 
 # 冠军参数（从迭代中确认的最优）
 STRATEGIES = {
@@ -49,7 +56,14 @@ STRATEGIES = {
     ),
     "rsi_overbought": (
         ShortRSIOverboughtStrategy(),
-        {"trend_ma": 180, "rsi_overbought": 65, "rsi_entry_cross": 55, "min_gap": 192, "stop_pct": 2.0, "take_profit_pct": 8.0},
+        {
+            "trend_ma": 180,
+            "rsi_overbought": 65,
+            "rsi_entry_cross": 55,
+            "min_gap": 192,
+            "stop_pct": 2.0,
+            "take_profit_pct": 8.0,
+        },
     ),
 }
 
@@ -154,7 +168,9 @@ def main() -> None:
     # 但为了公平测试，我们用原始参数看策略在不同时间尺度下的泛化能力
     # 4h 数据分半年段测试，避免 invert_price 在长序列上价格变负
     print("\n  用原始参数直接跑 4h 数据（按半年分段，避免价格反转溢出）:")
-    print(f"  {'策略':<18} | {'币种':<6} | {'时段':>12} | {'市场':>6} | {'交易':>4} | {'收益%':>8} | {'夏普':>6} | {'胜率%':>6}")
+    print(
+        f"  {'策略':<18} | {'币种':<6} | {'时段':>12} | {'市场':>6} | {'交易':>4} | {'收益%':>8} | {'夏普':>6} | {'胜率%':>6}"
+    )
     print(f"  {'─' * 90}")
 
     for coin in COINS_4H:
@@ -169,7 +185,10 @@ def main() -> None:
         for year in [2024, 2025, 2026]:
             for half in [("H1", f"{year}-01", f"{year}-06"), ("H2", f"{year}-07", f"{year}-12")]:
                 label, start, end = half
-                mask = (price_4h.index >= start) & (price_4h.index < f"{int(end[:4]) + (1 if end[5:] == '12' else 0)}-{'01' if end[5:] == '12' else str(int(end[5:7])+1).zfill(2)}")
+                mask = (price_4h.index >= start) & (
+                    price_4h.index
+                    < f"{int(end[:4]) + (1 if end[5:] == '12' else 0)}-{'01' if end[5:] == '12' else str(int(end[5:7]) + 1).zfill(2)}"
+                )
                 seg = price_4h[mask]
                 if len(seg) >= 100:
                     segments_4h.append((f"{year}{label}", seg))
@@ -223,10 +242,10 @@ def main() -> None:
         # 在牛市月份测试
         bull_months = periods["bull"]
         if len(bull_months) == 0:
-            print(f"    没有牛市月份（涨幅>10%）")
+            print("    没有牛市月份（涨幅>10%）")
             continue
 
-        print(f"\n    牛市月份做空测试:")
+        print("\n    牛市月份做空测试:")
         print(f"    {'策略':<18} | {'月份':>8} | {'月涨幅%':>8} | {'交易':>4} | {'做空收益%':>10} | 判定")
         print(f"    {'─' * 70}")
 
@@ -234,7 +253,9 @@ def main() -> None:
             # 提取该月份的 5m 数据
             month_start = month.replace(day=1)
             month_end = month
-            month_mask = (price_5m.index >= str(month_start)) & (price_5m.index <= str(month_end + pd.Timedelta(days=1)))
+            month_mask = (price_5m.index >= str(month_start)) & (
+                price_5m.index <= str(month_end + pd.Timedelta(days=1))
+            )
             month_price = price_5m[month_mask]
 
             if len(month_price) < 100:
@@ -290,7 +311,9 @@ def main() -> None:
         for month in bear_months:
             month_start = month.replace(day=1)
             month_end = month
-            month_mask = (price_5m.index >= str(month_start)) & (price_5m.index <= str(month_end + pd.Timedelta(days=1)))
+            month_mask = (price_5m.index >= str(month_start)) & (
+                price_5m.index <= str(month_end + pd.Timedelta(days=1))
+            )
             month_price = price_5m[month_mask]
 
             if len(month_price) < 100:

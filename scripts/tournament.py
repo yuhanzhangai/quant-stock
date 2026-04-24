@@ -5,25 +5,24 @@
 只有在完成 validation pipeline (Checkpoint 7) 后，才允许重新启用。
 """
 
-import sys
 import json
+import sys
 import time
 from pathlib import Path
-from datetime import datetime, timezone
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from config.settings import get_settings
 from src.backtest.costs import OKX_SWAP
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
-from src.strategies.minute_swing import minute_swing_signal
 from src.strategies.intraday_momentum import intraday_momentum_signal
+from src.strategies.minute_swing import minute_swing_signal
 from src.strategies.minute_swing_dual import minute_swing_dual_signal
 
 
@@ -78,9 +77,9 @@ def run_tournament(strategies, coins, generation=1):
     """跑一轮淘汰赛。"""
     engine = BacktestEngine(costs=OKX_SWAP, init_cash=250, freq="5min")
 
-    logger.info(f"\n{'='*70}")
+    logger.info(f"\n{'=' * 70}")
     logger.info(f"淘汰赛 Generation {generation} | {len(strategies)} 个策略")
-    logger.info(f"{'='*70}")
+    logger.info(f"{'=' * 70}")
 
     results = []
     for name, func, params in strategies:
@@ -92,7 +91,7 @@ def run_tournament(strategies, coins, generation=1):
     for i, r in enumerate(results):
         tag = " ★" if r["avg_sharpe"] > 1 else ""
         logger.info(
-            f"  #{i+1:2d} {r['name']:30s} | sharpe:{r['avg_sharpe']:+.3f} "
+            f"  #{i + 1:2d} {r['name']:30s} | sharpe:{r['avg_sharpe']:+.3f} "
             f"ret:{r['avg_return']:+.1f}% pos:{r['pos_rate']:.0%}{tag}"
         )
 
@@ -105,14 +104,22 @@ def run_tournament(strategies, coins, generation=1):
 COINS = ["ETH-USDT", "SOL-USDT", "NEAR-USDT", "ARB-USDT"]
 
 GEN1_STRATEGIES = [
-    ("MinSwing_v3_base", minute_swing_signal,
-     {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144}),
-    ("MinSwing_fast", minute_swing_signal,
-     {"trend_ma": 120, "stop_pct": 2.0, "take_profit_pct": 6.0, "min_gap": 96}),
-    ("IntradayMom_p4", intraday_momentum_signal,
-     {"session_bars": 96, "momentum_threshold": 0.008, "hold_bars": 192, "stop_pct": 1.0}),
-    ("MinSwing_dual", minute_swing_dual_signal,
-     {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144}),
+    (
+        "MinSwing_v3_base",
+        minute_swing_signal,
+        {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144},
+    ),
+    ("MinSwing_fast", minute_swing_signal, {"trend_ma": 120, "stop_pct": 2.0, "take_profit_pct": 6.0, "min_gap": 96}),
+    (
+        "IntradayMom_p4",
+        intraday_momentum_signal,
+        {"session_bars": 96, "momentum_threshold": 0.008, "hold_bars": 192, "stop_pct": 1.0},
+    ),
+    (
+        "MinSwing_dual",
+        minute_swing_dual_signal,
+        {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144},
+    ),
 ]
 
 
@@ -143,7 +150,7 @@ def evolve(results, strategies_map, generation):
 
         # 找到对应的函数
         func = None
-        for n, f, p in strategies_map:
+        for n, f, _p in strategies_map:
             if n == name:
                 func = f
                 break

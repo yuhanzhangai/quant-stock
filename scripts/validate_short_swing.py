@@ -9,17 +9,15 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from config.settings import get_settings
 from src.backtest.costs import OKX_SWAP
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
 from src.strategies.short_swing import ShortSwingStrategy, invert_price
-
 
 COINS = ["ETH-USDT", "SOL-USDT", "NEAR-USDT", "ARB-USDT"]
 

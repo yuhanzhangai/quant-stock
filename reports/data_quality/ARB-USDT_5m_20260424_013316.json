@@ -1,0 +1,72 @@
+{
+  "symbol": "ARB-USDT",
+  "timeframe": "5m",
+  "generated_at": "2026-04-24T01:33:16.817146+00:00",
+  "overall": "pass",
+  "checks": [
+    {
+      "check_name": "duplicate_timestamps",
+      "status": "pass",
+      "severity": "critical",
+      "issue_count": 0,
+      "details": {
+        "total_rows": 25921,
+        "unique_rows": 25921
+      }
+    },
+    {
+      "check_name": "timestamp_order",
+      "status": "pass",
+      "severity": "critical",
+      "issue_count": 0,
+      "details": {}
+    },
+    {
+      "check_name": "missing_bars",
+      "status": "pass",
+      "severity": "warning",
+      "issue_count": 0,
+      "details": {
+        "expected_interval_ms": 300000
+      }
+    },
+    {
+      "check_name": "ohlc_validity",
+      "status": "pass",
+      "severity": "critical",
+      "issue_count": 0,
+      "details": {}
+    },
+    {
+      "check_name": "volume_validity",
+      "status": "pass",
+      "severity": "warning",
+      "issue_count": 0,
+      "details": {
+        "null_count": 0,
+        "negative_count": 0,
+        "zero_count": 73
+      }
+    },
+    {
+      "check_name": "price_jump",
+      "status": "pass",
+      "severity": "warning",
+      "issue_count": 0,
+      "details": {
+        "threshold_pct": 30.0
+      }
+    },
+    {
+      "check_name": "latest_bar_delay",
+      "status": "warning",
+      "severity": "warning",
+      "issue_count": 1,
+      "details": {
+        "delay_bars": 252.7,
+        "delay_hours": 21.1,
+        "max_delay_bars": 2
+      }
+    }
+  ]
+}

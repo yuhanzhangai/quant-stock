@@ -9,7 +9,6 @@
 """
 
 import asyncio
-import itertools
 import sys
 import time
 from pathlib import Path
@@ -101,7 +100,7 @@ def main() -> None:
     print("=" * 110)
     print("Step 2-3: MinSwing 1m 参数网格搜索 + OOS 后半段验证")
     print(f"费率: OKX_SWAP (taker={OKX_SWAP.taker_fee:.4%}, slippage={OKX_SWAP.slippage_bps}bp)")
-    print(f"初始资金: 250 USDT | freq: 1min")
+    print("初始资金: 250 USDT | freq: 1min")
     print(f"参数组合数: {total_combos}")
     print(f"搜索范围: {GRID}")
     print("=" * 110)

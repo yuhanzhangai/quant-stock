@@ -11,13 +11,13 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.minute_breakout import minute_breakout_signal
+
+from config.settings import get_settings
 from src.backtest.costs import OKX_SPOT
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
-
-from src.strategies.minute_breakout import minute_breakout_signal
 
 COINS = ["ETH-USDT", "BTC-USDT", "SOL-USDT"]
 PARAMS = {
@@ -51,7 +51,9 @@ def main() -> None:
     print(f"参数: {PARAMS}")
     print("=" * 100)
 
-    header = f"{'币种':<12} {'段':<8} {'时间范围':<35} {'收益%':>8} {'Sharpe':>8} {'MaxDD%':>8} {'胜率%':>8} {'交易数':>6}"
+    header = (
+        f"{'币种':<12} {'段':<8} {'时间范围':<35} {'收益%':>8} {'Sharpe':>8} {'MaxDD%':>8} {'胜率%':>8} {'交易数':>6}"
+    )
     print(header)
     print("-" * 100)
 
@@ -68,8 +70,8 @@ def main() -> None:
         seg_size = n // 3
         segments = [
             ("段1", price.iloc[:seg_size]),
-            ("段2", price.iloc[seg_size: seg_size * 2]),
-            ("段3", price.iloc[seg_size * 2:]),
+            ("段2", price.iloc[seg_size : seg_size * 2]),
+            ("段3", price.iloc[seg_size * 2 :]),
         ]
 
         for seg_name, seg_price in segments:
@@ -77,7 +79,9 @@ def main() -> None:
                 print(f"{sym:<12} {seg_name:<8} 数据不足 ({len(seg_price)} 根)")
                 continue
 
-            period_str = f"{seg_price.index[0].strftime('%Y-%m-%d %H:%M')} ~ {seg_price.index[-1].strftime('%Y-%m-%d %H:%M')}"
+            period_str = (
+                f"{seg_price.index[0].strftime('%Y-%m-%d %H:%M')} ~ {seg_price.index[-1].strftime('%Y-%m-%d %H:%M')}"
+            )
 
             try:
                 entries, exits = minute_breakout_signal(seg_price, **PARAMS)
@@ -86,8 +90,11 @@ def main() -> None:
             except Exception as e:
                 logger.error(f"{sym} {seg_name} 回测失败: {e}")
                 m = {
-                    "total_return_pct": 0, "sharpe_ratio": 0,
-                    "max_drawdown_pct": 0, "win_rate_pct": 0, "total_trades": 0,
+                    "total_return_pct": 0,
+                    "sharpe_ratio": 0,
+                    "max_drawdown_pct": 0,
+                    "win_rate_pct": 0,
+                    "total_trades": 0,
                 }
 
             row = {

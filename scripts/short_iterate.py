@@ -20,33 +20,39 @@
 运行：uv run python scripts/short_iterate.py
 """
 
-import sys
 import json
+import sys
 import time
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
-import pandas as pd
 import numpy as np
-from loguru import logger
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.short_rsi_overbought import ShortRSIOverboughtStrategy
+from src.strategies.short_swing_trail import ShortSwingTrailStrategy
+from src.strategies.short_trend_follow import ShortTrendFollowStrategy
+
+from config.settings import get_settings
 from src.backtest.costs import OKX_SWAP
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
 from src.strategies.short_swing import ShortSwingStrategy, invert_price
-from src.strategies.short_swing_trail import ShortSwingTrailStrategy
-from src.strategies.short_rsi_overbought import ShortRSIOverboughtStrategy
-from src.strategies.short_trend_follow import ShortTrendFollowStrategy
-
 
 COINS = [
-    "ETH-USDT", "SOL-USDT", "NEAR-USDT", "ARB-USDT",
-    "DOT-USDT", "OP-USDT", "SUI-USDT", "ATOM-USDT",
-    "PEPE-USDT", "FIL-USDT",
+    "ETH-USDT",
+    "SOL-USDT",
+    "NEAR-USDT",
+    "ARB-USDT",
+    "DOT-USDT",
+    "OP-USDT",
+    "SUI-USDT",
+    "ATOM-USDT",
+    "PEPE-USDT",
+    "FIL-USDT",
 ]
 RESULTS_FILE = Path("data/short_iteration_results.json")
 
@@ -92,7 +98,7 @@ def test_strategy(strat, params: dict, coins_data: dict, engine: BacktestEngine)
         coin_pos = 0
 
         segments = split_3_segments(price)
-        for seg_label, seg_price in segments:
+        for _seg_label, seg_price in segments:
             if len(seg_price) < 300:
                 continue
             total_segs += 1
@@ -245,11 +251,46 @@ def run_iteration(iteration: int) -> dict:
     # === 策略3: rsi_overbought 变体 ===
     rsi_strat = ShortRSIOverboughtStrategy()
     rsi_params_list = [
-        {"trend_ma": 180, "rsi_overbought": 70, "rsi_entry_cross": 65, "min_gap": 144, "stop_pct": 2.0, "take_profit_pct": 5.0},
-        {"trend_ma": 180, "rsi_overbought": 65, "rsi_entry_cross": 60, "min_gap": 144, "stop_pct": 2.0, "take_profit_pct": 5.0},
-        {"trend_ma": 120, "rsi_overbought": 70, "rsi_entry_cross": 65, "min_gap": 192, "stop_pct": 2.5, "take_profit_pct": 6.0},
-        {"trend_ma": 180, "rsi_overbought": 65, "rsi_entry_cross": 55, "min_gap": 192, "stop_pct": 2.0, "take_profit_pct": 8.0},
-        {"trend_ma": 144, "rsi_overbought": 60, "rsi_entry_cross": 55, "min_gap": 144, "stop_pct": 1.5, "take_profit_pct": 4.0},
+        {
+            "trend_ma": 180,
+            "rsi_overbought": 70,
+            "rsi_entry_cross": 65,
+            "min_gap": 144,
+            "stop_pct": 2.0,
+            "take_profit_pct": 5.0,
+        },
+        {
+            "trend_ma": 180,
+            "rsi_overbought": 65,
+            "rsi_entry_cross": 60,
+            "min_gap": 144,
+            "stop_pct": 2.0,
+            "take_profit_pct": 5.0,
+        },
+        {
+            "trend_ma": 120,
+            "rsi_overbought": 70,
+            "rsi_entry_cross": 65,
+            "min_gap": 192,
+            "stop_pct": 2.5,
+            "take_profit_pct": 6.0,
+        },
+        {
+            "trend_ma": 180,
+            "rsi_overbought": 65,
+            "rsi_entry_cross": 55,
+            "min_gap": 192,
+            "stop_pct": 2.0,
+            "take_profit_pct": 8.0,
+        },
+        {
+            "trend_ma": 144,
+            "rsi_overbought": 60,
+            "rsi_entry_cross": 55,
+            "min_gap": 144,
+            "stop_pct": 1.5,
+            "take_profit_pct": 4.0,
+        },
         # 随机
         {
             "trend_ma": int(np.random.choice([120, 144, 180, 200])),
@@ -304,8 +345,7 @@ def run_iteration(iteration: int) -> dict:
     print(f"  迭代 #{iteration} | {now} | 测试了 {len(candidates)} 个参数组合")
     print(f"{'=' * 90}")
     print(
-        f"  {'排名':>4} | {'策略':<18} | {'Avg夏普':>8} | {'Avg收益%':>9} | "
-        f"{'正收益段':>8} | {'交易数':>6} | 关键参数"
+        f"  {'排名':>4} | {'策略':<18} | {'Avg夏普':>8} | {'Avg收益%':>9} | {'正收益段':>8} | {'交易数':>6} | 关键参数"
     )
     print(f"  {'─' * 85}")
 
@@ -320,9 +360,9 @@ def run_iteration(iteration: int) -> dict:
         elif r["strategy"] == "rsi_overbought":
             key = f"ob={p['rsi_overbought']} cross={p['rsi_entry_cross']} gap={p['min_gap']} tp={p['take_profit_pct']}"
         elif r["strategy"] == "swing_trail":
-            key = f"trail={p.get('trail_pct','-')} minp={p.get('min_profit','-')} gap={p['min_gap']} stop={p.get('stop_pct','-')}"
+            key = f"trail={p.get('trail_pct', '-')} minp={p.get('min_profit', '-')} gap={p['min_gap']} stop={p.get('stop_pct', '-')}"
         else:
-            key = f"gap={p['min_gap']} stop={p.get('stop_pct','-')} tp={p.get('take_profit_pct','-')}"
+            key = f"gap={p['min_gap']} stop={p.get('stop_pct', '-')} tp={p.get('take_profit_pct', '-')}"
 
         marker = " ***" if rank <= 3 else ""
         print(
@@ -336,7 +376,7 @@ def run_iteration(iteration: int) -> dict:
 
     # === 币种优势策略 ===
     print(f"\n  {'─' * 85}")
-    print(f"  币种优势策略（该策略在某币上表现特别突出）")
+    print("  币种优势策略（该策略在某币上表现特别突出）")
     print(f"  {'─' * 85}")
 
     coin_champions: dict[str, dict] = {}
@@ -392,10 +432,7 @@ def run_iteration(iteration: int) -> dict:
         "best_sharpe": best["avg_sharpe"],
         "best_return": best["avg_return"],
         "best_params": best["params"],
-        "top3": [
-            {"strategy": r["strategy"], "sharpe": r["avg_sharpe"], "params": r["params"]}
-            for r in results[:3]
-        ],
+        "top3": [{"strategy": r["strategy"], "sharpe": r["avg_sharpe"], "params": r["params"]} for r in results[:3]],
         "coin_champions": coin_champions,
     }
 
@@ -413,8 +450,10 @@ def main() -> None:
     # 显示历史最优
     if len(previous) > 1:
         best_ever = max(previous, key=lambda x: x.get("best_sharpe", 0))
-        print(f"\n  历史最优: 迭代#{best_ever['iteration']} | {best_ever['best_strategy']} | "
-              f"Sharpe={best_ever['best_sharpe']:+.3f}")
+        print(
+            f"\n  历史最优: 迭代#{best_ever['iteration']} | {best_ever['best_strategy']} | "
+            f"Sharpe={best_ever['best_sharpe']:+.3f}"
+        )
 
     print(f"\n  结果已保存到 {RESULTS_FILE}")
 

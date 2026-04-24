@@ -9,18 +9,16 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from config.settings import get_settings
 from src.backtest.costs import OKX_SWAP
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
-from src.strategies.short_swing import ShortSwingStrategy, invert_price
 from src.strategies.minute_swing import MinuteSwingStrategy
-
+from src.strategies.short_swing import ShortSwingStrategy, invert_price
 
 COINS = ["ETH-USDT", "SOL-USDT"]
 
@@ -103,9 +101,7 @@ def long_short_combo_signal(
     return long_entries, long_exits, short_entries, short_exits
 
 
-def run_combo_backtest(
-    price: pd.Series, engine: BacktestEngine
-) -> dict:
+def run_combo_backtest(price: pd.Series, engine: BacktestEngine) -> dict:
     """分别回测做多和做空，合并 PnL。"""
     long_entries, long_exits, short_entries, short_exits = long_short_combo_signal(price)
 
@@ -153,18 +149,20 @@ def run_combo_backtest(
     combo_final = long_final + short_final
     combo_ret = (combo_final - init_cash) / init_cash * 100
 
-    result.update({
-        "long_ret_pct": long_ret,
-        "short_ret_pct": short_ret,
-        "long_final": long_final,
-        "short_final": short_final,
-        "combo_final": combo_final,
-        "combo_ret_pct": combo_ret,
-        "long_sharpe": long_sharpe,
-        "short_sharpe": short_sharpe,
-        "long_dd": long_dd,
-        "short_dd": short_dd,
-    })
+    result.update(
+        {
+            "long_ret_pct": long_ret,
+            "short_ret_pct": short_ret,
+            "long_final": long_final,
+            "short_final": short_final,
+            "combo_final": combo_final,
+            "combo_ret_pct": combo_ret,
+            "long_sharpe": long_sharpe,
+            "short_sharpe": short_sharpe,
+            "long_dd": long_dd,
+            "short_dd": short_dd,
+        }
+    )
     return result
 
 
@@ -174,8 +172,13 @@ def run_long_only_backtest(price: pd.Series, engine: BacktestEngine) -> dict:
     entries, exits = strat.generate_signals(price)
     n_entries = int(entries.sum())
     if n_entries == 0:
-        return {"total_return_pct": 0.0, "final_value": engine._init_cash,
-                "sharpe_ratio": 0.0, "max_drawdown_pct": 0.0, "total_trades": 0}
+        return {
+            "total_return_pct": 0.0,
+            "final_value": engine._init_cash,
+            "sharpe_ratio": 0.0,
+            "max_drawdown_pct": 0.0,
+            "total_trades": 0,
+        }
     pf = engine.run(price, entries, exits)
     return compute_metrics(pf)
 
@@ -222,9 +225,7 @@ def main() -> None:
                     print(f"  {mg:>8} | {rsi:>4} | {seg_label:>6} | 数据不足")
                     continue
 
-                entries, exits = short_strat.generate_signals(
-                    seg_price, min_gap=mg, rsi_entry=rsi
-                )
+                entries, exits = short_strat.generate_signals(seg_price, min_gap=mg, rsi_entry=rsi)
                 n_entries = int(entries.sum())
 
                 if n_entries == 0:
@@ -268,8 +269,7 @@ def main() -> None:
         segments = split_3_segments(price)
 
         print(
-            f"  {'段':>6} | {'模式':>10} | {'做多笔':>6} | {'做空笔':>6} | "
-            f"{'收益%':>8} | {'终值$':>8} | {'备注':>20}"
+            f"  {'段':>6} | {'模式':>10} | {'做多笔':>6} | {'做空笔':>6} | {'收益%':>8} | {'终值$':>8} | {'备注':>20}"
         )
         print(f"  {'─' * 80}")
 
@@ -303,10 +303,7 @@ def main() -> None:
             # 比较
             diff = combo["combo_ret_pct"] - lo_ret
             winner = "多空组合胜" if diff > 0 else "纯做多胜"
-            print(
-                f"  {seg_label:>6} | {'>>> 对比':>10} | {'':>6} | {'':>6} | "
-                f"{diff:>+8.2f} | {'':>8} | {winner}"
-            )
+            print(f"  {seg_label:>6} | {'>>> 对比':>10} | {'':>6} | {'':>6} | {diff:>+8.2f} | {'':>8} | {winner}")
             print(f"  {'':>6} |{'':>11}|{'':>7}|{'':>7}|{'':>9}|{'':>9}|")
 
     print(f"\n{'=' * 90}")

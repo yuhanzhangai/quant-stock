@@ -7,23 +7,23 @@
 import sys
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.aggressive_momentum import aggressive_momentum_signal
+from src.strategies.ensemble import ensemble_signal
+from src.strategies.macd_histogram import macd_histogram_signal
+from src.strategies.rsi_extreme import rsi_extreme_signal
+from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
+
+from config.settings import get_settings
 from src.backtest.costs import OKX_SPOT
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
-
-from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
-from src.strategies.aggressive_momentum import aggressive_momentum_signal
-from src.strategies.rsi_extreme import rsi_extreme_signal
-from src.strategies.macd_histogram import macd_histogram_signal
-from src.strategies.ensemble import ensemble_signal
 
 
 def load_price(symbol: str, timeframe: str) -> pd.Series | None:
@@ -136,9 +136,9 @@ def main() -> None:
         if price is None:
             continue
 
-        logger.info(f"\n{'='*70}")
+        logger.info(f"\n{'=' * 70}")
         logger.info(f"Walk-Forward 验证 | {symbol} 4h | {len(price)} bars | 4 窗口")
-        logger.info(f"{'='*70}")
+        logger.info(f"{'=' * 70}")
 
         results = []
         for name in STRATEGIES:

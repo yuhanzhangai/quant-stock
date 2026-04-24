@@ -16,7 +16,6 @@ import time
 from pathlib import Path
 
 import aiohttp
-
 import pandas as pd
 from loguru import logger
 
@@ -36,9 +35,9 @@ async def health_check() -> None:
         api_secret=settings.okx_api_secret,
         passphrase=settings.okx_passphrase,
     ) as client:
-        logger.info(f"\n{'='*60}")
+        logger.info(f"\n{'=' * 60}")
         logger.info(f"市场健康检查 | {time.strftime('%Y-%m-%d %H:%M UTC')}")
-        logger.info(f"{'='*60}")
+        logger.info(f"{'=' * 60}")
 
         uptrend_count = 0
         high_rsi_count = 0
@@ -48,7 +47,8 @@ async def health_check() -> None:
         for symbol in COINS:
             try:
                 candles = await client.fetch_ohlcv_range(
-                    symbol, timeframe="5m",
+                    symbol,
+                    timeframe="5m",
                     since=int(time.time() * 1000) - 300 * 5 * 60 * 1000,
                 )
                 if len(candles) < 200:
@@ -82,14 +82,16 @@ async def health_check() -> None:
                 h24 = price.iloc[-288] if len(price) > 288 else price.iloc[0]
                 change = (current - h24) / h24 * 100
 
-                logger.info(f"  {symbol:10s} | ${current:>10,.2f} | {trend:4s} | RSI:{rsi:5.1f} | vol:{vol:.3f}% | 24h:{change:+.1f}%")
+                logger.info(
+                    f"  {symbol:10s} | ${current:>10,.2f} | {trend:4s} | RSI:{rsi:5.1f} | vol:{vol:.3f}% | 24h:{change:+.1f}%"
+                )
 
             except Exception as e:
                 logger.error(f"  {symbol}: {e}")
 
         # 综合判断
         avg_vol = total_vol / len(COINS)
-        logger.info(f"\n  --- 综合评估 ---")
+        logger.info("\n  --- 综合评估 ---")
         logger.info(f"  上升趋势: {uptrend_count}/{len(COINS)} 币种")
         logger.info(f"  RSI 超买: {high_rsi_count} | RSI 超卖: {low_rsi_count}")
         logger.info(f"  平均波动: {avg_vol:.3f}%")
@@ -108,18 +110,23 @@ async def health_check() -> None:
         logger.info(f"\n  {light}")
 
         # 动量轮动：推荐本周 Top 2 币种
-        logger.info(f"\n  --- 动量轮动 (集中交易 Top 2) ---")
+        logger.info("\n  --- 动量轮动 (集中交易 Top 2) ---")
         coin_momentum = {}
         for symbol in COINS:
             try:
                 candles = await client.fetch_ohlcv_range(
-                    symbol, timeframe="5m",
+                    symbol,
+                    timeframe="5m",
                     since=int(time.time() * 1000) - 300 * 5 * 60 * 1000,
                 )
                 if len(candles) > 288:
                     df = pd.DataFrame(candles, columns=["ts", "o", "h", "l", "close", "v"])
                     p = df["close"]
-                    mom_7d = (p.iloc[-1] - p.iloc[-2016]) / p.iloc[-2016] * 100 if len(p) > 2016 else (p.iloc[-1] - p.iloc[0]) / p.iloc[0] * 100
+                    mom_7d = (
+                        (p.iloc[-1] - p.iloc[-2016]) / p.iloc[-2016] * 100
+                        if len(p) > 2016
+                        else (p.iloc[-1] - p.iloc[0]) / p.iloc[0] * 100
+                    )
                     coin_momentum[symbol] = mom_7d
             except Exception:
                 pass
@@ -128,10 +135,10 @@ async def health_check() -> None:
             ranked = sorted(coin_momentum.items(), key=lambda x: x[1], reverse=True)
             for i, (sym, mom) in enumerate(ranked):
                 tag = " << 本周交易" if i < 2 else ""
-                logger.info(f"  #{i+1} {sym:10s} 7日动量: {mom:+.2f}%{tag}")
+                logger.info(f"  #{i + 1} {sym:10s} 7日动量: {mom:+.2f}%{tag}")
 
         # OI 变化预警
-        logger.info(f"\n  --- 持仓量 (OI) 变化 ---")
+        logger.info("\n  --- 持仓量 (OI) 变化 ---")
         try:
             for inst in ["ETH-USDT-SWAP", "SOL-USDT-SWAP"]:
                 url = f"https://www.okx.com/api/v5/rubik/stat/contracts/open-interest-history?instId={inst}&period=1H"
@@ -143,12 +150,12 @@ async def health_check() -> None:
                             oi_12h = float(data["data"][11][3])
                             change = (oi_now - oi_12h) / oi_12h * 100
                             warn = " WARNING!" if abs(change) > 5 else ""
-                            logger.info(f"  {inst[:8]:8s}: ${oi_now/1e9:.2f}B | 12h: {change:+.1f}%{warn}")
+                            logger.info(f"  {inst[:8]:8s}: ${oi_now / 1e9:.2f}B | 12h: {change:+.1f}%{warn}")
         except Exception:
             pass
 
         # Taker Volume
-        logger.info(f"\n  --- 资金流向 (OKX Taker Volume 6h) ---")
+        logger.info("\n  --- 资金流向 (OKX Taker Volume 6h) ---")
         try:
             for ccy in ["ETH", "SOL"]:
                 url = f"https://www.okx.com/api/v5/rubik/stat/taker-volume?ccy={ccy}&instType=CONTRACTS&period=1H"
@@ -164,7 +171,7 @@ async def health_check() -> None:
         except Exception:
             pass
 
-        logger.info(f"{'='*60}")
+        logger.info(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,74 @@
+{
+  "symbol": "ADA-USDT",
+  "timeframe": "4h",
+  "generated_at": "2026-04-24T01:33:16.713123+00:00",
+  "overall": "pass",
+  "checks": [
+    {
+      "check_name": "duplicate_timestamps",
+      "status": "pass",
+      "severity": "critical",
+      "issue_count": 0,
+      "details": {
+        "total_rows": 4380,
+        "unique_rows": 4380
+      }
+    },
+    {
+      "check_name": "timestamp_order",
+      "status": "pass",
+      "severity": "critical",
+      "issue_count": 0,
+      "details": {}
+    },
+    {
+      "check_name": "missing_bars",
+      "status": "pass",
+      "severity": "warning",
+      "issue_count": 0,
+      "details": {
+        "expected_interval_ms": 14400000
+      }
+    },
+    {
+      "check_name": "ohlc_validity",
+      "status": "pass",
+      "severity": "critical",
+      "issue_count": 0,
+      "details": {}
+    },
+    {
+      "check_name": "volume_validity",
+      "status": "pass",
+      "severity": "warning",
+      "issue_count": 0,
+      "details": {
+        "null_count": 0,
+        "negative_count": 0,
+        "zero_count": 0
+      }
+    },
+    {
+      "check_name": "price_jump",
+      "status": "warning",
+      "severity": "warning",
+      "issue_count": 1,
+      "details": {
+        "threshold_pct": 30.0,
+        "jump_count": 1,
+        "max_jump_pct": 30.63
+      }
+    },
+    {
+      "check_name": "latest_bar_delay",
+      "status": "warning",
+      "severity": "warning",
+      "issue_count": 1,
+      "details": {
+        "delay_bars": 6.4,
+        "delay_hours": 25.6,
+        "max_delay_bars": 2
+      }
+    }
+  ]
+}

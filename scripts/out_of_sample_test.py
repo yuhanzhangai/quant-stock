@@ -9,23 +9,22 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.aggressive_momentum import aggressive_momentum_signal
+from src.strategies.ichimoku import ichimoku_signal
+from src.strategies.ichimoku_momentum import ichimoku_momentum_signal
+from src.strategies.macd_histogram import macd_histogram_signal
+from src.strategies.momentum_breakout import momentum_breakout_signal
+from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
+
+from config.settings import get_settings
 from src.backtest.costs import OKX_SPOT
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
-
-from src.strategies.ichimoku_momentum import ichimoku_momentum_signal
-from src.strategies.aggressive_momentum import aggressive_momentum_signal
-from src.strategies.ichimoku import ichimoku_signal
-from src.strategies.macd_histogram import macd_histogram_signal
-from src.strategies.momentum_breakout import momentum_breakout_signal
-from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
 
 STRATEGIES = {
     "IchiMom_v2": (ichimoku_momentum_signal, {"tenkan": 9, "kijun": 26, "lookback": 50, "consec_bars": 4}),
@@ -79,20 +78,22 @@ def main() -> None:
                 except Exception:
                     m = {"sharpe_ratio": 0, "total_return_pct": 0, "max_drawdown_pct": 0, "total_trades": 0}
 
-                all_rows.append({
-                    "symbol": sym,
-                    "strategy": sname,
-                    "period": period_name,
-                    "period_dates": train_period if period_name == "TRAIN" else test_period,
-                    **m,
-                })
+                all_rows.append(
+                    {
+                        "symbol": sym,
+                        "strategy": sname,
+                        "period": period_name,
+                        "period_dates": train_period if period_name == "TRAIN" else test_period,
+                        **m,
+                    }
+                )
 
     df = pd.DataFrame(all_rows)
 
     # 分析
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("样本外验证 | 前半训练 vs 后半测试 | 7 主流币 x 7 策略")
-    logger.info(f"{'='*80}")
+    logger.info(f"{'=' * 80}")
 
     for sname in STRATEGIES:
         train = df[(df["strategy"] == sname) & (df["period"] == "TRAIN")]
@@ -114,9 +115,9 @@ def main() -> None:
         )
 
     # 每个币种的测试期最优
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("每个币种测试期最优策略")
-    logger.info(f"{'='*80}")
+    logger.info(f"{'=' * 80}")
 
     test_df = df[df["period"] == "TEST"]
     for sym in COINS:

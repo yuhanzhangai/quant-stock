@@ -34,7 +34,8 @@ async def generate_report() -> None:
         for symbol in COINS:
             try:
                 candles = await client.fetch_ohlcv_range(
-                    symbol, timeframe="5m",
+                    symbol,
+                    timeframe="5m",
                     since=int(time.time() * 1000) - 300 * 5 * 60 * 1000,
                 )
                 if len(candles) < 200:
@@ -75,16 +76,16 @@ async def generate_report() -> None:
 
                 # 建议
                 if trend == "UP" and rsi < 50:
-                    logger.info(f"    状态: 准备入场（趋势向上+RSI 低位）")
+                    logger.info("    状态: 准备入场（趋势向上+RSI 低位）")
                 elif trend == "UP" and rsi > 70:
-                    logger.info(f"    状态: 谨慎（趋势向上但 RSI 超买）")
+                    logger.info("    状态: 谨慎（趋势向上但 RSI 超买）")
                 elif trend == "DOWN":
-                    logger.info(f"    状态: 等待（下降趋势，不做多）")
+                    logger.info("    状态: 等待（下降趋势，不做多）")
 
             except Exception as e:
                 logger.error(f"  {symbol}: {e}")
 
-    logger.info(f"\n{'='*60}")
+    logger.info(f"\n{'=' * 60}")
     logger.info("策略参数: tm=180 sl=2% tp=8% gap=144 (12h)")
     logger.info("建议杠杆: 5x | 建议资金: $50 分散 4 币种")
     logger.info("=" * 60)

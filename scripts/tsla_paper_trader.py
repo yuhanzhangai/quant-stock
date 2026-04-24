@@ -13,11 +13,9 @@
 
 import asyncio
 import io
-import json
 import sqlite3
 import sys
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
@@ -145,16 +143,23 @@ class TslaPaperTrader:
         row = self._conn.execute("SELECT * FROM stats WHERE id=1").fetchone()
         if row:
             self._stats = {
-                "total_pnl_usd": row[1], "total_pnl_pct": row[2],
-                "wins": row[3], "losses": row[4], "total_trades": row[5] if len(row) > 5 else 0,
+                "total_pnl_usd": row[1],
+                "total_pnl_pct": row[2],
+                "wins": row[3],
+                "losses": row[4],
+                "total_trades": row[5] if len(row) > 5 else 0,
             }
 
     def _save_stats(self) -> None:
         self._conn.execute(
             "INSERT OR REPLACE INTO stats (id, total_pnl_usd, total_pnl_pct, wins, losses, total_trades) VALUES (1,?,?,?,?,?)",
-            (self._stats["total_pnl_usd"], self._stats["total_pnl_pct"],
-             self._stats["wins"], self._stats["losses"],
-             self._stats.get("total_trades", 0)),
+            (
+                self._stats["total_pnl_usd"],
+                self._stats["total_pnl_pct"],
+                self._stats["wins"],
+                self._stats["losses"],
+                self._stats.get("total_trades", 0),
+            ),
         )
         self._conn.commit()
 
@@ -166,13 +171,18 @@ class TslaPaperTrader:
         if not row:
             return None
         return {
-            "side": row[1], "entry_price": row[2], "entry_time": row[3],
-            "event_title": row[4], "event_date": row[5],
-            "peak_price": row[6], "trough_price": row[7], "bars_held": row[8],
+            "side": row[1],
+            "entry_price": row[2],
+            "entry_time": row[3],
+            "event_title": row[4],
+            "event_date": row[5],
+            "peak_price": row[6],
+            "trough_price": row[7],
+            "bars_held": row[8],
         }
 
     def open_position(self, side: str, price: float, event_title: str, event_date: str) -> None:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         self._conn.execute(
             "INSERT OR REPLACE INTO position (id, side, entry_price, entry_time, event_title, event_date, peak_price, trough_price, bars_held) VALUES (1,?,?,?,?,?,?,?,0)",
             (side, price, now, event_title, event_date, price, price),
@@ -206,11 +216,22 @@ class TslaPaperTrader:
         pnl_usd = MARGIN_USD * LEVERAGE * pnl_pct / 100
         leveraged_pnl_pct = pnl_pct * LEVERAGE
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         self._conn.execute(
             "INSERT INTO trades (timestamp, action, side, price, event_title, event_date, pnl_pct, pnl_usd, exit_reason, leverage, margin_usd) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-            (now, "CLOSE", side, price, pos["event_title"], pos["event_date"],
-             pnl_pct, pnl_usd, reason, LEVERAGE, MARGIN_USD),
+            (
+                now,
+                "CLOSE",
+                side,
+                price,
+                pos["event_title"],
+                pos["event_date"],
+                pnl_pct,
+                pnl_usd,
+                reason,
+                LEVERAGE,
+                MARGIN_USD,
+            ),
         )
         self._conn.execute("DELETE FROM position WHERE id=1")
 
@@ -232,9 +253,13 @@ class TslaPaperTrader:
         )
 
         return {
-            "side": side, "entry": entry, "exit": price,
-            "pnl_pct": pnl_pct, "pnl_usd": pnl_usd,
-            "leveraged_pnl_pct": leveraged_pnl_pct, "reason": reason,
+            "side": side,
+            "entry": entry,
+            "exit": price,
+            "pnl_pct": pnl_pct,
+            "pnl_usd": pnl_usd,
+            "leveraged_pnl_pct": leveraged_pnl_pct,
+            "reason": reason,
         }
 
     def update_position(self, current_price: float) -> None:
@@ -365,15 +390,17 @@ async def run_paper_trader() -> None:
     cycle = 0
     logger.info("=" * 70)
     logger.info("TSLA Paper Trader 启动")
-    logger.info(f"策略: 新闻事件纯动量跟随 | Alpha: +6.17% (验证)")
+    logger.info("策略: 新闻事件纯动量跟随 | Alpha: +6.17% (验证)")
     logger.info(f"本金: ${MARGIN_USD} | 杠杆: {LEVERAGE}x | 仓位: ${POSITION_USD}")
-    logger.info(f"参数: 反应{REACTION_HOURS}h / 持仓{HOLD_HOURS}h / 阈值{MOMENTUM_THRESHOLD}% / TP{TAKE_PROFIT_PCT}% / SL{STOP_PCT}%")
+    logger.info(
+        f"参数: 反应{REACTION_HOURS}h / 持仓{HOLD_HOURS}h / 阈值{MOMENTUM_THRESHOLD}% / TP{TAKE_PROFIT_PCT}% / SL{STOP_PCT}%"
+    )
     logger.info(f"扫描间隔: {SCAN_INTERVAL}s")
     logger.info("=" * 70)
 
     while True:
         cycle += 1
-        now_str = datetime.now(timezone.utc).strftime("%H:%M:%S")
+        now_str = datetime.now(UTC).strftime("%H:%M:%S")
 
         try:
             # 拉最新数据
@@ -418,8 +445,10 @@ async def run_paper_trader() -> None:
 
                 if signal:
                     trader.open_position(
-                        signal["side"], signal["price"],
-                        signal["event_title"], signal["event_date"],
+                        signal["side"],
+                        signal["price"],
+                        signal["event_title"],
+                        signal["event_date"],
                     )
                 else:
                     if cycle % 10 == 0:  # 每 10 分钟打印一次

@@ -10,16 +10,15 @@ import time
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.settings import get_settings
-from src.exchange.ccxt_client import CCXTClient
 from src.backtest.costs import OKX_SWAP
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
+from src.exchange.ccxt_client import CCXTClient
 from src.strategies.minswing_v3_final import minswing_v3_signal
 
 
@@ -27,9 +26,9 @@ async def monitor() -> None:
     settings = get_settings()
     engine = BacktestEngine(costs=OKX_SWAP, init_cash=250, freq="5min")
 
-    logger.info(f"\n{'='*60}")
+    logger.info(f"\n{'=' * 60}")
     logger.info(f"策略健康监控 | {time.strftime('%Y-%m-%d %H:%M UTC')}")
-    logger.info(f"{'='*60}")
+    logger.info(f"{'=' * 60}")
 
     coins = {"ETH/USDT": "ETH", "SOL/USDT": "SOL", "NEAR/USDT": "NEAR", "ARB/USDT": "ARB"}
     warnings = []
@@ -43,7 +42,8 @@ async def monitor() -> None:
             try:
                 # 拉最近 1 个月 5m 数据（2 周太短有噪音）
                 candles = await client.fetch_ohlcv_range(
-                    symbol, timeframe="5m",
+                    symbol,
+                    timeframe="5m",
                     since=int(time.time() * 1000) - 30 * 24 * 3600 * 1000,
                 )
                 if len(candles) < 500:
@@ -106,15 +106,15 @@ async def monitor() -> None:
                 logger.error(f"  {symbol}: {ex}")
 
     # 总结
-    logger.info(f"\n  --- Summary ---")
+    logger.info("\n  --- Summary ---")
     if not warnings:
-        logger.info(f"  All strategies HEALTHY. Continue trading.")
+        logger.info("  All strategies HEALTHY. Continue trading.")
     else:
         for w in warnings:
             logger.warning(f"  {w}")
-        logger.warning(f"  Consider pausing affected coins until recovery.")
+        logger.warning("  Consider pausing affected coins until recovery.")
 
-    logger.info(f"{'='*60}")
+    logger.info(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

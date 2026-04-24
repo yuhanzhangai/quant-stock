@@ -11,24 +11,29 @@ import time
 from pathlib import Path
 
 import pandas as pd
-from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.settings import get_settings
+from src.backtest.costs import OKX_SWAP
+from src.backtest.engine import BacktestEngine
+from src.backtest.metrics import compute_metrics
 from src.exchange.ccxt_client import CCXTClient
 from src.ingestion.ohlcv import OHLCVIngestor
 from src.storage.parquet_writer import ParquetWriter
 from src.storage.state_tracker import StateTracker
-from src.backtest.costs import OKX_SWAP
-from src.backtest.engine import BacktestEngine
-from src.backtest.metrics import compute_metrics
 from src.strategies.minute_swing import minute_swing_signal
 
 # ── 配置 ──────────────────────────────────────────
 COINS = [
-    "AAVE-USDT", "UNI-USDT", "LDO-USDT", "MKR-USDT",
-    "CRV-USDT", "RENDER-USDT", "INJ-USDT", "TIA-USDT",
+    "AAVE-USDT",
+    "UNI-USDT",
+    "LDO-USDT",
+    "MKR-USDT",
+    "CRV-USDT",
+    "RENDER-USDT",
+    "INJ-USDT",
+    "TIA-USDT",
 ]
 TIMEFRAME = "5m"
 LOOKBACK_DAYS = 90  # 3个月
@@ -115,8 +120,10 @@ def run_backtest() -> None:
 
     print("\n" + "=" * 90)
     print("  MinSwing 三段验证  |  OKX_SWAP 费率  |  init_cash=250")
-    print(f"  参数: trend_ma={MS_PARAMS['trend_ma']}  stop={MS_PARAMS['stop_pct']}%"
-          f"  tp={MS_PARAMS['take_profit_pct']}%  min_gap={MS_PARAMS['min_gap']}")
+    print(
+        f"  参数: trend_ma={MS_PARAMS['trend_ma']}  stop={MS_PARAMS['stop_pct']}%"
+        f"  tp={MS_PARAMS['take_profit_pct']}%  min_gap={MS_PARAMS['min_gap']}"
+    )
     print("=" * 90)
 
     for coin in COINS:
@@ -128,7 +135,9 @@ def run_backtest() -> None:
         print(f"\n{'─' * 85}")
         print(f"  {coin}  |  总: {len(price)} 根 5m K线  |  {price.index[0]} ~ {price.index[-1]}")
         print(f"{'─' * 85}")
-        print(f"  {'段':>6} | {'入场':>4} | {'出场':>4} | {'收益%':>8} | {'Sharpe':>7} | {'MaxDD%':>7} | {'胜率%':>6} | {'终值':>10}")
+        print(
+            f"  {'段':>6} | {'入场':>4} | {'出场':>4} | {'收益%':>8} | {'Sharpe':>7} | {'MaxDD%':>7} | {'胜率%':>6} | {'终值':>10}"
+        )
         print(f"  {'─' * 80}")
 
         segments = split_3_segments(price)
@@ -186,9 +195,7 @@ def run_backtest() -> None:
         s2 = sharpes[1] if len(sharpes) > 1 else 0.0
         s3 = sharpes[2] if len(sharpes) > 2 else 0.0
         tag = "*** 3/3 ***" if all_pos else ""
-        print(
-            f"  {rank:>3} | {coin:<14} | {avg_s:>10.3f} | {s1:>7.2f} | {s2:>7.2f} | {s3:>7.2f} | {tag}"
-        )
+        print(f"  {rank:>3} | {coin:<14} | {avg_s:>10.3f} | {s1:>7.2f} | {s2:>7.2f} | {s3:>7.2f} | {tag}")
 
     # 统计
     n_all_pos = sum(1 for _, _, _, ap in results if ap)

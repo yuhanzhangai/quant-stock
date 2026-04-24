@@ -12,10 +12,10 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from config.settings import get_settings
 from src.backtest.costs import OKX_SWAP
 from src.backtest.engine import BacktestEngine
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
 from src.strategies.minute_swing import minute_swing_signal
 
 COINS = ["ETH-USDT", "NEAR-USDT"]
@@ -42,7 +42,6 @@ def load_price_5m(symbol: str) -> pd.Series | None:
 
 
 def main() -> None:
-    import itertools
 
     total_combos = 1
     for v in GRID.values():
@@ -51,15 +50,15 @@ def main() -> None:
     print("=" * 110)
     print("MinSwing 精细参数网格搜索")
     print(f"费率: OKX_SWAP (taker={OKX_SWAP.taker_fee:.4%}, slippage={OKX_SWAP.slippage_bps}bp)")
-    print(f"初始资金: 250 USDT")
+    print("初始资金: 250 USDT")
     print(f"参数组合数: {total_combos}")
     print(f"搜索范围: {GRID}")
     print("=" * 110)
 
     for sym in COINS:
-        print(f"\n{'='*110}")
+        print(f"\n{'=' * 110}")
         print(f"  {sym} - OOS 后 1/3 数据网格搜索")
-        print(f"{'='*110}")
+        print(f"{'=' * 110}")
 
         price = load_price_5m(sym)
         if price is None or len(price) < 1000:
@@ -71,7 +70,9 @@ def main() -> None:
         oos_start = n * 2 // 3
         oos_price = price.iloc[oos_start:]
         print(f"  总数据量: {n} 根 5m K线")
-        print(f"  OOS 后 1/3: {len(oos_price)} 根 ({oos_price.index[0].strftime('%Y-%m-%d %H:%M')} ~ {oos_price.index[-1].strftime('%Y-%m-%d %H:%M')})")
+        print(
+            f"  OOS 后 1/3: {len(oos_price)} 根 ({oos_price.index[0].strftime('%Y-%m-%d %H:%M')} ~ {oos_price.index[-1].strftime('%Y-%m-%d %H:%M')})"
+        )
 
         engine = BacktestEngine(costs=OKX_SWAP, init_cash=250, freq="5min")
 
@@ -110,9 +111,11 @@ def main() -> None:
         for k, v in best_params.items():
             print(f"    {k}: {v}")
         best_row = results_df_sorted.iloc[0]
-        print(f"    => Sharpe: {best_row['sharpe_ratio']:.3f}, 收益: {best_row['total_return_pct']:.2f}%, MaxDD: {best_row['max_drawdown_pct']:.2f}%")
+        print(
+            f"    => Sharpe: {best_row['sharpe_ratio']:.3f}, 收益: {best_row['total_return_pct']:.2f}%, MaxDD: {best_row['max_drawdown_pct']:.2f}%"
+        )
 
-    print(f"\n{'='*110}")
+    print(f"\n{'=' * 110}")
     print("网格搜索完成。")
 
 

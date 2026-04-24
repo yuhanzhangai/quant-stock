@@ -44,6 +44,7 @@ ignore = ["E741", "B015", "SIM117", "SIM108", "SIM102"]
 [tool.ruff.lint.per-file-ignores]
 "src/strategies/**/*.py" = ["E702", "E501"]
 "dashboard/**/*.py" = ["E402", "E501"]
+"scripts/**/*.py" = ["E402", "E501", "E702", "E701", "SIM115"]
 
 [tool.pyright]
 pythonVersion = "3.11"

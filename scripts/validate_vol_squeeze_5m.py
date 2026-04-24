@@ -7,18 +7,16 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
-from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.vol_squeeze_5m import vol_squeeze_5m_signal
+
+from config.settings import get_settings
 from src.backtest.costs import OKX_SPOT
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
-from src.strategies.vol_squeeze_5m import vol_squeeze_5m_signal
-
 
 COINS = ["ETH-USDT", "BTC-USDT", "SOL-USDT"]
 
@@ -64,7 +62,9 @@ def main() -> None:
         print(f"  {coin}  |  总数据量: {len(price)} 根 5m K线")
         print(f"  时间范围: {price.index[0]} ~ {price.index[-1]}")
         print(f"{'─' * 70}")
-        print(f"  {'段':>6} | {'入场':>4} | {'出场':>4} | {'总收益%':>8} | {'夏普':>6} | {'最大回撤%':>9} | {'胜率%':>6} | {'盈亏比':>6}")
+        print(
+            f"  {'段':>6} | {'入场':>4} | {'出场':>4} | {'总收益%':>8} | {'夏普':>6} | {'最大回撤%':>9} | {'胜率%':>6} | {'盈亏比':>6}"
+        )
         print(f"  {'─' * 65}")
 
         segments = split_3_segments(price)

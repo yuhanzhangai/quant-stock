@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import duckdb
 import polars as pl
@@ -107,9 +107,9 @@ def scan_parquet_file(file_path: Path) -> dict | None:
             start_ms = ts_series.min()
             end_ms = ts_series.max()
             if start_ms is not None:
-                start_ts = datetime.fromtimestamp(start_ms / 1000, tz=timezone.utc).isoformat()
+                start_ts = datetime.fromtimestamp(start_ms / 1000, tz=UTC).isoformat()
             if end_ms is not None:
-                end_ts = datetime.fromtimestamp(end_ms / 1000, tz=timezone.utc).isoformat()
+                end_ts = datetime.fromtimestamp(end_ms / 1000, tz=UTC).isoformat()
 
         # 解析路径
         rel_path = str(file_path)
@@ -163,7 +163,7 @@ def build_manifest() -> list[dict]:
 
 def generate_data_version() -> str:
     """生成数据版本号。"""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     return f"manifest_{now.strftime('%Y%m%d_%H%M%S')}"
 
 
@@ -174,7 +174,7 @@ def write_to_db(manifest: list[dict], data_version: str) -> None:
         return
 
     conn = duckdb.connect(str(DB_PATH))
-    now = datetime.now(tz=timezone.utc).isoformat()
+    now = datetime.now(tz=UTC).isoformat()
 
     # Clear existing manifest
     conn.execute("DELETE FROM data_manifest")
@@ -258,7 +258,7 @@ def write_reports(manifest: list[dict], data_version: str) -> None:
 
     report = {
         "data_version": data_version,
-        "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+        "generated_at": datetime.now(tz=UTC).isoformat(),
         "summary": {
             "total_files": total_files,
             "total_rows": total_rows,
@@ -286,7 +286,7 @@ def write_reports(manifest: list[dict], data_version: str) -> None:
     logger.info(f"CSV written: {csv_path}")
 
     # Print summary
-    logger.info(f"=== Data Manifest Summary ===")
+    logger.info("=== Data Manifest Summary ===")
     logger.info(f"  Files: {total_files}")
     logger.info(f"  Total rows: {total_rows:,}")
     logger.info(f"  Symbols: {len(symbols)}")

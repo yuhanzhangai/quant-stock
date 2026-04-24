@@ -8,20 +8,19 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.aggressive_momentum import aggressive_momentum_signal
+from src.strategies.ichimoku_momentum import ichimoku_momentum_signal
+from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
+
+from config.settings import get_settings
 from src.backtest.costs import OKX_SPOT
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
-
-from src.strategies.ichimoku_momentum import ichimoku_momentum_signal
-from src.strategies.aggressive_momentum import aggressive_momentum_signal
-from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
 
 # 只测通过 OOS 验证的 3 个 ROBUST 策略
 ROBUST_STRATEGIES = {
@@ -34,11 +33,11 @@ COINS = ["BTC-USDT", "ETH-USDT", "SOL-USDT", "XRP-USDT"]
 
 # 不同时间跨度（4h K线数）
 HORIZONS = {
-    "1周": 42,      # 7 * 6
-    "1月": 180,     # 30 * 6
-    "3月": 540,     # 90 * 6
-    "6月": 1095,    # 182 * 6
-    "1年": 2190,    # 365 * 6
+    "1周": 42,  # 7 * 6
+    "1月": 180,  # 30 * 6
+    "3月": 540,  # 90 * 6
+    "6月": 1095,  # 182 * 6
+    "1年": 2190,  # 365 * 6
 }
 
 
@@ -79,9 +78,9 @@ def main() -> None:
     engine = BacktestEngine(costs=OKX_SPOT, init_cash=100_000, freq="4h")
     all_rows = []
 
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("多时间跨度验证 | 3 ROBUST 策略 x 4 主流币")
-    logger.info(f"{'='*80}")
+    logger.info(f"{'=' * 80}")
 
     for sym in COINS:
         price = load_price(sym, "4h")
@@ -109,11 +108,15 @@ def main() -> None:
                         pf = engine.run(chunk, e, x)
                         m = compute_metrics(pf)
                         sharpes.append(m["sharpe_ratio"])
-                        all_rows.append({
-                            "symbol": sym, "strategy": sname,
-                            "horizon": horizon_name, "window": w,
-                            **m,
-                        })
+                        all_rows.append(
+                            {
+                                "symbol": sym,
+                                "strategy": sname,
+                                "horizon": horizon_name,
+                                "window": w,
+                                **m,
+                            }
+                        )
                     except Exception:
                         pass
 
@@ -123,27 +126,31 @@ def main() -> None:
             chunk = price.iloc[start:end]
             if len(chunk) < 50:
                 continue
-            period_str = f"{chunk.index[0].strftime('%Y-%m-%d')}~{chunk.index[-1].strftime('%Y-%m-%d')}"
+            f"{chunk.index[0].strftime('%Y-%m-%d')}~{chunk.index[-1].strftime('%Y-%m-%d')}"
 
             for sname, (func, params) in ROBUST_STRATEGIES.items():
                 try:
                     e, x = func(chunk, **params)
                     pf = engine.run(chunk, e, x)
                     m = compute_metrics(pf)
-                    all_rows.append({
-                        "symbol": sym, "strategy": sname,
-                        "horizon": f"EVENT_{ei}", "window": -1,
-                        **m,
-                    })
+                    all_rows.append(
+                        {
+                            "symbol": sym,
+                            "strategy": sname,
+                            "horizon": f"EVENT_{ei}",
+                            "window": -1,
+                            **m,
+                        }
+                    )
                 except Exception:
                     pass
 
     df = pd.DataFrame(all_rows)
 
     # 分析：按跨度汇总
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("按时间跨度平均表现")
-    logger.info(f"{'='*80}")
+    logger.info(f"{'=' * 80}")
 
     normal = df[~df["horizon"].str.startswith("EVENT")]
     for sname in ROBUST_STRATEGIES:
@@ -159,9 +166,9 @@ def main() -> None:
     # 事件期间
     events_df = df[df["horizon"].str.startswith("EVENT")]
     if not events_df.empty:
-        logger.info(f"\n{'='*80}")
+        logger.info(f"\n{'=' * 80}")
         logger.info("高波动事件期间表现")
-        logger.info(f"{'='*80}")
+        logger.info(f"{'=' * 80}")
         for sname in ROBUST_STRATEGIES:
             subset = events_df[events_df["strategy"] == sname]
             if subset.empty:

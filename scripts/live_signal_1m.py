@@ -35,14 +35,15 @@ async def scan() -> None:
         api_secret=settings.okx_api_secret,
         passphrase=settings.okx_passphrase,
     ) as client:
-        logger.info(f"\n{'='*60}")
+        logger.info(f"\n{'=' * 60}")
         logger.info(f"1m 信号扫描 | {time.strftime('%H:%M:%S UTC')}")
-        logger.info(f"{'='*60}")
+        logger.info(f"{'=' * 60}")
 
         for symbol, params in COINS.items():
             try:
                 candles = await client.fetch_ohlcv_range(
-                    symbol, timeframe="1m",
+                    symbol,
+                    timeframe="1m",
                     since=int(time.time() * 1000) - 1000 * 60 * 1000,
                 )
                 if len(candles) < 900:

@@ -5,7 +5,7 @@
 
 import asyncio
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -31,13 +31,13 @@ async def fetch_tsla_ohlcv(
     """
     # TSLA-USDT-SWAP 创建于 2026-02-25，从创建时间开始拉取
     tsla_created_ts = 1772010000000  # 2026-02-25 09:00 UTC
-    end_ts = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+    end_ts = int(datetime.now(tz=UTC).timestamp() * 1000)
     start_ts = max(tsla_created_ts, end_ts - days_back * 24 * 3600 * 1000)
 
     logger.info(
         f"开始拉取 TSLA-USDT-SWAP | {timeframe} | "
-        f"从 {datetime.fromtimestamp(start_ts / 1000, tz=timezone.utc).strftime('%Y-%m-%d')} "
-        f"到 {datetime.fromtimestamp(end_ts / 1000, tz=timezone.utc).strftime('%Y-%m-%d')}"
+        f"从 {datetime.fromtimestamp(start_ts / 1000, tz=UTC).strftime('%Y-%m-%d')} "
+        f"到 {datetime.fromtimestamp(end_ts / 1000, tz=UTC).strftime('%Y-%m-%d')}"
     )
 
     # CCXT 中永续合约格式为 TSLA/USDT:USDT

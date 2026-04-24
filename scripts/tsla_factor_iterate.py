@@ -14,14 +14,13 @@
 """
 
 import io
-import itertools
 import json
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace", line_buffering=True)
@@ -35,14 +34,13 @@ from loguru import logger
 from src.backtest.costs import OKX_SWAP
 from src.backtest.metrics import compute_metrics
 
-
 # =========================================================================
 # 杠杆配置
 # =========================================================================
-MARGIN_USD = 50.0        # 本金 $50
-LEVERAGE = 10            # 10x 杠杆
+MARGIN_USD = 50.0  # 本金 $50
+LEVERAGE = 10  # 10x 杠杆
 POSITION_USD = MARGIN_USD * LEVERAGE  # $500 仓位
-LIQUIDATION_PCT = 100.0 / LEVERAGE    # 10% 回撤 = 爆仓
+LIQUIDATION_PCT = 100.0 / LEVERAGE  # 10% 回撤 = 爆仓
 
 
 # =========================================================================
@@ -88,7 +86,7 @@ def factor_rsi(df: pd.DataFrame, idx: int, period: int = 14) -> float:
     """RSI 过滤：RSI < 30 利好（超卖反弹），RSI > 70 利空（超买回落）。"""
     if idx < period:
         return 0.0
-    close = df["close"].iloc[max(0, idx - period - 1):idx + 1]
+    close = df["close"].iloc[max(0, idx - period - 1) : idx + 1]
     delta = close.diff()
     gain = delta.clip(lower=0).rolling(period).mean()
     loss = (-delta.clip(upper=0)).rolling(period).mean()
@@ -98,7 +96,7 @@ def factor_rsi(df: pd.DataFrame, idx: int, period: int = 14) -> float:
     if np.isnan(val):
         return 0.0
     if val < 30:
-        return 1.0   # 超卖 → 利好
+        return 1.0  # 超卖 → 利好
     elif val > 70:
         return -1.0  # 超买 → 利空
     return 0.0
@@ -108,7 +106,7 @@ def factor_macd(df: pd.DataFrame, idx: int) -> float:
     """MACD 柱方向确认。"""
     if idx < 26:
         return 0.0
-    close = df["close"].iloc[:idx + 1]
+    close = df["close"].iloc[: idx + 1]
     ema12 = close.ewm(span=12).mean()
     ema26 = close.ewm(span=26).mean()
     macd_line = ema12 - ema26
@@ -126,7 +124,7 @@ def factor_bollinger(df: pd.DataFrame, idx: int, period: int = 20) -> float:
     """布林带位置：价格在下轨附近利好，上轨附近利空。"""
     if idx < period:
         return 0.0
-    close = df["close"].iloc[max(0, idx - period):idx + 1]
+    close = df["close"].iloc[max(0, idx - period) : idx + 1]
     mid = close.rolling(period).mean().iloc[-1]
     std = close.rolling(period).std().iloc[-1]
     if np.isnan(mid) or np.isnan(std) or std == 0:
@@ -134,7 +132,7 @@ def factor_bollinger(df: pd.DataFrame, idx: int, period: int = 20) -> float:
     price = close.iloc[-1]
     z = (price - mid) / std
     if z < -1.5:
-        return 1.0   # 下轨附近 → 超卖
+        return 1.0  # 下轨附近 → 超卖
     elif z > 1.5:
         return -1.0  # 上轨附近 → 超买
     return 0.0
@@ -144,14 +142,14 @@ def factor_volume_surge(df: pd.DataFrame, idx: int, lookback: int = 24) -> float
     """成交量突增：事件时成交量 vs 过去 24h 平均。量能越大信号越可信。"""
     if idx < lookback:
         return 0.0
-    vol = df["volume"].iloc[max(0, idx - lookback):idx + 1]
+    vol = df["volume"].iloc[max(0, idx - lookback) : idx + 1]
     avg_vol = vol.iloc[:-1].mean()
     cur_vol = vol.iloc[-1]
     if avg_vol == 0:
         return 0.0
     ratio = cur_vol / avg_vol
     if ratio > 3.0:
-        return 1.0   # 放量 3x+ → 信号可信
+        return 1.0  # 放量 3x+ → 信号可信
     elif ratio > 1.5:
         return 0.5
     return 0.0
@@ -166,7 +164,7 @@ def factor_pre_trend(df: pd.DataFrame, idx: int, days: int = 7) -> float:
     price_before = df["close"].iloc[idx - lookback]
     change = (price_now - price_before) / price_before * 100
     if change > 3.0:
-        return 1.0   # 上涨趋势
+        return 1.0  # 上涨趋势
     elif change < -3.0:
         return -1.0  # 下跌趋势
     return 0.0
@@ -176,14 +174,14 @@ def factor_volatility_regime(df: pd.DataFrame, idx: int, period: int = 48) -> fl
     """波动率体制：高波动期更谨慎，低波动期更激进。"""
     if idx < period:
         return 0.0
-    returns = df["close"].iloc[max(0, idx - period):idx + 1].pct_change().dropna()
+    returns = df["close"].iloc[max(0, idx - period) : idx + 1].pct_change().dropna()
     if len(returns) < 2:
         return 0.0
     vol = returns.std() * np.sqrt(24 * 365) * 100  # 年化波动率
     if vol > 100:
         return -0.5  # 高波动 → 减仓信号
     elif vol < 30:
-        return 0.5   # 低波动 → 加仓信号
+        return 0.5  # 低波动 → 加仓信号
     return 0.0
 
 
@@ -191,10 +189,10 @@ def factor_consecutive_bars(df: pd.DataFrame, idx: int, n: int = 3) -> float:
     """连续 K 线方向：连续 N 根同向 → 动量确认。"""
     if idx < n:
         return 0.0
-    bars = df["close"].iloc[idx - n:idx + 1]
+    bars = df["close"].iloc[idx - n : idx + 1]
     changes = bars.diff().dropna()
     if (changes > 0).all():
-        return 1.0   # 连续上涨
+        return 1.0  # 连续上涨
     elif (changes < 0).all():
         return -1.0  # 连续下跌
     return 0.0
@@ -204,14 +202,14 @@ def factor_range_position(df: pd.DataFrame, idx: int, period: int = 168) -> floa
     """价格在近 7 天高低区间的位置。"""
     if idx < period:
         return 0.0
-    window = df["close"].iloc[max(0, idx - period):idx + 1]
+    window = df["close"].iloc[max(0, idx - period) : idx + 1]
     high = window.max()
     low = window.min()
     if high == low:
         return 0.0
     pos = (df["close"].iloc[idx] - low) / (high - low)
     if pos < 0.2:
-        return 1.0   # 接近区间底部 → 可能反弹
+        return 1.0  # 接近区间底部 → 可能反弹
     elif pos > 0.8:
         return -1.0  # 接近区间顶部 → 可能回落
     return 0.0
@@ -241,7 +239,7 @@ def factor_gap(df: pd.DataFrame, idx: int) -> float:
     cur_open = df["open"].iloc[idx]
     gap_pct = (cur_open - prev_close) / prev_close * 100
     if gap_pct > 0.5:
-        return 1.0   # 高开
+        return 1.0  # 高开
     elif gap_pct < -0.5:
         return -1.0  # 低开
     return 0.0
@@ -251,11 +249,11 @@ def factor_ema_cross(df: pd.DataFrame, idx: int) -> float:
     """EMA 8/21 交叉状态。"""
     if idx < 21:
         return 0.0
-    close = df["close"].iloc[:idx + 1]
+    close = df["close"].iloc[: idx + 1]
     ema8 = close.ewm(span=8).mean()
     ema21 = close.ewm(span=21).mean()
     if ema8.iloc[-1] > ema21.iloc[-1]:
-        return 1.0   # 金叉
+        return 1.0  # 金叉
     else:
         return -1.0  # 死叉
 
@@ -264,9 +262,9 @@ def factor_atr_stop(df: pd.DataFrame, idx: int, period: int = 14) -> float:
     """ATR 动态止损参考：ATR 大 → 需要更宽止损 → 减仓。"""
     if idx < period:
         return 0.0
-    h = df["high"].iloc[max(0, idx - period):idx + 1]
-    l = df["low"].iloc[max(0, idx - period):idx + 1]
-    c = df["close"].iloc[max(0, idx - period):idx + 1]
+    h = df["high"].iloc[max(0, idx - period) : idx + 1]
+    l = df["low"].iloc[max(0, idx - period) : idx + 1]
+    c = df["close"].iloc[max(0, idx - period) : idx + 1]
     tr = pd.concat([h - l, (h - c.shift()).abs(), (l - c.shift()).abs()], axis=1).max(axis=1)
     atr = tr.rolling(period).mean().iloc[-1]
     if np.isnan(atr):
@@ -275,7 +273,7 @@ def factor_atr_stop(df: pd.DataFrame, idx: int, period: int = 14) -> float:
     if atr_pct > 2.0:
         return -0.5  # 高 ATR → 谨慎
     elif atr_pct < 0.5:
-        return 0.5   # 低 ATR → 可以激进
+        return 0.5  # 低 ATR → 可以激进
     return 0.0
 
 
@@ -327,8 +325,11 @@ def run_leveraged_backtest(
     n_short = short_entries.sum()
     if n_long + n_short == 0:
         return {
-            "total_trades": 0, "total_return_pct": 0, "sharpe_ratio": 0,
-            "margin_return_pct": 0, "liquidated": False,
+            "total_trades": 0,
+            "total_return_pct": 0,
+            "sharpe_ratio": 0,
+            "margin_return_pct": 0,
+            "liquidated": False,
         }
 
     total_fee = OKX_SWAP.total_cost_per_trade
@@ -434,7 +435,9 @@ def generate_signals_with_factors(
 
         if active_factors:
             # 因子和动量方向一致 → 入场，不一致 → 跳过
-            factor_direction = 1 if total_factor_score > factor_threshold else (-1 if total_factor_score < -factor_threshold else 0)
+            factor_direction = (
+                1 if total_factor_score > factor_threshold else (-1 if total_factor_score < -factor_threshold else 0)
+            )
 
             if factor_direction == 0:
                 # 因子中性，跟随动量
@@ -497,18 +500,20 @@ def generate_signals_with_factors(
                 short_exits.iloc[force] = True
                 exit_pnl = (entry_val - price.iloc[force]) / entry_val * 100
 
-        trade_log.append({
-            "date": event.date,
-            "type": event.event_type,
-            "title": event.title[:25],
-            "direction": "LONG" if is_long else "SHORT",
-            "entry": round(entry_val, 2),
-            "pnl_pct": round(exit_pnl, 2),
-            "pnl_leveraged": round(exit_pnl * LEVERAGE, 2),
-            "exit_reason": exit_reason,
-            "factor_score": round(total_factor_score, 2),
-            "factors": factor_scores,
-        })
+        trade_log.append(
+            {
+                "date": event.date,
+                "type": event.event_type,
+                "title": event.title[:25],
+                "direction": "LONG" if is_long else "SHORT",
+                "entry": round(entry_val, 2),
+                "pnl_pct": round(exit_pnl, 2),
+                "pnl_leveraged": round(exit_pnl * LEVERAGE, 2),
+                "exit_reason": exit_reason,
+                "factor_score": round(total_factor_score, 2),
+                "factors": factor_scores,
+            }
+        )
 
     return long_entries, long_exits, short_entries, short_exits, trade_log
 
@@ -519,6 +524,7 @@ def generate_signals_with_factors(
 @dataclass
 class IterationResult:
     """单轮迭代结果。"""
+
     factor_name: str
     baseline_sharpe: float
     new_sharpe: float
@@ -557,9 +563,7 @@ class FactorIterator:
                 self.tested_factors = state.get("tested_factors", {})
                 self.iteration = state.get("iteration", 0)
                 # 重建 untested 列表
-                self.untested_factors = [
-                    f for f in FACTOR_POOL if f not in self.tested_factors
-                ]
+                self.untested_factors = [f for f in FACTOR_POOL if f not in self.tested_factors]
                 logger.info(
                     f"加载状态 | 迭代 #{self.iteration} | "
                     f"活跃因子: {self.active_factors} | "
@@ -575,7 +579,7 @@ class FactorIterator:
             "active_factors": self.active_factors,
             "tested_factors": self.tested_factors,
             "iteration": self.iteration,
-            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            "timestamp": datetime.now(tz=UTC).isoformat(),
         }
         with open(self.state_path, "w") as f:
             json.dump(state, f, indent=2)
@@ -584,7 +588,7 @@ class FactorIterator:
         """追加迭代记录到 CSV（持久化，方便后期检查）。"""
         log_path = self.state_path.parent / "iteration_log.csv"
         row = {
-            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            "timestamp": datetime.now(tz=UTC).isoformat(),
             "iteration": self.iteration,
             "factor": result.factor_name,
             "verdict": result.verdict,
@@ -612,7 +616,7 @@ class FactorIterator:
         """追加每轮循环快照到 CSV。"""
         snap_path = self.state_path.parent / "cycle_snapshots.csv"
         row = {
-            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            "timestamp": datetime.now(tz=UTC).isoformat(),
             "cycle": cycle,
             "price": round(price, 2),
             "news_sentiment": news.get("overall", "unknown"),
@@ -636,12 +640,8 @@ class FactorIterator:
 
     def run_baseline(self) -> dict:
         """运行当前活跃因子组合的 baseline。"""
-        le, lx, se, sx, log = generate_signals_with_factors(
-            self.df, self.active_factors
-        )
-        metrics = run_leveraged_backtest(
-            self.df["close"], le, lx, se, sx
-        )
+        le, lx, se, sx, log = generate_signals_with_factors(self.df, self.active_factors)
+        metrics = run_leveraged_backtest(self.df["close"], le, lx, se, sx)
         metrics["trade_log"] = log
         return metrics
 
@@ -664,12 +664,8 @@ class FactorIterator:
 
         # 2. 加入新因子
         test_factors = self.active_factors + [factor_name]
-        le, lx, se, sx, log = generate_signals_with_factors(
-            self.df, test_factors
-        )
-        new_metrics = run_leveraged_backtest(
-            self.df["close"], le, lx, se, sx
-        )
+        le, lx, se, sx, log = generate_signals_with_factors(self.df, test_factors)
+        new_metrics = run_leveraged_backtest(self.df["close"], le, lx, se, sx)
         new_sharpe = new_metrics.get("sharpe_ratio", 0)
         new_return = new_metrics.get("margin_return_pct", 0)
         new_trades = new_metrics.get("total_trades", 0)
@@ -758,18 +754,22 @@ class FactorIterator:
             logger.info(f"移除因子 {worst_factor}，夏普提升 {worst_improvement:+.3f}")
             return IterationResult(
                 factor_name=f"-{worst_factor}",
-                baseline_sharpe=0, new_sharpe=0,
-                baseline_return=0, new_return=0,
+                baseline_sharpe=0,
+                new_sharpe=0,
+                baseline_return=0,
+                new_return=0,
                 improvement=worst_improvement,
-                n_trades_baseline=0, n_trades_new=0,
-                events_tested=0, verdict="REMOVED",
+                n_trades_baseline=0,
+                n_trades_new=0,
+                events_tested=0,
+                verdict="REMOVED",
             )
         return None
 
     def print_status(self) -> None:
         """打印当前状态。"""
         print(f"\n{'=' * 90}")
-        print(f"TSLA 因子迭代引擎 | 迭代 #{self.iteration} | {datetime.now(tz=timezone.utc).strftime('%H:%M:%S')} UTC")
+        print(f"TSLA 因子迭代引擎 | 迭代 #{self.iteration} | {datetime.now(tz=UTC).strftime('%H:%M:%S')} UTC")
         print(f"{'=' * 90}")
         print(f"  杠杆: {LEVERAGE}x | 本金: ${MARGIN_USD} | 仓位: ${POSITION_USD}")
         print(f"  爆仓线: 价格反向移动 {LIQUIDATION_PCT:.1f}%")
@@ -784,7 +784,7 @@ class FactorIterator:
 
         # 当前策略表现
         baseline = self.run_baseline()
-        print(f"\n  当前策略表现:")
+        print("\n  当前策略表现:")
         print(f"    交易次数: {baseline.get('total_trades', 0)}")
         print(f"    保证金收益: {baseline.get('margin_return_pct', 0):+.2f}%")
         print(f"    保证金盈亏: ${baseline.get('margin_pnl_usd', 0):+.2f}")
@@ -795,7 +795,7 @@ class FactorIterator:
         # 交易日志
         log = baseline.get("trade_log", [])
         if log:
-            print(f"\n  交易日志:")
+            print("\n  交易日志:")
             for t in log:
                 icon = "+" if t["pnl_leveraged"] > 0 else "-"
                 print(
@@ -813,7 +813,9 @@ class FactorIterator:
         print(f"\n{'─' * 90}")
         print(f"  {icon} 因子: {result.factor_name}")
         print(f"  事件覆盖: {result.events_tested} 个")
-        print(f"  Baseline → 新 夏普: {result.baseline_sharpe:.3f} → {result.new_sharpe:.3f} ({result.improvement:+.3f})")
+        print(
+            f"  Baseline → 新 夏普: {result.baseline_sharpe:.3f} → {result.new_sharpe:.3f} ({result.improvement:+.3f})"
+        )
         print(f"  Baseline → 新 收益: {result.baseline_return:+.2f}% → {result.new_return:+.2f}%")
         print(f"  交易数: {result.n_trades_baseline} → {result.n_trades_new}")
         print(f"  判定: {result.verdict}")
@@ -824,13 +826,10 @@ class FactorIterator:
         # 每笔交易的因子评分
         log = result.details.get("trade_log", [])
         if log:
-            print(f"\n  逐事件因子评分:")
+            print("\n  逐事件因子评分:")
             for t in log:
                 factors_str = " | ".join(f"{k}={v:+.1f}" for k, v in t.get("factors", {}).items())
-                print(
-                    f"    {t['date']} {t['direction']:>5} | "
-                    f"总分={t['factor_score']:+.2f} | {factors_str}"
-                )
+                print(f"    {t['date']} {t['direction']:>5} | 总分={t['factor_score']:+.2f} | {factors_str}")
 
     def print_final_report(self) -> None:
         """打印最终报告。"""
@@ -838,7 +837,7 @@ class FactorIterator:
         print(f"最终因子筛选报告 | 共 {self.iteration} 轮迭代")
         print(f"{'=' * 90}")
 
-        print(f"\n  因子筛选结果:")
+        print("\n  因子筛选结果:")
         for fname, verdict in self.tested_factors.items():
             icon = {"POSITIVE": "[++]", "NEGATIVE": "[--]", "NEUTRAL": "[==]", "REMOVED": "[XX]"}
             print(f"    {icon.get(verdict, '[??]')} {fname}: {verdict}")
@@ -920,10 +919,7 @@ def run_placebo_test(
     # ---- 随机入场的收益（排除新闻窗口）----
     random_returns: list[float] = []
     # 可用入场点：去掉新闻窗口、去掉前后边界
-    safe_range = [
-        i for i in range(reaction_hours + 50, len(price) - hold_hours - 10)
-        if i not in news_event_indices
-    ]
+    safe_range = [i for i in range(reaction_hours + 50, len(price) - hold_hours - 10) if i not in news_event_indices]
 
     if safe_range and len(safe_range) >= n_random:
         rng = np.random.default_rng(seed=42 + len(df))  # seed 随数据量变化
@@ -992,6 +988,7 @@ def refresh_data() -> pd.DataFrame:
         最新完整 DataFrame
     """
     import asyncio
+
     import ccxt.async_support as ccxt_async
 
     data_path = Path("data/parquet/ohlcv/swap/TSLA-USDT/1h.parquet")
@@ -1060,6 +1057,7 @@ def check_news() -> dict:
             get_sentiment_summary,
             save_news_cache,
         )
+
         news = fetch_google_news_rss("Tesla TSLA", max_items=15)
         if news:
             save_news_cache(news)
@@ -1092,14 +1090,14 @@ def breathing_loop(interval: int = 60) -> None:
     while True:
         cycle += 1
         cycle_start = time.time()
-        now_utc = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
 
         print(f"\n{'=' * 90}")
         print(f"  TSLA 呼吸循环 #{cycle} | {now_utc} UTC")
         print(f"{'=' * 90}")
 
         # ---- Step 1: 刷新数据 ----
-        print(f"\n  [1/5] 刷新K线数据...")
+        print("\n  [1/5] 刷新K线数据...")
         df = refresh_data()
         if df.empty:
             print("    数据为空，等待下一轮")
@@ -1115,7 +1113,7 @@ def breathing_loop(interval: int = 60) -> None:
         print(f"    K线数: {len(df)} | 范围: {df.index[0].strftime('%m-%d')} ~ {df.index[-1].strftime('%m-%d %H:%M')}")
 
         # ---- Step 2: 检查新闻 ----
-        print(f"\n  [2/5] 检查新闻情绪...")
+        print("\n  [2/5] 检查新闻情绪...")
         news_summary = check_news()
         news_icon = {"bullish": "[+]", "bearish": "[-]", "neutral": "[=]"}.get(
             news_summary.get("overall", "unknown"), "[?]"
@@ -1130,7 +1128,7 @@ def breathing_loop(interval: int = 60) -> None:
         iterator = FactorIterator(df)
 
         # ---- Step 4: 策略状态 ----
-        print(f"\n  [3/5] 当前策略表现...")
+        print("\n  [3/5] 当前策略表现...")
         baseline = iterator.run_baseline()
         margin_ret = baseline.get("margin_return_pct", 0)
         margin_pnl = baseline.get("margin_pnl_usd", 0)
@@ -1153,7 +1151,7 @@ def breathing_loop(interval: int = 60) -> None:
         # 交易日志
         trade_log = baseline.get("trade_log", [])
         if trade_log:
-            print(f"\n    交易记录:")
+            print("\n    交易记录:")
             for t in trade_log:
                 icon = "W" if t["pnl_leveraged"] > 0 else "L"
                 print(
@@ -1163,7 +1161,7 @@ def breathing_loop(interval: int = 60) -> None:
                 )
 
         # ---- Step 5: 因子迭代 ----
-        print(f"\n  [4/5] 因子迭代...")
+        print("\n  [4/5] 因子迭代...")
         print(f"    活跃因子: {iterator.active_factors if iterator.active_factors else '(纯动量)'}")
 
         # 检查是否有未测试的因子
@@ -1204,7 +1202,7 @@ def breathing_loop(interval: int = 60) -> None:
         # ---- Step 6: 随机对照组（排除幻觉）----
         # 每 6 轮做一次完整对照测试（避免每轮都跑太慢）
         if cycle % 6 == 1:
-            print(f"\n  [5/7] 随机对照组检测（排除幻觉）...")
+            print("\n  [5/7] 随机对照组检测（排除幻觉）...")
             placebo = run_placebo_test(df, n_random=20)
             news_avg_ret = placebo["news_avg_return"]
             rand_avg_ret = placebo["random_avg_return"]
@@ -1217,12 +1215,12 @@ def breathing_loop(interval: int = 60) -> None:
             print(f"    显著性: {p_val_hint}")
 
             if alpha <= 0:
-                print(f"    !! 警告: 新闻因子无超额收益，策略可能是幻觉！")
+                print("    !! 警告: 新闻因子无超额收益，策略可能是幻觉！")
 
             # 记录到 CSV
             placebo_path = Path("reports/tsla/placebo_log.csv")
             p_row = {
-                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+                "timestamp": datetime.now(tz=UTC).isoformat(),
                 "cycle": cycle,
                 "news_avg_return": round(news_avg_ret, 4),
                 "random_avg_return": round(rand_avg_ret, 4),
@@ -1243,13 +1241,12 @@ def breathing_loop(interval: int = 60) -> None:
             print(f"\n  [5/7] 对照组检测（每6轮一次，下次: #{(cycle // 6 + 1) * 6 + 1}）")
 
         # ---- Step 7: 实时信号 ----
-        print(f"\n  [6/7] 实时信号检查...")
+        print("\n  [6/7] 实时信号检查...")
 
         # 检查最近是否有事件触发
         now_ts = pd.Timestamp.now(tz="UTC")
         recent_events = [
-            e for e in EVENTS
-            if abs((now_ts - pd.Timestamp(e.date, tz="UTC")).total_seconds()) < 7 * 24 * 3600
+            e for e in EVENTS if abs((now_ts - pd.Timestamp(e.date, tz="UTC")).total_seconds()) < 7 * 24 * 3600
         ]
 
         if recent_events:

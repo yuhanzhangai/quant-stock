@@ -16,11 +16,10 @@
 """
 
 import asyncio
-import json
 import sqlite3
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -28,9 +27,10 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.short_session_filter import ShortSessionFilterStrategy
+
 from config.settings import get_settings
 from src.exchange.ccxt_client import CCXTClient
-from src.strategies.short_session_filter import ShortSessionFilterStrategy
 
 # 冠军参数
 STRATEGY_PARAMS = {
@@ -92,9 +92,7 @@ class ShortPaperTrader:
         self._conn.commit()
 
     def has_position(self, symbol: str) -> bool:
-        row = self._conn.execute(
-            "SELECT 1 FROM short_positions WHERE symbol=?", (symbol,)
-        ).fetchone()
+        row = self._conn.execute("SELECT 1 FROM short_positions WHERE symbol=?", (symbol,)).fetchone()
         return row is not None
 
     def get_position(self, symbol: str) -> dict | None:
@@ -107,22 +105,18 @@ class ShortPaperTrader:
         return None
 
     def record_entry(self, symbol: str, price: float, note: str = "") -> None:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         self._conn.execute(
             "INSERT INTO short_trades (symbol,action,price,timestamp,pnl_pct,position_size,leverage,note) "
             "VALUES (?,?,?,?,?,?,?,?)",
             (symbol, "SHORT_ENTRY", price, now, 0.0, CAPITAL_PER_COIN * LEVERAGE, LEVERAGE, note),
         )
         self._conn.execute(
-            "INSERT OR REPLACE INTO short_positions (symbol,entry_price,entry_time,trough_price) "
-            "VALUES (?,?,?,?)",
+            "INSERT OR REPLACE INTO short_positions (symbol,entry_price,entry_time,trough_price) VALUES (?,?,?,?)",
             (symbol, price, now, price),
         )
         self._conn.commit()
-        logger.info(
-            f"SHORT ENTRY | {symbol} @ ${price:,.4f} | "
-            f"size: ${CAPITAL_PER_COIN * LEVERAGE:,.2f} | {note}"
-        )
+        logger.info(f"SHORT ENTRY | {symbol} @ ${price:,.4f} | size: ${CAPITAL_PER_COIN * LEVERAGE:,.2f} | {note}")
 
     def update_trough(self, symbol: str, current_price: float) -> None:
         """更新最低价（用于 trailing stop 计算）。"""
@@ -144,7 +138,7 @@ class ShortPaperTrader:
         pnl_pct = (entry_price - price) / entry_price * 100
         pnl_usd = CAPITAL_PER_COIN * LEVERAGE * pnl_pct / 100
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         self._conn.execute(
             "INSERT INTO short_trades (symbol,action,price,timestamp,pnl_pct,position_size,leverage,note) "
             "VALUES (?,?,?,?,?,?,?,?)",
@@ -155,8 +149,7 @@ class ShortPaperTrader:
 
         emoji = "+" if pnl_pct > 0 else ""
         logger.info(
-            f"SHORT EXIT  | {symbol} @ ${price:,.4f} | "
-            f"P&L: {emoji}{pnl_pct:.2f}% (${emoji}{pnl_usd:.2f}) | {reason}"
+            f"SHORT EXIT  | {symbol} @ ${price:,.4f} | P&L: {emoji}{pnl_pct:.2f}% (${emoji}{pnl_usd:.2f}) | {reason}"
         )
 
     def check_exit_conditions(self, symbol: str, current_price: float, ma_fast: float, ma_slow: float) -> str | None:
@@ -194,16 +187,12 @@ class ShortPaperTrader:
         trades = self._conn.execute("SELECT COUNT(*) FROM short_trades").fetchone()[0]
         positions = self._conn.execute("SELECT COUNT(*) FROM short_positions").fetchone()[0]
         # 计算总P&L
-        exits = self._conn.execute(
-            "SELECT SUM(pnl_pct) FROM short_trades WHERE action='SHORT_EXIT'"
-        ).fetchone()[0]
+        exits = self._conn.execute("SELECT SUM(pnl_pct) FROM short_trades WHERE action='SHORT_EXIT'").fetchone()[0]
         total_pnl = exits or 0.0
         return f"Trades: {trades} | Open: {positions} | Total P&L: {total_pnl:+.2f}%"
 
     def get_open_positions_display(self) -> str:
-        rows = self._conn.execute(
-            "SELECT symbol, entry_price, entry_time FROM short_positions"
-        ).fetchall()
+        rows = self._conn.execute("SELECT symbol, entry_price, entry_time FROM short_positions").fetchall()
         if not rows:
             return "  No open positions"
         lines = []
@@ -221,7 +210,7 @@ async def scan_and_trade(trader: ShortPaperTrader) -> None:
         api_secret=settings.okx_api_secret,
         passphrase=settings.okx_passphrase,
     ) as client:
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
         hour = now_utc.hour
         in_session = hour >= STRATEGY_PARAMS["session_start"] or hour < STRATEGY_PARAMS["session_end"]
 
@@ -230,7 +219,7 @@ async def scan_and_trade(trader: ShortPaperTrader) -> None:
             f"Session: {'IN (可入场)' if in_session else 'OUT (仅出场)'} ---"
         )
 
-        for symbol, coin in COINS.items():
+        for symbol, _coin in COINS.items():
             try:
                 # 拉最近 300 根 5m K 线（25 小时）
                 since_ms = int(time.time() * 1000) - 300 * 5 * 60 * 1000
@@ -271,7 +260,9 @@ async def scan_and_trade(trader: ShortPaperTrader) -> None:
 
                     # 检查最近 3 根是否有入场信号
                     if entries.iloc[-3:].any():
-                        trend_info = f"MA{STRATEGY_PARAMS['fast_ma']}={ma_fast:.2f} MA{STRATEGY_PARAMS['slow_ma']}={ma_slow:.2f}"
+                        trend_info = (
+                            f"MA{STRATEGY_PARAMS['fast_ma']}={ma_fast:.2f} MA{STRATEGY_PARAMS['slow_ma']}={ma_slow:.2f}"
+                        )
                         trader.record_entry(symbol, current, f"session_filter | {trend_info}")
 
             except Exception as e:
@@ -290,12 +281,16 @@ async def main() -> None:
         if arg.startswith("--duration"):
             duration_min = int(arg.split("=")[1]) if "=" in arg else int(sys.argv[sys.argv.index(arg) + 1])
 
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.now(UTC)
     logger.info("=" * 60)
     logger.info("  SHORT Paper Trader | session_filter 冠军 (Sharpe +3.14)")
     logger.info(f"  时段: UTC {STRATEGY_PARAMS['session_start']}:00 ~ {STRATEGY_PARAMS['session_end']}:00")
-    logger.info(f"  参数: fast={STRATEGY_PARAMS['fast_ma']} slow={STRATEGY_PARAMS['slow_ma']} gap={STRATEGY_PARAMS['min_gap']}")
-    logger.info(f"  出场: trail={STRATEGY_PARAMS['trail_pct']}% stop={STRATEGY_PARAMS['stop_pct']}% tp={STRATEGY_PARAMS['take_profit_pct']}%")
+    logger.info(
+        f"  参数: fast={STRATEGY_PARAMS['fast_ma']} slow={STRATEGY_PARAMS['slow_ma']} gap={STRATEGY_PARAMS['min_gap']}"
+    )
+    logger.info(
+        f"  出场: trail={STRATEGY_PARAMS['trail_pct']}% stop={STRATEGY_PARAMS['stop_pct']}% tp={STRATEGY_PARAMS['take_profit_pct']}%"
+    )
     logger.info(f"  币种: {list(COINS.keys())}")
     logger.info(f"  资金: ${CAPITAL_PER_COIN * len(COINS)} total, ${CAPITAL_PER_COIN}/coin x {LEVERAGE}x")
     logger.info("=" * 60)
@@ -308,7 +303,7 @@ async def main() -> None:
             scan_count += 1
             await scan_and_trade(trader)
 
-            elapsed = (datetime.now(timezone.utc) - start_time).total_seconds() / 60
+            elapsed = (datetime.now(UTC) - start_time).total_seconds() / 60
             if duration_min and elapsed >= duration_min:
                 logger.info(f"\n时长 {duration_min} 分钟已到，自动停止。")
                 break

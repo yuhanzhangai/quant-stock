@@ -14,7 +14,7 @@ import json
 import sqlite3
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -24,8 +24,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.settings import get_settings
 from src.exchange.ccxt_client import CCXTClient
-from src.strategies.minswing_v3_final import minswing_v3_signal
 from src.notify.telegram import notify_signal
+from src.strategies.minswing_v3_final import minswing_v3_signal
 
 COINS = {
     "ETH/USDT": "ETH",
@@ -61,7 +61,7 @@ class PaperTrader:
         self._conn.commit()
 
     def record_entry(self, symbol: str, price: float, side: str = "LONG"):
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         self._conn.execute(
             "INSERT INTO trades (symbol, side, price, timestamp, signal_type, position_size, leverage) VALUES (?,?,?,?,?,?,?)",
             (symbol, side, price, now, "ENTRY", CAPITAL_PER_COIN * LEVERAGE, LEVERAGE),
@@ -86,7 +86,7 @@ class PaperTrader:
 
         pnl_usd = CAPITAL_PER_COIN * LEVERAGE * pnl_pct / 100
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         self._conn.execute(
             "INSERT INTO trades (symbol, side, price, timestamp, signal_type, position_size, leverage) VALUES (?,?,?,?,?,?,?)",
             (symbol, "CLOSE", price, now, "EXIT", 0, LEVERAGE),
@@ -118,7 +118,8 @@ async def scan_and_trade(trader: PaperTrader):
         for symbol, coin in COINS.items():
             try:
                 candles = await client.fetch_ohlcv_range(
-                    symbol, timeframe="5m",
+                    symbol,
+                    timeframe="5m",
                     since=int(time.time() * 1000) - 300 * 5 * 60 * 1000,
                 )
                 if len(candles) < 200:
@@ -160,8 +161,8 @@ async def main():
         if arg.startswith("--duration"):
             duration_min = int(arg.split("=")[1]) if "=" in arg else int(sys.argv[sys.argv.index(arg) + 1])
 
-    start_time = datetime.now(timezone.utc)
-    logger.info(f"Paper Trader 启动 | MinSwing v3 | $50 x 5x")
+    start_time = datetime.now(UTC)
+    logger.info("Paper Trader 启动 | MinSwing v3 | $50 x 5x")
     logger.info(f"Coins: {list(COINS.keys())}")
     logger.info(f"开始: {start_time.strftime('%H:%M:%S UTC')}")
     if duration_min:
@@ -178,14 +179,16 @@ async def main():
             await scan_and_trade(trader)
 
             # 记录本次扫描
-            scan_log.append({
-                "scan": scan_count,
-                "time": datetime.now(timezone.utc).isoformat(),
-                "summary": trader.get_summary(),
-            })
+            scan_log.append(
+                {
+                    "scan": scan_count,
+                    "time": datetime.now(UTC).isoformat(),
+                    "summary": trader.get_summary(),
+                }
+            )
 
             # 检查是否到时间
-            elapsed = (datetime.now(timezone.utc) - start_time).total_seconds() / 60
+            elapsed = (datetime.now(UTC) - start_time).total_seconds() / 60
             if duration_min and elapsed >= duration_min:
                 logger.info(f"\n时长 {duration_min} 分钟已到，自动停止。")
                 break
@@ -193,7 +196,7 @@ async def main():
             await asyncio.sleep(300)
 
     # 保存结果到 JSON（供心跳读取）
-    end_time = datetime.now(timezone.utc)
+    end_time = datetime.now(UTC)
     result = {
         "start": start_time.isoformat(),
         "end": end_time.isoformat(),
@@ -204,7 +207,6 @@ async def main():
     }
 
     result_path = Path("reports") / "paper_trade_session.json"
-    import json
     with open(result_path, "w") as f:
         json.dump(result, f, indent=2, default=str)
     logger.info(f"结果保存到: {result_path}")

@@ -12,38 +12,45 @@
 运行：uv run python scripts/short_iterate_v2.py
 """
 
-import sys
 import json
+import sys
 import time
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
-import pandas as pd
 import numpy as np
-from loguru import logger
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.short_multi_tf import ShortMultiTFStrategy
+from src.strategies.short_session_filter import ShortSessionFilterStrategy
+from src.strategies.short_swing_trail import ShortSwingTrailStrategy
+
+# 锚点策略
+from src.strategies.short_trend_follow import ShortTrendFollowStrategy
+
+# 新策略
+from src.strategies.short_vol_atr import ShortVolATRStrategy
+
+from config.settings import get_settings
 from src.backtest.costs import OKX_SWAP
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
 from src.strategies.short_swing import invert_price
 
-# 锚点策略
-from src.strategies.short_trend_follow import ShortTrendFollowStrategy
-from src.strategies.short_swing_trail import ShortSwingTrailStrategy
-# 新策略
-from src.strategies.short_vol_atr import ShortVolATRStrategy
-from src.strategies.short_session_filter import ShortSessionFilterStrategy
-from src.strategies.short_multi_tf import ShortMultiTFStrategy
-
-
 COINS = [
-    "ETH-USDT", "SOL-USDT", "NEAR-USDT", "ARB-USDT",
-    "DOT-USDT", "OP-USDT", "SUI-USDT", "ATOM-USDT",
-    "PEPE-USDT", "FIL-USDT",
+    "ETH-USDT",
+    "SOL-USDT",
+    "NEAR-USDT",
+    "ARB-USDT",
+    "DOT-USDT",
+    "OP-USDT",
+    "SUI-USDT",
+    "ATOM-USDT",
+    "PEPE-USDT",
+    "FIL-USDT",
 ]
 
 
@@ -65,12 +72,14 @@ def split_3(price: pd.Series) -> list[tuple[str, pd.Series]]:
     seg = n // 3
     return [
         ("S1", price.iloc[:seg]),
-        ("S2", price.iloc[seg:2*seg]),
-        ("S3", price.iloc[2*seg:]),
+        ("S2", price.iloc[seg : 2 * seg]),
+        ("S3", price.iloc[2 * seg :]),
     ]
 
 
-def test_strategy_full(strat, params: dict, coins_ohlcv: dict, engine: BacktestEngine, use_volume: bool = False) -> dict:
+def test_strategy_full(
+    strat, params: dict, coins_ohlcv: dict, engine: BacktestEngine, use_volume: bool = False
+) -> dict:
     """测试策略，支持传入 volume/high/low。"""
     sharpes, returns = [], []
     positive_segs, total_segs, total_trades = 0, 0, 0
@@ -80,7 +89,7 @@ def test_strategy_full(strat, params: dict, coins_ohlcv: dict, engine: BacktestE
         price = ohlcv["close"]
         c_sharpes, c_returns, c_trades, c_pos = [], [], 0, 0
 
-        for seg_label, seg_price in split_3(price):
+        for _seg_label, seg_price in split_3(price):
             if len(seg_price) < 300:
                 continue
             total_segs += 1
@@ -93,26 +102,34 @@ def test_strategy_full(strat, params: dict, coins_ohlcv: dict, engine: BacktestE
                     extra["high"] = ohlcv.loc[seg_idx, "high"] if "high" in ohlcv.columns else None
                     extra["low"] = ohlcv.loc[seg_idx, "low"] if "low" in ohlcv.columns else None
                 entries, exits = strat.generate_signals(seg_price, **params, **extra)
-            except Exception as e:
-                sharpes.append(0.0); returns.append(0.0)
-                c_sharpes.append(0.0); c_returns.append(0.0)
+            except Exception:
+                sharpes.append(0.0)
+                returns.append(0.0)
+                c_sharpes.append(0.0)
+                c_returns.append(0.0)
                 continue
 
             n_entries = int(entries.sum())
             if n_entries == 0:
-                sharpes.append(0.0); returns.append(0.0)
-                c_sharpes.append(0.0); c_returns.append(0.0)
+                sharpes.append(0.0)
+                returns.append(0.0)
+                c_sharpes.append(0.0)
+                c_returns.append(0.0)
                 continue
 
-            total_trades += n_entries; c_trades += n_entries
+            total_trades += n_entries
+            c_trades += n_entries
             price_inv = invert_price(seg_price)
             pf = engine.run(price_inv, entries, exits)
             m = compute_metrics(pf)
 
-            sharpes.append(m["sharpe_ratio"]); returns.append(m["total_return_pct"])
-            c_sharpes.append(m["sharpe_ratio"]); c_returns.append(m["total_return_pct"])
+            sharpes.append(m["sharpe_ratio"])
+            returns.append(m["total_return_pct"])
+            c_sharpes.append(m["sharpe_ratio"])
+            c_returns.append(m["total_return_pct"])
             if m["total_return_pct"] > 0:
-                positive_segs += 1; c_pos += 1
+                positive_segs += 1
+                c_pos += 1
 
         per_coin[coin_short] = {
             "avg_sharpe": float(np.mean(c_sharpes)) if c_sharpes else 0.0,
@@ -144,31 +161,87 @@ def main() -> None:
             coins_ohlcv[coin.replace("-USDT", "")] = ohlcv
 
     # 也准备只有 close 的版本（给不需要 volume 的策略用）
-    coins_close = {k: v for k, v in coins_ohlcv.items()}
+    {k: v for k, v in coins_ohlcv.items()}
 
     candidates = []
 
     # === 锚点：trend_follow（baseline）===
     tf = ShortTrendFollowStrategy()
-    candidates.append(("ANCHOR:trend_follow", tf,
-        {"fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
-        False))
+    candidates.append(
+        (
+            "ANCHOR:trend_follow",
+            tf,
+            {"fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+            False,
+        )
+    )
 
     # === 锚点：swing_trail（baseline）===
     st = ShortSwingTrailStrategy()
-    candidates.append(("ANCHOR:swing_trail", st,
-        {"trend_ma": 180, "rsi_entry": 55, "min_gap": 288, "stop_pct": 2.5, "trail_pct": 1.5, "min_profit": 2.0},
-        False))
+    candidates.append(
+        (
+            "ANCHOR:swing_trail",
+            st,
+            {"trend_ma": 180, "rsi_entry": 55, "min_gap": 288, "stop_pct": 2.5, "trail_pct": 1.5, "min_profit": 2.0},
+            False,
+        )
+    )
 
     # === 新方向1: vol_atr ===
     va = ShortVolATRStrategy()
     va_params_list = [
         # 模仿 session 成功模式：大gap + 大MA + 宽止损
-        {"vol_ma_period": 60, "vol_spike_mult": 2.5, "atr_period": 14, "atr_expand_mult": 1.5, "trend_ma": 180, "min_gap": 288, "stop_pct": 3.0, "trail_pct": 1.0},
-        {"vol_ma_period": 48, "vol_spike_mult": 2.0, "atr_period": 14, "atr_expand_mult": 1.3, "trend_ma": 180, "min_gap": 288, "stop_pct": 3.0, "trail_pct": 1.0},
-        {"vol_ma_period": 60, "vol_spike_mult": 3.0, "atr_period": 20, "atr_expand_mult": 1.5, "trend_ma": 180, "min_gap": 336, "stop_pct": 3.0, "trail_pct": 1.0},
-        {"vol_ma_period": 48, "vol_spike_mult": 2.5, "atr_period": 14, "atr_expand_mult": 2.0, "trend_ma": 180, "min_gap": 288, "stop_pct": 2.5, "trail_pct": 1.0},
-        {"vol_ma_period": 60, "vol_spike_mult": 2.0, "atr_period": 14, "atr_expand_mult": 1.5, "trend_ma": 180, "min_gap": 288, "stop_pct": 3.0, "trail_pct": 1.5, "atr_contract_exit": False},
+        {
+            "vol_ma_period": 60,
+            "vol_spike_mult": 2.5,
+            "atr_period": 14,
+            "atr_expand_mult": 1.5,
+            "trend_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "vol_ma_period": 48,
+            "vol_spike_mult": 2.0,
+            "atr_period": 14,
+            "atr_expand_mult": 1.3,
+            "trend_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "vol_ma_period": 60,
+            "vol_spike_mult": 3.0,
+            "atr_period": 20,
+            "atr_expand_mult": 1.5,
+            "trend_ma": 180,
+            "min_gap": 336,
+            "stop_pct": 3.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "vol_ma_period": 48,
+            "vol_spike_mult": 2.5,
+            "atr_period": 14,
+            "atr_expand_mult": 2.0,
+            "trend_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 2.5,
+            "trail_pct": 1.0,
+        },
+        {
+            "vol_ma_period": 60,
+            "vol_spike_mult": 2.0,
+            "atr_period": 14,
+            "atr_expand_mult": 1.5,
+            "trend_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "trail_pct": 1.5,
+            "atr_contract_exit": False,
+        },
         # 随机
         {
             "vol_ma_period": int(np.random.choice([36, 48, 60, 72])),
@@ -198,33 +271,204 @@ def main() -> None:
     sf = ShortSessionFilterStrategy()
     session_params_list = [
         # 亚洲时段 (UTC 0-8)
-        {"session_start": 0, "session_end": 8, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        {
+            "session_start": 0,
+            "session_end": 8,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
         # 亚洲+欧洲早盘 (UTC 0-12)
-        {"session_start": 0, "session_end": 12, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        {
+            "session_start": 0,
+            "session_end": 12,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
         # 美盘 (UTC 13-21)
-        {"session_start": 13, "session_end": 21, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        {
+            "session_start": 13,
+            "session_end": 21,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
         # 亚洲窄时段 (UTC 1-6)
-        {"session_start": 1, "session_end": 6, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        {
+            "session_start": 1,
+            "session_end": 6,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
         # 欧洲时段 (UTC 7-15)
-        {"session_start": 7, "session_end": 15, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        {
+            "session_start": 7,
+            "session_end": 15,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
         # 排除美盘（UTC 21-13 = 晚间+亚洲+欧洲早盘）— 上轮冠军
-        {"session_start": 21, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        {
+            "session_start": 21,
+            "session_end": 13,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
         # === 新冠军: stop=3.5 出场优化 ===
-        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.5, "take_profit_pct": 12.0, "trail_pct": 1.0},
-        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.5, "take_profit_pct": 8.0, "trail_pct": 1.0},
-        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.5, "take_profit_pct": 10.0, "trail_pct": 0.8},
-        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.5, "take_profit_pct": 12.0, "trail_pct": 0.8},
+        {
+            "session_start": 20,
+            "session_end": 13,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.5,
+            "take_profit_pct": 12.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "session_start": 20,
+            "session_end": 13,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.5,
+            "take_profit_pct": 8.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "session_start": 20,
+            "session_end": 13,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.5,
+            "take_profit_pct": 10.0,
+            "trail_pct": 0.8,
+        },
+        {
+            "session_start": 20,
+            "session_end": 13,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.5,
+            "take_profit_pct": 12.0,
+            "trail_pct": 0.8,
+        },
         # === 新冠军: stop=7.0(安全网止损) ===
-        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 7.0, "take_profit_pct": 12.0, "trail_pct": 1.0},
-        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 8.0, "take_profit_pct": 12.0, "trail_pct": 1.0},
-        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 7.0, "take_profit_pct": 10.0, "trail_pct": 0.8},
+        {
+            "session_start": 20,
+            "session_end": 13,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 7.0,
+            "take_profit_pct": 12.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "session_start": 20,
+            "session_end": 13,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 8.0,
+            "take_profit_pct": 12.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "session_start": 20,
+            "session_end": 13,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 7.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 0.8,
+        },
         # 冠军附近微调
-        {"session_start": 21, "session_end": 13, "fast_ma": 96, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.5, "take_profit_pct": 12.0, "trail_pct": 1.0},
-        {"session_start": 21, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 336, "stop_pct": 3.5, "take_profit_pct": 10.0, "trail_pct": 1.0},
-        {"session_start": 22, "session_end": 14, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.5, "take_profit_pct": 12.0, "trail_pct": 1.0},
-        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 4.0, "take_profit_pct": 12.0, "trail_pct": 1.0},
-        {"session_start": 20, "session_end": 13, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
-        {"session_start": 22, "session_end": 14, "fast_ma": 84, "slow_ma": 180, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        {
+            "session_start": 21,
+            "session_end": 13,
+            "fast_ma": 96,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.5,
+            "take_profit_pct": 12.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "session_start": 21,
+            "session_end": 13,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 336,
+            "stop_pct": 3.5,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "session_start": 22,
+            "session_end": 14,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.5,
+            "take_profit_pct": 12.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "session_start": 20,
+            "session_end": 13,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 4.0,
+            "take_profit_pct": 12.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "session_start": 20,
+            "session_end": 13,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "session_start": 22,
+            "session_end": 14,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
         # 随机 session 变体
         {
             "session_start": int(np.random.choice([19, 20, 21, 22])),
@@ -247,14 +491,64 @@ def main() -> None:
     # 但 test_strategy_full 目前不支持 —— 我们用 5m 长 MA 替代（策略内部有 fallback）
     mtf_params_list = [
         # 三层全开：长MA替代4h + trend_follow + session
-        {"fast_ma": 84, "slow_ma": 180, "use_session": True, "session_start": 20, "session_end": 13, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        {
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "use_session": True,
+            "session_start": 20,
+            "session_end": 13,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
         # 不用 session（纯双时间框架）
-        {"fast_ma": 84, "slow_ma": 180, "use_session": False, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        {
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "use_session": False,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
         # 调整 htf MA
-        {"htf_ma": 30, "fast_ma": 84, "slow_ma": 180, "use_session": True, "session_start": 20, "session_end": 13, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
-        {"htf_ma": 80, "fast_ma": 84, "slow_ma": 180, "use_session": True, "session_start": 20, "session_end": 13, "min_gap": 288, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 1.0},
+        {
+            "htf_ma": 30,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "use_session": True,
+            "session_start": 20,
+            "session_end": 13,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
+        {
+            "htf_ma": 80,
+            "fast_ma": 84,
+            "slow_ma": 180,
+            "use_session": True,
+            "session_start": 20,
+            "session_end": 13,
+            "min_gap": 288,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 1.0,
+        },
         # 不同 5m 参数
-        {"fast_ma": 96, "slow_ma": 180, "use_session": True, "session_start": 20, "session_end": 13, "min_gap": 336, "stop_pct": 3.0, "take_profit_pct": 10.0, "trail_pct": 0.8},
+        {
+            "fast_ma": 96,
+            "slow_ma": 180,
+            "use_session": True,
+            "session_start": 20,
+            "session_end": 13,
+            "min_gap": 336,
+            "stop_pct": 3.0,
+            "take_profit_pct": 10.0,
+            "trail_pct": 0.8,
+        },
         # 随机
         {
             "htf_ma": int(np.random.choice([30, 50, 80])),
@@ -287,8 +581,7 @@ def main() -> None:
     print("  做空策略 V2 — 新因子维度探索 vs 锚点策略")
     print("=" * 100)
     print(
-        f"  {'排名':>4} | {'策略':<24} | {'Avg夏普':>8} | {'Avg收益%':>9} | "
-        f"{'正收益段':>8} | {'交易数':>6} | 关键参数"
+        f"  {'排名':>4} | {'策略':<24} | {'Avg夏普':>8} | {'Avg收益%':>9} | {'正收益段':>8} | {'交易数':>6} | 关键参数"
     )
     print(f"  {'─' * 92}")
 
@@ -300,12 +593,12 @@ def main() -> None:
         if "ANCHOR" in name:
             key = "(锚点 baseline)"
         elif name == "vol_atr":
-            key = f"vol={p.get('vol_spike_mult','?')}x atr={p.get('atr_expand_mult','?')}x ma={p.get('trend_ma','')} gap={p['min_gap']}"
+            key = f"vol={p.get('vol_spike_mult', '?')}x atr={p.get('atr_expand_mult', '?')}x ma={p.get('trend_ma', '')} gap={p['min_gap']}"
         elif name == "session":
             key = f"UTC{p['session_start']}-{p['session_end']} gap={p['min_gap']}"
         elif name == "multi_tf":
-            sess = f"UTC{p.get('session_start','?')}-{p.get('session_end','?')}" if p.get("use_session") else "noSess"
-            key = f"htf={p.get('htf_ma',50)} {sess} gap={p['min_gap']}"
+            sess = f"UTC{p.get('session_start', '?')}-{p.get('session_end', '?')}" if p.get("use_session") else "noSess"
+            key = f"htf={p.get('htf_ma', 50)} {sess} gap={p['min_gap']}"
         else:
             key = str(p)[:50]
 
@@ -317,7 +610,7 @@ def main() -> None:
 
     # === 币种优势对比 ===
     print(f"\n  {'─' * 92}")
-    print(f"  新策略 vs 锚点 — 币种优势对比")
+    print("  新策略 vs 锚点 — 币种优势对比")
     print(f"  {'─' * 92}")
 
     anchor_tf = next(r for r in results if r["strategy"] == "ANCHOR:trend_follow")
@@ -385,11 +678,12 @@ def main() -> None:
     best_ever = max(all_records, key=lambda x: x["top5"][0]["avg_sharpe"])
     best_top = best_ever["top5"][0]
     print(
-        f"\n  历史最优: {best_top['strategy']} | Sharpe={best_top['avg_sharpe']:+.3f} | "
-        f"{best_ever['timestamp'][:19]}"
+        f"\n  历史最优: {best_top['strategy']} | Sharpe={best_top['avg_sharpe']:+.3f} | {best_ever['timestamp'][:19]}"
     )
     if best_top.get("per_coin_sharpe"):
-        coins_str = " ".join(f"{c}:{s:+.1f}" for c, s in sorted(best_top["per_coin_sharpe"].items(), key=lambda x: -x[1])[:5])
+        coins_str = " ".join(
+            f"{c}:{s:+.1f}" for c, s in sorted(best_top["per_coin_sharpe"].items(), key=lambda x: -x[1])[:5]
+        )
         print(f"  币种优势: {coins_str}")
 
 

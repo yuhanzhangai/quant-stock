@@ -8,8 +8,8 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.storage.parquet_writer import ParquetWriter
 from config.settings import get_settings
+from src.storage.parquet_writer import ParquetWriter
 from src.strategies.minswing_v3_final import minswing_v3_signal
 
 settings = get_settings()
@@ -46,7 +46,7 @@ print(f"平均盈利: {np.mean(rets[rets > 0]):+.2f}%")
 print(f"平均亏损: {np.mean(rets[rets < 0]):+.2f}%")
 
 # Monte Carlo
-print(f"\n=== Monte Carlo 1000x (每次 20 笔, $50x5x) ===")
+print("\n=== Monte Carlo 1000x (每次 20 笔, $50x5x) ===")
 np.random.seed(42)
 finals = []
 for _ in range(1000):

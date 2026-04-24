@@ -11,6 +11,8 @@ from loguru import logger
 # 让 import config 能找到项目根目录
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from datetime import UTC
+
 from config.settings import get_settings
 
 OKX_BASE_URL = "https://www.okx.com"
@@ -27,9 +29,7 @@ async def check_public_time() -> bool:
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
                 elapsed_ms = (time.monotonic() - start) * 1000
                 data = await resp.json()
-                logger.info(
-                    f"响应状态码: {resp.status} | 耗时: {elapsed_ms:.0f}ms"
-                )
+                logger.info(f"响应状态码: {resp.status} | 耗时: {elapsed_ms:.0f}ms")
 
                 if resp.status == 200 and data.get("code") == "0":
                     server_ts = int(data["data"][0]["ts"])
@@ -66,10 +66,10 @@ async def check_api_key() -> bool:
     import base64
     import hashlib
     import hmac
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     # 生成签名
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
     method = "GET"
     request_path = "/api/v5/account/balance"
     message = timestamp + method + request_path
@@ -97,9 +97,7 @@ async def check_api_key() -> bool:
     start = time.monotonic()
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(
-                url, headers=headers, timeout=aiohttp.ClientTimeout(total=15)
-            ) as resp:
+            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=15)) as resp:
                 elapsed_ms = (time.monotonic() - start) * 1000
                 data = await resp.json()
                 logger.info(f"响应状态码: {resp.status} | 耗时: {elapsed_ms:.0f}ms")

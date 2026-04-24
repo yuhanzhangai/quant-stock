@@ -8,16 +8,16 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.aggressive_momentum import AggressiveMomentumStrategy
+from src.strategies.ensemble import EnsembleStrategy
+from src.strategies.rsi_extreme import RSIExtremeStrategy
+from src.strategies.trend_ma_filtered import TrendMAFilteredStrategy
+
+from config.settings import get_settings
 from src.backtest.costs import OKX_SPOT
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
-
-from src.strategies.trend_ma_filtered import TrendMAFilteredStrategy
-from src.strategies.aggressive_momentum import AggressiveMomentumStrategy
-from src.strategies.rsi_extreme import RSIExtremeStrategy
-from src.strategies.ensemble import EnsembleStrategy
 
 
 def load_price(symbol: str, timeframe: str) -> pd.Series | None:
@@ -81,9 +81,9 @@ def main() -> None:
     df = pd.DataFrame(all_rows)
 
     # 打印结果
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("泛化测试结果 | Top 4 策略 x 5 币种 | 4h")
-    logger.info(f"{'='*80}")
+    logger.info(f"{'=' * 80}")
 
     for strat_name in STRATEGIES:
         subset = df[df["strategy"] == strat_name].sort_values("sharpe_ratio", ascending=False)
@@ -98,15 +98,21 @@ def main() -> None:
             )
 
     # 按策略平均
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("策略平均表现（跨 5 币种）")
-    logger.info(f"{'='*80}")
-    avg = df.groupby("strategy").agg({
-        "sharpe_ratio": "mean",
-        "total_return_pct": "mean",
-        "max_drawdown_pct": "mean",
-        "total_trades": "mean",
-    }).sort_values("sharpe_ratio", ascending=False)
+    logger.info(f"{'=' * 80}")
+    avg = (
+        df.groupby("strategy")
+        .agg(
+            {
+                "sharpe_ratio": "mean",
+                "total_return_pct": "mean",
+                "max_drawdown_pct": "mean",
+                "total_trades": "mean",
+            }
+        )
+        .sort_values("sharpe_ratio", ascending=False)
+    )
 
     for strat, r in avg.iterrows():
         logger.info(

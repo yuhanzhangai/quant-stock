@@ -11,7 +11,7 @@
 import asyncio
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from loguru import logger
@@ -20,17 +20,31 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.settings import get_settings
 from src.exchange.ccxt_client import CCXTClient
-from src.exchange.whale_detector import WhaleDetector
 from src.exchange.news_sentiment import get_market_sentiment
+from src.exchange.whale_detector import WhaleDetector
 from src.strategies.minute_swing import MinuteSwingStrategy
 
 # 监控的币种和最优参数（Round 55 验证版）
 # ETH/NEAR: trailing stop 2% (让趋势利润跑)
 # SOL/ARB: fixed TP 8% (波动大用固定止盈)
 COINS = {
-    "ETH/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144, "trail": True, "trail_pct": 2.0},
+    "ETH/USDT": {
+        "trend_ma": 180,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 144,
+        "trail": True,
+        "trail_pct": 2.0,
+    },
     "SOL/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144, "trail": False},
-    "NEAR/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144, "trail": True, "trail_pct": 2.0},
+    "NEAR/USDT": {
+        "trend_ma": 180,
+        "stop_pct": 2.0,
+        "take_profit_pct": 8.0,
+        "min_gap": 144,
+        "trail": True,
+        "trail_pct": 2.0,
+    },
     "ARB/USDT": {"trend_ma": 180, "stop_pct": 2.0, "take_profit_pct": 8.0, "min_gap": 144, "trail": False},
 }
 
@@ -49,16 +63,17 @@ async def check_signals() -> None:
         api_secret=settings.okx_api_secret,
         passphrase=settings.okx_passphrase,
     ) as client:
-        now = datetime.now(timezone.utc)
-        logger.info(f"\n{'='*60}")
+        now = datetime.now(UTC)
+        logger.info(f"\n{'=' * 60}")
         logger.info(f"信号扫描 | {now.strftime('%Y-%m-%d %H:%M UTC')} | ${CAPITAL} x {LEVERAGE}x")
-        logger.info(f"{'='*60}")
+        logger.info(f"{'=' * 60}")
 
         for symbol, params in COINS.items():
             try:
                 # 拉最近 300 根 5m K 线
                 candles = await client.fetch_ohlcv_range(
-                    symbol, timeframe="5m",
+                    symbol,
+                    timeframe="5m",
                     since=int(time.time() * 1000) - 300 * 5 * 60 * 1000,
                 )
 
@@ -76,8 +91,8 @@ async def check_signals() -> None:
                 entries, exits = strat.generate_signals(price, **params)
 
                 current_price = price.iloc[-1]
-                last_entry = entries[entries].index[-1] if entries.any() else None
-                last_exit = exits[exits].index[-1] if exits.any() else None
+                entries[entries].index[-1] if entries.any() else None
+                exits[exits].index[-1] if exits.any() else None
 
                 # 检查最后 3 根是否有新信号
                 recent_entry = entries.iloc[-3:].any()
@@ -86,7 +101,7 @@ async def check_signals() -> None:
                 # 计算关键价位
                 stop_price = current_price * (1 - params["stop_pct"] / 100)
                 tp_price = current_price * (1 + params["take_profit_pct"] / 100)
-                position_size = PER_COIN * LEVERAGE
+                PER_COIN * LEVERAGE
 
                 # 趋势状态
                 ma = price.rolling(window=params["trend_ma"]).mean()
@@ -107,9 +122,7 @@ async def check_signals() -> None:
                 else:
                     status = "waiting"
 
-                logger.info(
-                    f"\n  {symbol:10s} | price: ${current_price:,.2f} | trend: {trend} | RSI: {rsi:.0f}"
-                )
+                logger.info(f"\n  {symbol:10s} | price: ${current_price:,.2f} | trend: {trend} | RSI: {rsi:.0f}")
                 if recent_entry:
                     # 置信度评分
                     trend_str = (current_price - ma.iloc[-1]) / ma.iloc[-1] * 100
@@ -123,19 +136,13 @@ async def check_signals() -> None:
                         confidence = "LOW"
                         sizing = "半仓 (胜率~26%)"
 
-                    logger.info(
-                        f"  {'':10s} | ENTRY! buy @ ${current_price:,.2f}"
-                    )
+                    logger.info(f"  {'':10s} | ENTRY! buy @ ${current_price:,.2f}")
                     logger.info(
                         f"  {'':10s} | SL: ${stop_price:,.2f} ({params['stop_pct']}%) | "
                         f"TP: ${tp_price:,.2f} ({params['take_profit_pct']}%)"
                     )
-                    logger.info(
-                        f"  {'':10s} | 置信度: {confidence} | {sizing}"
-                    )
-                    logger.info(
-                        f"  {'':10s} | 趋势强度: {trend_str:.1f}% | RSI: {rsi:.0f}"
-                    )
+                    logger.info(f"  {'':10s} | 置信度: {confidence} | {sizing}")
+                    logger.info(f"  {'':10s} | 趋势强度: {trend_str:.1f}% | RSI: {rsi:.0f}")
                 elif recent_exit:
                     logger.info(f"  {'':10s} | EXIT! close position")
                 else:
@@ -145,7 +152,7 @@ async def check_signals() -> None:
                 logger.error(f"{symbol}: {e}")
 
         # 辅助信息（不影响信号，仅供参考）
-        logger.info(f"\n  --- 辅助信息 ---")
+        logger.info("\n  --- 辅助信息 ---")
 
         # 鲸鱼检测
         whale = WhaleDetector(threshold_usd=10000)
@@ -167,7 +174,7 @@ async def check_signals() -> None:
             if sentiment["available"]:
                 logger.info(f"  新闻情绪: {sentiment['sentiment']} ({sentiment['news_count']} 条)")
             else:
-                logger.info(f"  新闻情绪: 不可用（正常，不影响策略）")
+                logger.info("  新闻情绪: 不可用（正常，不影响策略）")
         except Exception:
             pass
 

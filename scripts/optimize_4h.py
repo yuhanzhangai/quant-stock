@@ -8,24 +8,23 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.adaptive import adaptive_signal
+from src.strategies.aggressive_momentum import aggressive_momentum_signal, multi_factor_signal
+from src.strategies.ensemble import ensemble_signal
+from src.strategies.ichimoku import ichimoku_signal
+from src.strategies.keltner_breakout import keltner_signal
+from src.strategies.macd_histogram import macd_histogram_signal
+from src.strategies.mean_reversion_bb import mean_reversion_bb_signal
+from src.strategies.momentum_breakout import momentum_breakout_signal
+from src.strategies.momentum_mean_blend import momentum_mean_blend_signal
+from src.strategies.rsi_extreme import rsi_extreme_signal
+from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
+from src.strategies.turtle_trading import turtle_signal
+
+from config.settings import get_settings
 from src.backtest.costs import OKX_SPOT
 from src.backtest.engine import BacktestEngine
-from src.backtest.reports import generate_report
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
-
-from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
-from src.strategies.momentum_breakout import momentum_breakout_signal
-from src.strategies.mean_reversion_bb import mean_reversion_bb_signal
-from src.strategies.rsi_extreme import rsi_extreme_signal
-from src.strategies.aggressive_momentum import aggressive_momentum_signal, multi_factor_signal
-from src.strategies.keltner_breakout import keltner_signal
-from src.strategies.turtle_trading import turtle_signal
-from src.strategies.momentum_mean_blend import momentum_mean_blend_signal
-from src.strategies.macd_histogram import macd_histogram_signal
-from src.strategies.ichimoku import ichimoku_signal
-from src.strategies.ensemble import ensemble_signal
-from src.strategies.adaptive import adaptive_signal
 
 
 def load_price(symbol: str, timeframe: str) -> pd.Series | None:
@@ -46,9 +45,9 @@ def optimize_symbol(symbol: str) -> None:
         logger.warning(f"数据不足: {symbol} 4h")
         return
 
-    logger.info(f"\n{'='*70}")
+    logger.info(f"\n{'=' * 70}")
     logger.info(f"4h 深度优化 | {symbol} | {len(price)} bars")
-    logger.info(f"{'='*70}")
+    logger.info(f"{'=' * 70}")
 
     engine = BacktestEngine(costs=OKX_SPOT, init_cash=100_000, freq="4h")
     all_results = []
@@ -201,16 +200,29 @@ def optimize_symbol(symbol: str) -> None:
     combined = combined[combined["total_trades"] > 0]
     combined = combined.sort_values("sharpe_ratio", ascending=False)
 
-    logger.info(f"\n{'='*70}")
+    logger.info(f"\n{'=' * 70}")
     logger.info(f"4h Top 15 | {symbol}")
-    logger.info(f"{'='*70}")
+    logger.info(f"{'=' * 70}")
 
     for _, row in combined.head(15).iterrows():
         # 收集参数信息
-        params = {k: row[k] for k in row.index
-                  if k not in ["strategy", "total_return", "total_return_pct", "final_value",
-                               "sharpe_ratio", "sortino_ratio", "max_drawdown_pct",
-                               "win_rate_pct", "total_trades", "init_cash"]}
+        params = {
+            k: row[k]
+            for k in row.index
+            if k
+            not in [
+                "strategy",
+                "total_return",
+                "total_return_pct",
+                "final_value",
+                "sharpe_ratio",
+                "sortino_ratio",
+                "max_drawdown_pct",
+                "win_rate_pct",
+                "total_trades",
+                "init_cash",
+            ]
+        }
         param_str = " ".join(f"{k}={v}" for k, v in params.items() if pd.notna(v))
         logger.info(
             f"  [{row['strategy']:18s}] "

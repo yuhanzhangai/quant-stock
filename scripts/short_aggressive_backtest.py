@@ -21,21 +21,20 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.short_bounce_fade import ShortBounceFadeStrategy
+from src.strategies.short_momentum_break import ShortMomentumBreakStrategy
+from src.strategies.short_rsi_overbought import ShortRSIOverboughtStrategy
+from src.strategies.short_trend_follow import ShortTrendFollowStrategy
+
+from config.settings import get_settings
 from src.backtest.costs import OKX_SWAP
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
 from src.strategies.short_swing import ShortSwingStrategy, invert_price
-from src.strategies.short_momentum_break import ShortMomentumBreakStrategy
-from src.strategies.short_bounce_fade import ShortBounceFadeStrategy
-from src.strategies.short_rsi_overbought import ShortRSIOverboughtStrategy
-from src.strategies.short_trend_follow import ShortTrendFollowStrategy
-
 
 COINS = ["ETH-USDT", "SOL-USDT", "NEAR-USDT", "ARB-USDT"]
 
@@ -113,8 +112,6 @@ def main() -> None:
         print(f"  {'─' * 90}")
 
         for strat_name, strat, extra_params in STRATEGIES:
-            seg_results = []
-
             for seg_label, seg_price in segments:
                 if len(seg_price) < 300:
                     print(f"  {strat_name:<24} | {seg_label:>4} | 数据不足")
@@ -194,15 +191,19 @@ def main() -> None:
     print("=" * 100)
 
     # 按策略聚合
-    agg = df.groupby("strategy").agg(
-        avg_sharpe=("sharpe_ratio", "mean"),
-        avg_return=("total_return_pct", "mean"),
-        avg_dd=("max_drawdown_pct", "mean"),
-        avg_winrate=("win_rate_pct", "mean"),
-        total_trades=("trades", "sum"),
-        positive_segments=("total_return_pct", lambda x: (x > 0).sum()),
-        total_segments=("total_return_pct", "count"),
-    ).sort_values("avg_sharpe", ascending=False)
+    agg = (
+        df.groupby("strategy")
+        .agg(
+            avg_sharpe=("sharpe_ratio", "mean"),
+            avg_return=("total_return_pct", "mean"),
+            avg_dd=("max_drawdown_pct", "mean"),
+            avg_winrate=("win_rate_pct", "mean"),
+            total_trades=("trades", "sum"),
+            positive_segments=("total_return_pct", lambda x: (x > 0).sum()),
+            total_segments=("total_return_pct", "count"),
+        )
+        .sort_values("avg_sharpe", ascending=False)
+    )
 
     print(
         f"\n  {'排名':>4} | {'策略':<24} | {'Avg夏普':>8} | {'Avg收益%':>9} | "
@@ -228,12 +229,16 @@ def main() -> None:
         if coin_df.empty:
             continue
 
-        coin_agg = coin_df.groupby("strategy").agg(
-            avg_sharpe=("sharpe_ratio", "mean"),
-            avg_return=("total_return_pct", "mean"),
-            positive_segs=("total_return_pct", lambda x: (x > 0).sum()),
-            total_segs=("total_return_pct", "count"),
-        ).sort_values("avg_sharpe", ascending=False)
+        coin_agg = (
+            coin_df.groupby("strategy")
+            .agg(
+                avg_sharpe=("sharpe_ratio", "mean"),
+                avg_return=("total_return_pct", "mean"),
+                positive_segs=("total_return_pct", lambda x: (x > 0).sum()),
+                total_segs=("total_return_pct", "count"),
+            )
+            .sort_values("avg_sharpe", ascending=False)
+        )
 
         print(f"\n  {coin_short}:")
         for rank, (strat_name, row) in enumerate(coin_agg.head(3).iterrows(), 1):
@@ -248,23 +253,26 @@ def main() -> None:
     print("  一致性排名 — 正收益段数占比")
     print("=" * 100)
 
-    consistency = df.groupby("strategy").apply(
-        lambda x: pd.Series({
-            "positive_pct": (x["total_return_pct"] > 0).mean() * 100,
-            "positive_count": (x["total_return_pct"] > 0).sum(),
-            "total_count": len(x),
-            "avg_sharpe": x["sharpe_ratio"].mean(),
-        })
-    ).sort_values("positive_pct", ascending=False)
+    consistency = (
+        df.groupby("strategy")
+        .apply(
+            lambda x: pd.Series(
+                {
+                    "positive_pct": (x["total_return_pct"] > 0).mean() * 100,
+                    "positive_count": (x["total_return_pct"] > 0).sum(),
+                    "total_count": len(x),
+                    "avg_sharpe": x["sharpe_ratio"].mean(),
+                }
+            )
+        )
+        .sort_values("positive_pct", ascending=False)
+    )
 
     for strat_name, row in consistency.iterrows():
         pct = row["positive_pct"]
         cnt = int(row["positive_count"])
         total = int(row["total_count"])
-        print(
-            f"  {strat_name:<24} | 正收益: {cnt}/{total} ({pct:.0f}%) | "
-            f"Avg Sharpe: {row['avg_sharpe']:>+.3f}"
-        )
+        print(f"  {strat_name:<24} | 正收益: {cnt}/{total} ({pct:.0f}%) | Avg Sharpe: {row['avg_sharpe']:>+.3f}")
 
     print(f"\n{'=' * 100}")
     print("  做空策略回测完成！")

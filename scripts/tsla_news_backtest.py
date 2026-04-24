@@ -17,21 +17,21 @@ from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import vectorbt as vbt
 from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.backtest.costs import OKX_SWAP
-from src.backtest.engine import BacktestEngine
-from src.backtest.metrics import compute_metrics
 from src.strategies.tsla_news_event import (
     TSLA_NEWS_EVENTS,
     TslaNewsEventStrategy,
     analyze_all_events,
 )
+
+from src.backtest.costs import OKX_SWAP
+from src.backtest.metrics import compute_metrics
 
 
 # =========================================================================
@@ -94,18 +94,9 @@ def print_event_analysis(df: pd.DataFrame) -> None:
         print(f"预期: {row.get('expected', 'N/A')}  |  检测: {sentiment_map.get(detected, detected)}")
 
         if row.get("valid", False):
-            print(
-                f"  即时反应(4h): {row['immediate_change_pct']:+.2f}%  |  "
-                f"总变化: {row['total_change_pct']:+.2f}%"
-            )
-            print(
-                f"  量能比: {row['vol_ratio']:.2f}x  |  "
-                f"波动突增: {row['vol_spike']:.2f}x"
-            )
-            print(
-                f"  最大上冲: +{row['max_up_pct']:.2f}%  |  "
-                f"最大下探: {row['max_down_pct']:.2f}%"
-            )
+            print(f"  即时反应(4h): {row['immediate_change_pct']:+.2f}%  |  总变化: {row['total_change_pct']:+.2f}%")
+            print(f"  量能比: {row['vol_ratio']:.2f}x  |  波动突增: {row['vol_spike']:.2f}x")
+            print(f"  最大上冲: +{row['max_up_pct']:.2f}%  |  最大下探: {row['max_down_pct']:.2f}%")
             print(f"  综合评分: {row['sentiment_score']:+.4f}")
 
     # 汇总统计
@@ -144,9 +135,7 @@ def run_backtest_bilateral(
         params = {}
 
     strategy = TslaNewsEventStrategy()
-    long_entries, long_exits, short_entries, short_exits = (
-        strategy.generate_signals_bilateral(price, **params)
-    )
+    long_entries, long_exits, short_entries, short_exits = strategy.generate_signals_bilateral(price, **params)
 
     total_signals = long_entries.sum() + short_entries.sum()
     if total_signals == 0:
@@ -175,7 +164,7 @@ def run_backtest_bilateral(
         metrics["avg_pnl"] = np.mean([t["pnl_pct"] for t in trade_log])
 
         if verbose:
-            print(f"\n  --- 交易日志 ---")
+            print("\n  --- 交易日志 ---")
             for t in trade_log:
                 icon = "+" if t["pnl_pct"] > 0 else "-"
                 print(
@@ -258,7 +247,7 @@ def event_window_analysis(df: pd.DataFrame) -> None:
         df: OHLCV DataFrame
     """
     price = df["close"]
-    volume = df["volume"]
+    df["volume"]
 
     print("\n" + "=" * 80)
     print("📊 事件窗口收益特征分析")
@@ -300,8 +289,7 @@ def event_window_analysis(df: pd.DataFrame) -> None:
                 med = np.median(vals)
                 win_rate = sum(1 for v in vals if v > 0) / len(vals) * 100
                 print(
-                    f"    {window}: 平均 {avg:+.2f}% | 中位数 {med:+.2f}% | "
-                    f"胜率 {win_rate:.0f}% | 样本数 {len(vals)}"
+                    f"    {window}: 平均 {avg:+.2f}% | 中位数 {med:+.2f}% | 胜率 {win_rate:.0f}% | 样本数 {len(vals)}"
                 )
 
 
@@ -357,17 +345,23 @@ async def main() -> None:
         print("=" * 80)
         top10 = grid_df.head(10)
         display_cols = [
-            "sharpe_ratio", "total_return_pct", "max_drawdown_pct",
-            "win_rate_pct", "total_trades",
-            "reaction_hours", "hold_hours", "momentum_threshold",
-            "stop_pct", "take_profit_pct",
+            "sharpe_ratio",
+            "total_return_pct",
+            "max_drawdown_pct",
+            "win_rate_pct",
+            "total_trades",
+            "reaction_hours",
+            "hold_hours",
+            "momentum_threshold",
+            "stop_pct",
+            "take_profit_pct",
         ]
         existing_cols = [c for c in display_cols if c in top10.columns]
         print(top10[existing_cols].to_string(index=False))
 
         # 最优参数详情
         best = grid_df.iloc[0]
-        print(f"\n🥇 最优参数:")
+        print("\n🥇 最优参数:")
         print(f"  反应观察期: {int(best.get('reaction_hours', 4))}h")
         print(f"  最大持仓: {int(best.get('hold_hours', 48))}h")
         print(f"  动量阈值: {best.get('momentum_threshold', 0.5):.1f}%")

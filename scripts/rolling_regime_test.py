@@ -12,25 +12,25 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.adaptive import adaptive_signal
+from src.strategies.aggressive_momentum import aggressive_momentum_signal
+from src.strategies.ensemble import ensemble_signal
+from src.strategies.ichimoku import ichimoku_signal
+from src.strategies.keltner_breakout import keltner_signal
+from src.strategies.macd_histogram import macd_histogram_signal
+from src.strategies.mean_reversion_bb import mean_reversion_bb_signal
+from src.strategies.momentum_breakout import momentum_breakout_signal
+from src.strategies.multi_timeframe import multi_timeframe_signal
+from src.strategies.rsi_extreme import rsi_extreme_signal
+from src.strategies.supertrend import supertrend_signal
+from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
+from src.strategies.turtle_trading import turtle_signal
+
+from config.settings import get_settings
 from src.backtest.costs import OKX_SPOT
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
-
-from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
-from src.strategies.aggressive_momentum import aggressive_momentum_signal
-from src.strategies.rsi_extreme import rsi_extreme_signal
-from src.strategies.ensemble import ensemble_signal
-from src.strategies.macd_histogram import macd_histogram_signal
-from src.strategies.momentum_breakout import momentum_breakout_signal
-from src.strategies.mean_reversion_bb import mean_reversion_bb_signal
-from src.strategies.ichimoku import ichimoku_signal
-from src.strategies.keltner_breakout import keltner_signal
-from src.strategies.turtle_trading import turtle_signal
-from src.strategies.supertrend import supertrend_signal
-from src.strategies.multi_timeframe import multi_timeframe_signal
-from src.strategies.adaptive import adaptive_signal
 
 ALL_STRATEGIES = {
     "TrendMA_Filt": (trend_ma_filtered_signal, {"short_window": 25, "long_window": 200, "atr_mult": 0.5}),
@@ -87,26 +87,35 @@ def main() -> None:
                     e, x = func(chunk, **params)
                     pf = engine.run(chunk, e, x)
                     m = compute_metrics(pf)
-                    all_rows.append({
-                        "symbol": symbol,
-                        "period": period_label,
-                        "window": wi + 1,
-                        "strategy": strat_name,
-                        **m,
-                    })
+                    all_rows.append(
+                        {
+                            "symbol": symbol,
+                            "period": period_label,
+                            "window": wi + 1,
+                            "strategy": strat_name,
+                            **m,
+                        }
+                    )
                 except Exception:
-                    all_rows.append({
-                        "symbol": symbol, "period": period_label, "window": wi + 1,
-                        "strategy": strat_name, "sharpe_ratio": 0, "total_return_pct": 0,
-                        "max_drawdown_pct": 0, "total_trades": 0,
-                    })
+                    all_rows.append(
+                        {
+                            "symbol": symbol,
+                            "period": period_label,
+                            "window": wi + 1,
+                            "strategy": strat_name,
+                            "sharpe_ratio": 0,
+                            "total_return_pct": 0,
+                            "max_drawdown_pct": 0,
+                            "total_trades": 0,
+                        }
+                    )
 
     df = pd.DataFrame(all_rows)
 
     # 分析
-    logger.info(f"\n{'='*90}")
+    logger.info(f"\n{'=' * 90}")
     logger.info("滚动时间窗口验证 | 13 策略 x 5 币种 x 4 半年窗口")
-    logger.info(f"{'='*90}")
+    logger.info(f"{'=' * 90}")
 
     # 每个窗口的最优策略
     for wi in range(1, 5):
@@ -124,15 +133,19 @@ def main() -> None:
             )
 
     # 每个策略的稳定性（跨窗口标准差）
-    logger.info(f"\n{'='*90}")
+    logger.info(f"\n{'=' * 90}")
     logger.info("策略稳定性（跨所有窗口+币种）")
-    logger.info(f"{'='*90}")
-    stability = df.groupby("strategy").agg(
-        avg_sharpe=("sharpe_ratio", "mean"),
-        std_sharpe=("sharpe_ratio", "std"),
-        pct_positive=("sharpe_ratio", lambda x: (x > 0).mean() * 100),
-        avg_ret=("total_return_pct", "mean"),
-    ).sort_values("avg_sharpe", ascending=False)
+    logger.info(f"{'=' * 90}")
+    stability = (
+        df.groupby("strategy")
+        .agg(
+            avg_sharpe=("sharpe_ratio", "mean"),
+            std_sharpe=("sharpe_ratio", "std"),
+            pct_positive=("sharpe_ratio", lambda x: (x > 0).mean() * 100),
+            avg_ret=("total_return_pct", "mean"),
+        )
+        .sort_values("avg_sharpe", ascending=False)
+    )
 
     for strat, r in stability.iterrows():
         logger.info(

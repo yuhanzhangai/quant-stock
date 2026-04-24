@@ -4,7 +4,6 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -24,7 +23,8 @@ def main() -> None:
 
     # 创建报告
     fig = make_subplots(
-        rows=3, cols=2,
+        rows=3,
+        cols=2,
         subplot_titles=[
             "BTC 4h: Sharpe by Strategy",
             "ETH 4h: Sharpe by Strategy",
@@ -37,29 +37,33 @@ def main() -> None:
     )
 
     # 1. BTC best-of-each
-    btc_best = btc.loc[btc.groupby("strategy")["sharpe_ratio"].idxmax()].sort_values(
-        "sharpe_ratio", ascending=True
-    )
+    btc_best = btc.loc[btc.groupby("strategy")["sharpe_ratio"].idxmax()].sort_values("sharpe_ratio", ascending=True)
     fig.add_trace(
         go.Bar(
-            y=btc_best["strategy"], x=btc_best["sharpe_ratio"],
-            orientation="h", marker_color=["#F44336" if s < 0 else "#4CAF50" for s in btc_best["sharpe_ratio"]],
-            text=[f"{s:.2f}" for s in btc_best["sharpe_ratio"]], textposition="outside",
+            y=btc_best["strategy"],
+            x=btc_best["sharpe_ratio"],
+            orientation="h",
+            marker_color=["#F44336" if s < 0 else "#4CAF50" for s in btc_best["sharpe_ratio"]],
+            text=[f"{s:.2f}" for s in btc_best["sharpe_ratio"]],
+            textposition="outside",
         ),
-        row=1, col=1,
+        row=1,
+        col=1,
     )
 
     # 2. ETH best-of-each
-    eth_best = eth.loc[eth.groupby("strategy")["sharpe_ratio"].idxmax()].sort_values(
-        "sharpe_ratio", ascending=True
-    )
+    eth_best = eth.loc[eth.groupby("strategy")["sharpe_ratio"].idxmax()].sort_values("sharpe_ratio", ascending=True)
     fig.add_trace(
         go.Bar(
-            y=eth_best["strategy"], x=eth_best["sharpe_ratio"],
-            orientation="h", marker_color=["#F44336" if s < 0 else "#2196F3" for s in eth_best["sharpe_ratio"]],
-            text=[f"{s:.2f}" for s in eth_best["sharpe_ratio"]], textposition="outside",
+            y=eth_best["strategy"],
+            x=eth_best["sharpe_ratio"],
+            orientation="h",
+            marker_color=["#F44336" if s < 0 else "#2196F3" for s in eth_best["sharpe_ratio"]],
+            text=[f"{s:.2f}" for s in eth_best["sharpe_ratio"]],
+            textposition="outside",
         ),
-        row=1, col=2,
+        row=1,
+        col=2,
     )
 
     # 3. Generalization heatmap-like
@@ -67,35 +71,45 @@ def main() -> None:
     for strat in gen_pivot.index:
         fig.add_trace(
             go.Bar(name=strat, x=gen_pivot.columns.tolist(), y=gen_pivot.loc[strat].values, showlegend=False),
-            row=2, col=1,
+            row=2,
+            col=1,
         )
 
     # 4. Return vs Drawdown scatter
     fig.add_trace(
         go.Scatter(
-            x=gen["max_drawdown_pct"], y=gen["total_return_pct"],
-            mode="markers+text", text=gen["symbol"] + "<br>" + gen["strategy"],
-            textposition="top center", textfont=dict(size=8),
+            x=gen["max_drawdown_pct"],
+            y=gen["total_return_pct"],
+            mode="markers+text",
+            text=gen["symbol"] + "<br>" + gen["strategy"],
+            textposition="top center",
+            textfont=dict(size=8),
             marker=dict(size=10, color=gen["sharpe_ratio"], colorscale="RdYlGn", showscale=True),
         ),
-        row=2, col=2,
+        row=2,
+        col=2,
     )
 
     # 5-6. All params scatter
     for df, col_idx in [(btc, 1), (eth, 2)]:
         fig.add_trace(
             go.Scatter(
-                x=df["sharpe_ratio"], y=df["total_return_pct"],
-                mode="markers", marker=dict(size=4, opacity=0.4, color=df["max_drawdown_pct"],
-                                            colorscale="Reds", showscale=False),
-                text=df["strategy"], hovertemplate="%{text}<br>Sharpe: %{x:.2f}<br>Return: %{y:.1f}%",
+                x=df["sharpe_ratio"],
+                y=df["total_return_pct"],
+                mode="markers",
+                marker=dict(size=4, opacity=0.4, color=df["max_drawdown_pct"], colorscale="Reds", showscale=False),
+                text=df["strategy"],
+                hovertemplate="%{text}<br>Sharpe: %{x:.2f}<br>Return: %{y:.1f}%",
             ),
-            row=3, col=col_idx,
+            row=3,
+            col=col_idx,
         )
 
     fig.update_layout(
         title="Crypto Quant Research - 13 Strategy Final Report (4h Timeframe)",
-        height=1400, showlegend=False, template="plotly_white",
+        height=1400,
+        showlegend=False,
+        template="plotly_white",
     )
 
     output = reports_dir / "final_strategy_report.html"

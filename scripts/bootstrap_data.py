@@ -7,7 +7,7 @@ from pathlib import Path
 
 from loguru import logger
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 

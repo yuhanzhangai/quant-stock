@@ -10,14 +10,11 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
-from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.storage.parquet_writer import ParquetWriter
 from config.settings import get_settings
-
+from src.storage.parquet_writer import ParquetWriter
 
 COINS = ["ETH-USDT", "SOL-USDT", "NEAR-USDT", "ARB-USDT"]
 
@@ -53,16 +50,18 @@ def find_bear_periods(price: pd.Series, ma_period: int = 50, min_length: int = 2
             if length >= min_length:
                 seg = price.iloc[start_idx:i]
                 ret = (seg.iloc[-1] - seg.iloc[0]) / seg.iloc[0] * 100
-                periods.append({
-                    "start": price.index[start_idx],
-                    "end": price.index[i - 1],
-                    "length": length,
-                    "return_pct": ret,
-                    "start_price": seg.iloc[0],
-                    "end_price": seg.iloc[-1],
-                    "min_price": seg.min(),
-                    "max_drawdown": (seg.min() - seg.iloc[0]) / seg.iloc[0] * 100,
-                })
+                periods.append(
+                    {
+                        "start": price.index[start_idx],
+                        "end": price.index[i - 1],
+                        "length": length,
+                        "return_pct": ret,
+                        "start_price": seg.iloc[0],
+                        "end_price": seg.iloc[-1],
+                        "min_price": seg.min(),
+                        "max_drawdown": (seg.min() - seg.iloc[0]) / seg.iloc[0] * 100,
+                    }
+                )
             in_bear = False
 
     # 处理结尾还在熊市的情况
@@ -71,16 +70,18 @@ def find_bear_periods(price: pd.Series, ma_period: int = 50, min_length: int = 2
         if length >= min_length:
             seg = price.iloc[start_idx:]
             ret = (seg.iloc[-1] - seg.iloc[0]) / seg.iloc[0] * 100
-            periods.append({
-                "start": price.index[start_idx],
-                "end": price.index[-1],
-                "length": length,
-                "return_pct": ret,
-                "start_price": seg.iloc[0],
-                "end_price": seg.iloc[-1],
-                "min_price": seg.min(),
-                "max_drawdown": (seg.min() - seg.iloc[0]) / seg.iloc[0] * 100,
-            })
+            periods.append(
+                {
+                    "start": price.index[start_idx],
+                    "end": price.index[-1],
+                    "length": length,
+                    "return_pct": ret,
+                    "start_price": seg.iloc[0],
+                    "end_price": seg.iloc[-1],
+                    "min_price": seg.min(),
+                    "max_drawdown": (seg.min() - seg.iloc[0]) / seg.iloc[0] * 100,
+                }
+            )
 
     return sorted(periods, key=lambda x: x["return_pct"])  # 跌幅最大的排前面
 
@@ -101,15 +102,19 @@ def main() -> None:
             continue
 
         coin_short = coin.replace("-USDT", "")
-        print(f"\n  {coin_short} | 4h 数据量: {len(price_4h)} | {price_4h.index[0].date()} ~ {price_4h.index[-1].date()}")
+        print(
+            f"\n  {coin_short} | 4h 数据量: {len(price_4h)} | {price_4h.index[0].date()} ~ {price_4h.index[-1].date()}"
+        )
 
         periods = find_bear_periods(price_4h, ma_period=50, min_length=30)
 
         if not periods:
-            print(f"    没有找到显著熊市区间")
+            print("    没有找到显著熊市区间")
             continue
 
-        print(f"    {'起始':>12} | {'结束':>12} | {'长度':>6} | {'跌幅%':>8} | {'最大回撤%':>9} | {'起始价':>10} | {'结束价':>10}")
+        print(
+            f"    {'起始':>12} | {'结束':>12} | {'长度':>6} | {'跌幅%':>8} | {'最大回撤%':>9} | {'起始价':>10} | {'结束价':>10}"
+        )
         for p in periods[:5]:  # 前 5 个最大跌幅
             print(
                 f"    {str(p['start'].date()):>12} | {str(p['end'].date()):>12} | "
@@ -118,7 +123,7 @@ def main() -> None:
             )
 
     # === 5m 数据：微观熊市 ===
-    print(f"\n\n[2] 5m 数据 — 微观熊市区间（MA180=15h）")
+    print("\n\n[2] 5m 数据 — 微观熊市区间（MA180=15h）")
     print("─" * 100)
 
     all_bear_segments = {}
@@ -136,7 +141,7 @@ def main() -> None:
         all_bear_segments[coin_short] = periods
 
         if not periods:
-            print(f"    没有找到显著熊市区间（MA180）")
+            print("    没有找到显著熊市区间（MA180）")
             continue
 
         total_bear_candles = sum(p["length"] for p in periods)
@@ -153,7 +158,7 @@ def main() -> None:
             )
 
     # === 找共同熊市时段（所有币种同时下跌）===
-    print(f"\n\n[3] 市场整体熊市程度分析（5m 数据）")
+    print("\n\n[3] 市场整体熊市程度分析（5m 数据）")
     print("─" * 100)
 
     for coin in COINS:

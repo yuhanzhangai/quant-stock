@@ -23,21 +23,20 @@ import json
 import sqlite3
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.settings import get_settings
 from src.exchange.ccxt_client import CCXTClient
+from src.strategies.extreme_reversal import extreme_reversal_signal
+from src.strategies.intraday_momentum import intraday_momentum_signal
 from src.strategies.minute_swing import minute_swing_signal
 from src.strategies.minute_swing_dual import minute_swing_dual_signal
-from src.strategies.intraday_momentum import intraday_momentum_signal
-from src.strategies.extreme_reversal import extreme_reversal_signal
 
 COINS = ["ETH/USDT", "SOL/USDT", "NEAR/USDT", "ARB/USDT"]
 INIT_CASH = 250.0  # $50 x 5x
@@ -90,41 +89,33 @@ class MultiStrategyTracker:
 
     def has_position(self, strategy, symbol):
         r = self._conn.execute(
-            "SELECT 1 FROM strategy_positions WHERE strategy=? AND symbol=?",
-            (strategy, symbol)
+            "SELECT 1 FROM strategy_positions WHERE strategy=? AND symbol=?", (strategy, symbol)
         ).fetchone()
         return r is not None
 
     def enter(self, strategy, symbol, price):
-        now = datetime.now(timezone.utc).isoformat()
-        self._conn.execute(
-            "INSERT OR REPLACE INTO strategy_positions VALUES (?,?,?,?)",
-            (strategy, symbol, price, now)
-        )
+        now = datetime.now(UTC).isoformat()
+        self._conn.execute("INSERT OR REPLACE INTO strategy_positions VALUES (?,?,?,?)", (strategy, symbol, price, now))
         self._conn.execute(
             "INSERT INTO strategy_trades (strategy,symbol,action,price,timestamp,pnl_pct) VALUES (?,?,?,?,?,?)",
-            (strategy, symbol, "ENTRY", price, now, 0)
+            (strategy, symbol, "ENTRY", price, now, 0),
         )
         self._conn.commit()
         self._trade_counts[strategy] = self._trade_counts.get(strategy, 0) + 1
 
     def exit(self, strategy, symbol, price):
         pos = self._conn.execute(
-            "SELECT entry_price FROM strategy_positions WHERE strategy=? AND symbol=?",
-            (strategy, symbol)
+            "SELECT entry_price FROM strategy_positions WHERE strategy=? AND symbol=?", (strategy, symbol)
         ).fetchone()
         if not pos:
             return 0
         pnl = (price - pos[0]) / pos[0] * 100
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         self._conn.execute(
             "INSERT INTO strategy_trades (strategy,symbol,action,price,timestamp,pnl_pct) VALUES (?,?,?,?,?,?)",
-            (strategy, symbol, "EXIT", price, now, pnl)
+            (strategy, symbol, "EXIT", price, now, pnl),
         )
-        self._conn.execute(
-            "DELETE FROM strategy_positions WHERE strategy=? AND symbol=?",
-            (strategy, symbol)
-        )
+        self._conn.execute("DELETE FROM strategy_positions WHERE strategy=? AND symbol=?", (strategy, symbol))
         self._conn.commit()
         return pnl
 
@@ -136,11 +127,15 @@ class MultiStrategyTracker:
         ).fetchall()
         results = []
         for name, trades, wins, pnl in rows:
-            results.append({
-                "name": name, "trades": trades,
-                "wins": wins, "total_pnl": round(pnl, 2),
-                "win_rate": round(wins / trades * 100, 0) if trades > 0 else 0
-            })
+            results.append(
+                {
+                    "name": name,
+                    "trades": trades,
+                    "wins": wins,
+                    "total_pnl": round(pnl, 2),
+                    "win_rate": round(wins / trades * 100, 0) if trades > 0 else 0,
+                }
+            )
         results.sort(key=lambda x: x["total_pnl"], reverse=True)
         return results
 
@@ -166,7 +161,8 @@ async def scan_all_strategies(tracker, strategies):
         for symbol in COINS:
             try:
                 candles = await client.fetch_ohlcv_range(
-                    symbol, timeframe="5m",
+                    symbol,
+                    timeframe="5m",
                     since=int(time.time() * 1000) - 300 * 5 * 60 * 1000,
                 )
                 if len(candles) >= 200:
@@ -196,16 +192,14 @@ async def scan_all_strategies(tracker, strategies):
                         tracker.enter(name, symbol, current)
                         entries_count += 1
                     elif recent_exit and tracker.has_position(name, symbol):
-                        pnl = tracker.exit(name, symbol, current)
+                        tracker.exit(name, symbol, current)
                         exits_count += 1
                 except Exception:
                     pass
 
         now = time.strftime("%H:%M:%S")
         active = tracker.total_active_trades()
-        logger.info(
-            f"[{now}] 32策略扫描 | 新入场:{entries_count} 出场:{exits_count} | 持仓:{active}"
-        )
+        logger.info(f"[{now}] 32策略扫描 | 新入场:{entries_count} 出场:{exits_count} | 持仓:{active}")
 
 
 async def main():
@@ -237,7 +231,7 @@ async def main():
         if scan_count % 10 == 0:
             rankings = tracker.get_rankings()
             if rankings:
-                logger.info(f"\n--- 实盘排名 (前 5) ---")
+                logger.info("\n--- 实盘排名 (前 5) ---")
                 for r in rankings[:5]:
                     logger.info(f"  {r['name']:30s} | trades:{r['trades']} pnl:{r['total_pnl']:+.2f}%")
 
@@ -252,7 +246,7 @@ async def main():
     # 保存最终结果
     rankings = tracker.get_rankings()
     result = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "duration_min": round(elapsed, 1),
         "scans": scan_count,
         "rankings": rankings,
@@ -260,7 +254,7 @@ async def main():
     }
     with open("reports/tournament_live_result.json", "w") as f:
         json.dump(result, f, indent=2)
-    logger.info(f"结果保存到 reports/tournament_live_result.json")
+    logger.info("结果保存到 reports/tournament_live_result.json")
 
 
 if __name__ == "__main__":
