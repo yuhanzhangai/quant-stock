@@ -5,10 +5,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-import streamlit as st
-import plotly.express as px
 import pandas as pd
+import plotly.express as px
 import polars as pl
+import streamlit as st
 
 from config.settings import get_settings
 from src.storage.parquet_writer import ParquetWriter

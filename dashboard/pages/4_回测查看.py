@@ -38,7 +38,7 @@ with st.sidebar:
 if selected_report:
     st.subheader(selected_report.stem)
 
-    with open(selected_report, "r", encoding="utf-8") as f:
+    with open(selected_report, encoding="utf-8") as f:
         html_content = f.read()
 
     st.components.v1.html(html_content, height=950, scrolling=True)

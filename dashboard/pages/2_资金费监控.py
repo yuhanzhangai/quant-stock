@@ -5,10 +5,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-import streamlit as st
-import plotly.express as px
 import pandas as pd
+import plotly.express as px
 import polars as pl
+import streamlit as st
 
 from config.settings import get_settings
 
@@ -78,12 +78,14 @@ st.plotly_chart(fig, use_container_width=True)
 # 异常标记
 st.subheader("异常资金费率")
 threshold_decimal = threshold / 100
-anomalies = df.filter(
-    (pl.col("funding_rate").abs() > threshold_decimal)
-).with_columns(
-    (pl.col("funding_time").cast(pl.Datetime("ms"))).alias("datetime"),
-    (pl.col("funding_rate") * 100).round(4).alias("rate_pct"),
-).select(["datetime", "funding_rate", "rate_pct"])
+anomalies = (
+    df.filter(pl.col("funding_rate").abs() > threshold_decimal)
+    .with_columns(
+        (pl.col("funding_time").cast(pl.Datetime("ms"))).alias("datetime"),
+        (pl.col("funding_rate") * 100).round(4).alias("rate_pct"),
+    )
+    .select(["datetime", "funding_rate", "rate_pct"])
+)
 
 if anomalies.is_empty():
     st.info(f"无异常资金费率（阈值: ±{threshold}%）")

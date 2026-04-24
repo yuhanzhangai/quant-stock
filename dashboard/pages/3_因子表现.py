@@ -5,18 +5,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-import streamlit as st
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import pandas as pd
+import plotly.graph_objects as go
 import polars as pl
-
-from config.settings import get_settings
-from src.storage.parquet_writer import ParquetWriter
+import streamlit as st
+from plotly.subplots import make_subplots
 
 # 导入因子注册
 import src.factors.technical  # noqa: F401
-from src.factors.registry import list_factors, compute_all
+from config.settings import get_settings
+from src.factors.registry import compute_all
+from src.storage.parquet_writer import ParquetWriter
 
 st.set_page_config(page_title="因子表现", page_icon="🔬", layout="wide")
 st.title("🔬 因子表现")
@@ -73,7 +72,11 @@ with st.sidebar:
     if not available_tfs:
         st.warning(f"{symbol} 无数据")
         st.stop()
-    timeframe = st.selectbox("时间周期", available_tfs, index=min(len(available_tfs) - 1, available_tfs.index("1h") if "1h" in available_tfs else 0))
+    timeframe = st.selectbox(
+        "时间周期",
+        available_tfs,
+        index=min(len(available_tfs) - 1, available_tfs.index("1h") if "1h" in available_tfs else 0),
+    )
 
 # 加载并计算
 df = load_and_compute(symbol, timeframe)
@@ -96,7 +99,7 @@ with st.sidebar:
     selected_factors = st.multiselect(
         "选择因子",
         computed_factors,
-        default=computed_factors[:min(2, len(computed_factors))],
+        default=computed_factors[: min(2, len(computed_factors))],
     )
 
 # 因子 + 价格叠加图
@@ -114,7 +117,8 @@ if selected_factors:
 
     fig.add_trace(
         go.Scatter(x=pdf["datetime"], y=pdf["close"], name="Close", line=dict(color="#2196F3")),
-        row=1, col=1,
+        row=1,
+        col=1,
     )
 
     colors = ["#FF9800", "#4CAF50", "#F44336", "#9C27B0", "#00BCD4"]
@@ -127,11 +131,11 @@ if selected_factors:
                     name=factor,
                     line=dict(color=colors[i % len(colors)]),
                 ),
-                row=i + 2, col=1,
+                row=i + 2,
+                col=1,
             )
 
-    fig.update_layout(height=200 + 200 * len(selected_factors), showlegend=True,
-                      template="plotly_dark")
+    fig.update_layout(height=200 + 200 * len(selected_factors), showlegend=True, template="plotly_dark")
     st.plotly_chart(fig, use_container_width=True)
 
 # 因子统计
@@ -144,13 +148,15 @@ for factor in computed_factors:
         mean_val = series.mean()
         std_val = series.std()
         zscore = (current_val - mean_val) / std_val if std_val > 0 else 0
-        stats.append({
-            "因子": factor,
-            "当前值": round(current_val, 6),
-            "均值": round(mean_val, 6),
-            "标准差": round(std_val, 6),
-            "当前Z-Score": round(zscore, 2),
-        })
+        stats.append(
+            {
+                "因子": factor,
+                "当前值": round(current_val, 6),
+                "均值": round(mean_val, 6),
+                "标准差": round(std_val, 6),
+                "当前Z-Score": round(zscore, 2),
+            }
+        )
 
 if stats:
     st.dataframe(stats, use_container_width=True, hide_index=True)

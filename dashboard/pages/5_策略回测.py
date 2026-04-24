@@ -14,24 +14,23 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-import streamlit as st
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import pandas as pd
-import numpy as np
+import plotly.graph_objects as go
+import streamlit as st
+from plotly.subplots import make_subplots
 
 from config.settings import get_settings
-from src.storage.parquet_writer import ParquetWriter
 from src.backtest.costs import OKX_SWAP
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
-
-# Strategy imports
-from src.strategies.minute_swing import MinuteSwingStrategy, minute_swing_signal
-from src.strategies.minute_swing_dual import minute_swing_dual_signal
+from src.storage.parquet_writer import ParquetWriter
+from src.strategies.combo.fast_exit import fast_exit_signal
 from src.strategies.extreme_reversal import extreme_reversal_signal
 from src.strategies.intraday_momentum import intraday_momentum_signal
-from src.strategies.combo.fast_exit import fast_exit_signal
+
+# Strategy imports
+from src.strategies.minute_swing import minute_swing_signal
+from src.strategies.minute_swing_dual import minute_swing_dual_signal
 
 st.set_page_config(page_title="策略回测", page_icon="📊", layout="wide")
 st.title("📊 K线图 + 策略回测")
@@ -94,14 +93,17 @@ with st.sidebar:
 
     # 策略
     st.header("策略选择")
-    strategy_name = st.selectbox("策略", [
-        "MinSwing v3",
-        "MinSwing + FastExit (ETH专用)",
-        "MinSwing 双向",
-        "极端反转抄底",
-        "日内动量",
-        "无策略（纯图表）",
-    ])
+    strategy_name = st.selectbox(
+        "策略",
+        [
+            "MinSwing v3",
+            "MinSwing + FastExit (ETH专用)",
+            "MinSwing 双向",
+            "极端反转抄底",
+            "日内动量",
+            "无策略（纯图表）",
+        ],
+    )
 
     # 策略参数
     st.header("策略参数")
@@ -142,7 +144,9 @@ if pdf.empty:
     st.error("所选区间无数据")
     st.stop()
 
-st.caption(f"数据范围: {pdf.index[0].strftime('%Y-%m-%d %H:%M')} ~ {pdf.index[-1].strftime('%Y-%m-%d %H:%M')} | {len(pdf)} 根K线")
+st.caption(
+    f"数据范围: {pdf.index[0].strftime('%Y-%m-%d %H:%M')} ~ {pdf.index[-1].strftime('%Y-%m-%d %H:%M')} | {len(pdf)} 根K线"
+)
 
 price = pdf["close"]
 
@@ -179,7 +183,7 @@ if strategy_name != "无策略（纯图表）":
     # PnL on capital
     pnl = metrics.get("final_value", capital * leverage) - capital * leverage
     pnl_pct = pnl / capital * 100
-    st.info(f"${capital} x {leverage}x = ${capital*leverage} position | P&L: ${pnl:.2f} ({pnl_pct:+.1f}% on capital)")
+    st.info(f"${capital} x {leverage}x = ${capital * leverage} position | P&L: ${pnl:.2f} ({pnl_pct:+.1f}% on capital)")
 
 # === Calculate Indicators ===
 ma_short = price.rolling(window=min(trend_ma // 3, 60)).mean()
@@ -217,7 +221,8 @@ if show_macd:
     subplot_titles.append("MACD")
 
 fig = make_subplots(
-    rows=n_rows, cols=1,
+    rows=n_rows,
+    cols=1,
     shared_xaxes=True,
     vertical_spacing=0.03,
     subplot_titles=subplot_titles,
@@ -225,29 +230,51 @@ fig = make_subplots(
 )
 
 # Candlestick
-fig.add_trace(go.Candlestick(
-    x=pdf.index,
-    open=pdf["open"], high=pdf["high"],
-    low=pdf["low"], close=pdf["close"],
-    name="Price",
-    increasing_line_color="#26a69a",
-    decreasing_line_color="#ef5350",
-), row=1, col=1)
+fig.add_trace(
+    go.Candlestick(
+        x=pdf.index,
+        open=pdf["open"],
+        high=pdf["high"],
+        low=pdf["low"],
+        close=pdf["close"],
+        name="Price",
+        increasing_line_color="#26a69a",
+        decreasing_line_color="#ef5350",
+    ),
+    row=1,
+    col=1,
+)
 
 # MAs
 if show_ma:
-    fig.add_trace(go.Scatter(x=price.index, y=ma_short, name=f"MA{trend_ma//3}",
-                             line=dict(color="#FF9800", width=1)), row=1, col=1)
-    fig.add_trace(go.Scatter(x=price.index, y=ma_long, name=f"MA{trend_ma}",
-                             line=dict(color="#2196F3", width=1.5)), row=1, col=1)
+    fig.add_trace(
+        go.Scatter(x=price.index, y=ma_short, name=f"MA{trend_ma // 3}", line=dict(color="#FF9800", width=1)),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=price.index, y=ma_long, name=f"MA{trend_ma}", line=dict(color="#2196F3", width=1.5)), row=1, col=1
+    )
 
 # Bollinger Bands
 if show_bb:
-    fig.add_trace(go.Scatter(x=price.index, y=bb_upper, name="BB Upper",
-                             line=dict(color="gray", width=0.5, dash="dot")), row=1, col=1)
-    fig.add_trace(go.Scatter(x=price.index, y=bb_lower, name="BB Lower",
-                             line=dict(color="gray", width=0.5, dash="dot"),
-                             fill="tonexty", fillcolor="rgba(128,128,128,0.05)"), row=1, col=1)
+    fig.add_trace(
+        go.Scatter(x=price.index, y=bb_upper, name="BB Upper", line=dict(color="gray", width=0.5, dash="dot")),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=price.index,
+            y=bb_lower,
+            name="BB Lower",
+            line=dict(color="gray", width=0.5, dash="dot"),
+            fill="tonexty",
+            fillcolor="rgba(128,128,128,0.05)",
+        ),
+        row=1,
+        col=1,
+    )
 
 # Entry/Exit markers
 if strategy_name != "无策略（纯图表）":
@@ -255,45 +282,68 @@ if strategy_name != "无策略（纯图表）":
     exit_pts = exits[exits]
 
     if len(entry_pts) > 0:
-        fig.add_trace(go.Scatter(
-            x=entry_pts.index, y=price[entry_pts.index],
-            mode="markers", name="Entry",
-            marker=dict(symbol="triangle-up", size=12, color="#00E676"),
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=entry_pts.index,
+                y=price[entry_pts.index],
+                mode="markers",
+                name="Entry",
+                marker=dict(symbol="triangle-up", size=12, color="#00E676"),
+            ),
+            row=1,
+            col=1,
+        )
 
     if len(exit_pts) > 0:
-        fig.add_trace(go.Scatter(
-            x=exit_pts.index, y=price[exit_pts.index],
-            mode="markers", name="Exit",
-            marker=dict(symbol="triangle-down", size=12, color="#FF1744"),
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=exit_pts.index,
+                y=price[exit_pts.index],
+                mode="markers",
+                name="Exit",
+                marker=dict(symbol="triangle-down", size=12, color="#FF1744"),
+            ),
+            row=1,
+            col=1,
+        )
 
 current_row = 2
 
 # Volume
 if show_volume:
-    colors = ["#26a69a" if c >= o else "#ef5350" for o, c in zip(pdf["open"], pdf["close"])]
-    fig.add_trace(go.Bar(x=pdf.index, y=pdf["volume"], name="Volume",
-                         marker_color=colors, opacity=0.5), row=current_row, col=1)
+    colors = ["#26a69a" if c >= o else "#ef5350" for o, c in zip(pdf["open"], pdf["close"], strict=False)]
+    fig.add_trace(
+        go.Bar(x=pdf.index, y=pdf["volume"], name="Volume", marker_color=colors, opacity=0.5), row=current_row, col=1
+    )
     current_row += 1
 
 # RSI
 if show_rsi:
-    fig.add_trace(go.Scatter(x=rsi.index, y=rsi, name="RSI",
-                             line=dict(color="#9C27B0", width=1)), row=current_row, col=1)
+    fig.add_trace(
+        go.Scatter(x=rsi.index, y=rsi, name="RSI", line=dict(color="#9C27B0", width=1)), row=current_row, col=1
+    )
     fig.add_hline(y=70, line_dash="dash", line_color="red", opacity=0.3, row=current_row, col=1)
     fig.add_hline(y=30, line_dash="dash", line_color="green", opacity=0.3, row=current_row, col=1)
     current_row += 1
 
 # MACD
 if show_macd:
-    fig.add_trace(go.Scatter(x=macd_line.index, y=macd_line, name="MACD",
-                             line=dict(color="#2196F3", width=1)), row=current_row, col=1)
-    fig.add_trace(go.Scatter(x=signal_line.index, y=signal_line, name="Signal",
-                             line=dict(color="#FF9800", width=1)), row=current_row, col=1)
+    fig.add_trace(
+        go.Scatter(x=macd_line.index, y=macd_line, name="MACD", line=dict(color="#2196F3", width=1)),
+        row=current_row,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=signal_line.index, y=signal_line, name="Signal", line=dict(color="#FF9800", width=1)),
+        row=current_row,
+        col=1,
+    )
     colors = ["#26a69a" if v >= 0 else "#ef5350" for v in macd_hist]
-    fig.add_trace(go.Bar(x=macd_hist.index, y=macd_hist, name="Histogram",
-                         marker_color=colors, opacity=0.5), row=current_row, col=1)
+    fig.add_trace(
+        go.Bar(x=macd_hist.index, y=macd_hist, name="Histogram", marker_color=colors, opacity=0.5),
+        row=current_row,
+        col=1,
+    )
 
 # Layout
 fig.update_layout(
@@ -317,10 +367,12 @@ for i in range(1, n_rows + 1):
 
 # 渲染图表，启用滚轮缩放
 chart_config = {
-    "scrollZoom": True,          # 滚轮缩放
-    "displayModeBar": True,      # 显示工具栏
+    "scrollZoom": True,  # 滚轮缩放
+    "displayModeBar": True,  # 显示工具栏
     "modeBarButtonsToAdd": [
-        "drawline", "drawopenpath", "eraseshape"  # 画线工具
+        "drawline",
+        "drawopenpath",
+        "eraseshape",  # 画线工具
     ],
     "modeBarButtonsToRemove": ["lasso2d"],
 }
@@ -341,20 +393,24 @@ if strategy_name != "无策略（纯图表）":
         ep = price.loc[ei]
         xp = price.loc[xi]
         pnl = (xp - ep) / ep * 100
-        trades.append({
-            "Entry Time": ei.strftime("%Y-%m-%d %H:%M"),
-            "Exit Time": xi.strftime("%Y-%m-%d %H:%M"),
-            "Entry $": f"{ep:.2f}",
-            "Exit $": f"{xp:.2f}",
-            "P&L %": f"{pnl:+.2f}%",
-            "Result": "WIN" if pnl > 0 else "LOSS",
-        })
+        trades.append(
+            {
+                "Entry Time": ei.strftime("%Y-%m-%d %H:%M"),
+                "Exit Time": xi.strftime("%Y-%m-%d %H:%M"),
+                "Entry $": f"{ep:.2f}",
+                "Exit $": f"{xp:.2f}",
+                "P&L %": f"{pnl:+.2f}%",
+                "Result": "WIN" if pnl > 0 else "LOSS",
+            }
+        )
 
     if trades:
         trade_df = pd.DataFrame(trades)
         st.dataframe(trade_df, use_container_width=True, hide_index=True)
         wins = sum(1 for t in trades if t["Result"] == "WIN")
-        st.caption(f"{len(trades)} trades | {wins} wins ({wins/len(trades)*100:.0f}%) | {len(trades)-wins} losses")
+        st.caption(
+            f"{len(trades)} trades | {wins} wins ({wins / len(trades) * 100:.0f}%) | {len(trades) - wins} losses"
+        )
     else:
         st.info("No trades in this period")
 
@@ -366,10 +422,10 @@ if strategy_name != "无策略（纯图表）":
         if isinstance(equity, pd.DataFrame):
             equity = equity.iloc[:, 0]
         fig_eq = go.Figure()
-        fig_eq.add_trace(go.Scatter(x=equity.index, y=equity.values, name="Equity",
-                                     fill="tozeroy", line=dict(color="#4CAF50")))
-        fig_eq.update_layout(height=250, template="plotly_dark",
-                              margin=dict(l=50, r=50, t=30, b=30))
+        fig_eq.add_trace(
+            go.Scatter(x=equity.index, y=equity.values, name="Equity", fill="tozeroy", line=dict(color="#4CAF50"))
+        )
+        fig_eq.update_layout(height=250, template="plotly_dark", margin=dict(l=50, r=50, t=30, b=30))
         st.plotly_chart(fig_eq, use_container_width=True)
     except Exception:
         pass
