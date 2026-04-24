@@ -315,10 +315,10 @@ def gate_random_baseline(
         random_returns = []
         rng = np.random.default_rng(42)
         for _ in range(n_random):
-            rand_entries = pd.Series(False, index=price.index)
+            rand_entries = pd.Series(False, index=price.index, dtype=bool)
             rand_indices = rng.choice(len(price) - 50, size=min(n_trades, len(price) // 50), replace=False)
             rand_entries.iloc[rand_indices] = True
-            rand_exits = rand_entries.shift(20).fillna(False)
+            rand_exits = rand_entries.shift(20).fillna(False).astype(bool)
             rp = engine.run(price, rand_entries, rand_exits)
             random_returns.append(compute_metrics(rp)["total_return"])
 
