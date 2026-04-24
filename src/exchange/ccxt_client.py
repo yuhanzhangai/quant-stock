@@ -44,6 +44,7 @@ class CCXTClient:
 
         self._exchange = ccxt.okx(config)
         self._rate_limiter = RateLimiterManager()
+        self._ipv4_session_set = False
         logger.info("CCXT OKX 客户端初始化完成")
 
     async def close(self) -> None:
@@ -52,6 +53,14 @@ class CCXTClient:
         logger.debug("CCXT 客户端已关闭")
 
     async def __aenter__(self) -> "CCXTClient":
+        # Force IPv4 session — avoid IPv6 dynamic address issues with OKX IP whitelist
+        if not self._ipv4_session_set:
+            import aiohttp
+
+            connector = aiohttp.TCPConnector(family=2)  # AF_INET = IPv4 only
+            self._exchange.session = aiohttp.ClientSession(connector=connector)
+            self._ipv4_session_set = True
+            logger.debug("IPv4-only session activated")
         return self
 
     async def __aexit__(self, *args: Any) -> None:
