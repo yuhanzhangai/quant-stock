@@ -1,0 +1,50 @@
+conclusion:
+  concluded_at: '2026-04-24T08:20:36.576227+00:00'
+  reason: 7/7 criteria passed. hybrid_exit promote_to_shadow_paper.
+  status: accepted
+data:
+  data_version: latest
+  symbols:
+  - ETH-USDT
+  timeframe: 5m
+experiment_name: hybrid_exit_candidate_validation
+hypothesis: '在保持 MinSwing v3 entry logic 完全不变的情况下， hybrid_exit (SL→fast_exit→trailing→trend_reversal
+  优先级组合) 可以改善 ETH-USDT 的收益回撤特征。 该实验源于 v2.3R 的研究线索，但本实验必须独立验证， 不允许直接使用 v2.3R 的结果作为
+  promotion 依据。
+
+  '
+notes:
+- v2.3R found hybrid_exit +31.2% vs current +26.5%
+- This experiment must independently verify
+- Only compare current_exit vs hybrid_exit
+params:
+  fixed:
+    fast_ma: 90
+    min_gap: 144
+    profit_thr: 0.3
+    stop_pct: 2.0
+    trail_pct: 2.0
+    trend_ma: 180
+  search: {}
+research_question:
+- hybrid_exit 在 >=3/4 时间窗口上是否优于 current_exit?
+- hybrid_exit 是否改善 profit factor 和 max drawdown?
+- hybrid_exit 在悲观成本下是否存活?
+- hybrid_exit 是否通过 9-gate validation?
+strategy_name: minswing_v3
+strategy_version: 1.1.0
+success_criteria:
+  fee_to_gross_not_worse: true
+  max_drawdown_not_worse: true
+  min_windows_favorable: 3
+  nine_gate_no_error: true
+  pessimistic_cost_survives: true
+  profit_factor_improvement: true
+  random_baseline_pass: true
+validation:
+  cost_stress: true
+  event_backtest: true
+  monte_carlo: true
+  oos: true
+  random_baseline: true
+  walk_forward: true

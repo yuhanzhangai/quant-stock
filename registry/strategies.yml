@@ -101,16 +101,20 @@ research:
 
   - name: hybrid_exit
     file: null
-    status: research_lead
+    status: shadow_paper_candidate
     direction: long
     timeframe: "5m"
     symbols: ["ETH-USDT"]
     relationship_to_minswing: exit_variant (SL→fast_exit→trailing→trend_reversal)
-    source: "v2.3R unexpected finding"
-    reason: "Portfolio +31.2% vs current +26.5%, PF 2.53 vs 2.37, lowest DD. Requires preregistered validation."
+    source: "v2.3R unexpected finding, v2.4 validated"
+    reason: "v2.4: 7/7 criteria passed. Promote to shadow paper with caveats."
     review:
-      last_reviewed_version: v2.3-paper-observation-hardening
+      last_reviewed_version: v2.4-hybrid-exit-candidate-validation
       last_reviewed_at: "2026-04-24"
+      v2_3r_decision: promising_research_lead
+      v2_4_decision: promote_to_shadow_paper
+      v2_4_caveats: "not truly independent data, trade concentration (top5=78.8%), 30d degeneration to fast_exit"
+      next_step: v2.5-shadow-paper
       v2_3r_decision: promising_research_lead
       next_step: v2.4-hybrid-exit-candidate-validation
       production_allowed: false
