@@ -42,5 +42,14 @@ Same as MinSwing v3 (trend MA + RSI + MACD)
 - Decision: remain_candidate (needs longer OOS window)
 - Promotion blocked until 5m data extends beyond 3 months
 
+## v2.2 Paper Calibration (2026-04-24)
+- ETH paper: $63.57 (+27.1%), 93 signals, 77 trades, 6 rejected
+- Outperformed MinSwing v3 ($63.57 vs $62.23) in this window
+- Decision: **remain_candidate** — not promoted because:
+  1. Single paper session = insufficient sample
+  2. ETH single-coin = higher concentration risk
+  3. Possible high trade overlap with MinSwing v3
+  4. Needs multi-window paper observation (v2.3)
+
 ## Config
 config/strategies/fast_exit_eth.yml

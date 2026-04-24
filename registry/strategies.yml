@@ -21,11 +21,13 @@ production:
     reason: "Champion long strategy. Passed OOS, walk-forward, Monte Carlo. Trend MA(180) + RSI + MACD + TP/SL."
     owner_note: "Only allow bug fixes, no silent parameter changes."
     review:
-      last_reviewed_version: v2.1-validation-hardening
+      last_reviewed_version: v2.2-paper-calibration
       last_reviewed_at: "2026-04-24"
       v2_1_decision: confirmed_production
+      v2_2_decision: remain_production
       reproducibility: "3/3 runs identical (sharpe=3.265787, trades=81)"
       gate_result: "6/9 pass (OOS trade_count short, param_stability marginal)"
+      paper_calibration: "ETH +24.5%, SOL +9.4%, signal count matches backtest (93 vs 92)"
 
 candidate:
   - name: fast_exit_eth
@@ -41,12 +43,14 @@ candidate:
       walk_forward: pending
     reason: "ETH-only combo: MinSwing entry + fast MA(90) death cross exit. +34% improvement over baseline."
     review:
-      last_reviewed_version: v2.1-validation-hardening
+      last_reviewed_version: v2.2-paper-calibration
       last_reviewed_at: "2026-04-24"
       v2_1_decision: remain_candidate
+      v2_2_decision: remain_candidate
       gate_result: "7/9 pass (OOS fail = trade_count < 30 due to short test window)"
+      paper_calibration: "ETH +27.1%, outperformed MinSwing but single session insufficient"
       promotion_allowed: false
-      promotion_blocker: "needs longer OOS window (more 5m data)"
+      promotion_blocker: "single session, single coin, possible overlap with MinSwing v3, needs multi-window observation"
 
   - name: short_session_filter
     file: src/strategies/short/short_session_filter.py
@@ -67,11 +71,12 @@ candidate:
       walk_forward: pending
     reason: "Best short strategy. Excludes UTC 13-20 (US afternoon). Stop=3%."
     review:
-      last_reviewed_version: v2.1-validation-hardening
+      last_reviewed_version: v2.2-paper-calibration
       last_reviewed_at: "2026-04-24"
       v2_1_decision: remain_candidate
+      v2_2_decision: candidate_blocked
       validation_status: blocked
-      blocked_reason: "validation pipeline does not support short strategies (vectorbt long-only)"
+      blocked_reason: "validation/paper pipeline does not support short-side workflows"
       promotion_allowed: false
 
   - name: short_trend_follow
@@ -89,11 +94,12 @@ candidate:
       walk_forward: pending
     reason: "Trend-following short for coins where session_filter hurts performance."
     review:
-      last_reviewed_version: v2.1-validation-hardening
+      last_reviewed_version: v2.2-paper-calibration
       last_reviewed_at: "2026-04-24"
       v2_1_decision: remain_candidate_by_no_change
+      v2_2_decision: candidate_blocked
       validation_status: blocked
-      blocked_reason: "current validation pipeline does not support short strategy verification"
+      blocked_reason: "validation/paper pipeline does not support short-side workflows"
       promotion_allowed: false
 
 research:

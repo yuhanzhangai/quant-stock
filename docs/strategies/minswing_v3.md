@@ -49,6 +49,14 @@ ETH-USDT, SOL-USDT, NEAR-USDT, ARB-USDT
 - Parameter stability: 0.4 (marginal, trend_ma neighbors not all profitable)
 - Decision: confirmed_production
 
+## v2.2 Paper Calibration (2026-04-24)
+- ETH paper: $62.23 (+24.5%), 93 signals, 74 trades, 8 rejected
+- SOL paper: $54.71 (+9.4%), 85 signals, 67 trades, 4 rejected
+- Signal count matches backtest (93 vs 92)
+- RiskEngine: all rejections = cooldown_after_losses, 0 false kills
+- Cost ~42% of gross edge, survivable
+- Decision: **remain_production** — paper supports backtest assumptions
+
 ## Production Rules
 - Do not change params without new experiment
 - Stop after 5 consecutive losses (24h cooldown)

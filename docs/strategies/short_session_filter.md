@@ -49,5 +49,11 @@ SOL-USDT, SUI-USDT, ATOM-USDT
 - Decision: remain_candidate (validation_status = blocked)
 - Promotion blocked until short-strategy validation support is added
 
+## v2.2 Paper Calibration (2026-04-24)
+- No paper session run — pipeline does not support short-side workflows
+- Decision: **candidate_blocked** — cannot be promoted or paper-traded until
+  validation/paper pipeline supports short strategies
+- Not rejected — the strategy itself may be valid, but infrastructure can't verify it
+
 ## Config
 config/strategies/short_session_filter.yml
