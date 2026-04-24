@@ -53,11 +53,20 @@ def parse_ohlcv_path(file_path: Path) -> dict:
     except ValueError:
         return {}
 
+    inst_type = parts[idx + 1] if idx + 1 < len(parts) else ""
+    symbol = parts[idx + 2] if idx + 2 < len(parts) else ""
+    # Handle both formats:
+    #   .../symbol/timeframe/year.parquet  (spot with year partition)
+    #   .../symbol/timeframe.parquet       (swap without year partition)
+    raw_tf = parts[idx + 3] if idx + 3 < len(parts) else ""
+    if raw_tf.endswith(".parquet"):
+        raw_tf = Path(raw_tf).stem
+
     return {
         "dataset": "ohlcv",
-        "inst_type": parts[idx + 1] if idx + 1 < len(parts) else "",
-        "symbol": parts[idx + 2] if idx + 2 < len(parts) else "",
-        "timeframe": parts[idx + 3] if idx + 3 < len(parts) else "",
+        "inst_type": inst_type,
+        "symbol": symbol,
+        "timeframe": raw_tf,
     }
 
 
