@@ -1,16 +1,23 @@
 # Changelog
 
+## v2.4.1-decision-amendment (2026-04-24)
+
+Amended v2.4 decision: conditional_promote_to_shadow_paper (not strong pass).
+v2.4 = reproducibility confirmation, not independent validation.
+Updated v2.5 with stricter gates, v2.6 renamed to Evidence Review.
+
 ## v2.4-hybrid-exit-candidate-validation (2026-04-24)
 
 Preregistered validation of hybrid_exit as MinSwing exit_mode candidate.
 
-- Hybrid_exit: 7/7 formal criteria passed → promote_to_shadow_paper
+- Hybrid_exit: 7/7 formal criteria passed → conditional_promote_to_shadow_paper
 - Portfolio: +31.2% vs current +26.5%, PF 2.53 vs 2.37, DD -5.2% vs -5.8%
 - Windowed: 3/4 windows favorable (30d marginal)
 - Cost stress: survives normal + pessimistic
 - 9-gate: 0 ERROR, 7/9 pass for both modes
-- A2 caveats: not truly independent data, trade concentration (top 5 = 78.8% PnL),
-  30d hybrid=fast_exit degeneration. These must be verified in v2.5 shadow paper.
+- A2 caveats: not truly independent data, trade concentration (top5=78.8%),
+  30d hybrid=fast_exit degeneration, parameter_stability FAIL
+- True OOS deferred to v2.5
 
 ## v2.3-paper-observation-hardening (2026-04-24)
 

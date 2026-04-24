@@ -76,7 +76,8 @@ short strategies:  candidate_blocked (pipeline 不支持)
 [x] v2.3R.1 compliance fix (A1-A7)
 [ ] v2.3 Closeout  ←── 当前
 
-[ ] v2.4 Hybrid Exit Candidate Validation (preregistered)
-[ ] v2.5 Shadow Paper (conditional: v2.4=promote_to_shadow_paper)
-[ ] v2.6 Promotion Decision (conditional: v2.5 complete)
+[x] v2.4 Hybrid Exit Candidate Validation (CONDITIONAL PASS)
+[x] v2.4.1 Decision Amendment (conditional_promote_to_shadow_paper)
+[ ] v2.5 True OOS Shadow Paper (stricter gates from v2.4.1)
+[ ] v2.6 Evidence Review (not Promotion Review)
 ```

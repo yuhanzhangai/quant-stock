@@ -101,24 +101,29 @@ research:
 
   - name: hybrid_exit
     file: null
-    status: shadow_paper_candidate
+    status: conditional_shadow_candidate
     direction: long
     timeframe: "5m"
     symbols: ["ETH-USDT"]
     relationship_to_minswing: exit_variant (SL→fast_exit→trailing→trend_reversal)
-    source: "v2.3R unexpected finding, v2.4 validated"
-    reason: "v2.4: 7/7 criteria passed. Promote to shadow paper with caveats."
+    source: "v2.3R unexpected finding"
+    reason: "v2.4 formal criteria 7/7 passed but data not independent from v2.3R."
     review:
-      last_reviewed_version: v2.4-hybrid-exit-candidate-validation
+      last_reviewed_version: v2.4.1-decision-amendment
       last_reviewed_at: "2026-04-24"
       v2_3r_decision: promising_research_lead
-      v2_4_decision: promote_to_shadow_paper
-      v2_4_caveats: "not truly independent data, trade concentration (top5=78.8%), 30d degeneration to fast_exit"
-      next_step: v2.5-shadow-paper
-      v2_3r_decision: promising_research_lead
-      next_step: v2.4-hybrid-exit-candidate-validation
+      v2_4_decision: conditional_promote_to_shadow_paper
+      independent_oos_validated: false
       production_allowed: false
-      integration_allowed: false
+      default_exit_allowed: false
+      optional_live_mode_allowed: false
+      caveats:
+        data_independence: "failed — 100% entry_id overlap with v2.3R"
+        trade_concentration: "top_5_trades_78.8_pct_pnl"
+        differential_trades: "12_of_84"
+        window_30d_drawdown: "hybrid worse than current"
+        parameter_stability: "fail_0.40"
+      required_next_step: v2.5_true_oos_shadow_paper
 
   - name: minute_swing_dual
     file: src/strategies/minute_swing_dual.py

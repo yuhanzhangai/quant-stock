@@ -83,7 +83,10 @@ Hybrid scores higher on 6/9 gates.
 
 ## Decision
 
-### **`promote_to_shadow_paper`** (with caveats from A2 review)
+### **`conditional_promote_to_shadow_paper`** (amended per v2.4.1)
+
+**v2.4 is reproducibility confirmation, not independent validation.**
+The 93 common entries overlap 100% with v2.3R. True OOS must come from v2.5.
 
 ### Reasoning
 

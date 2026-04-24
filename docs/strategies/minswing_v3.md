@@ -57,6 +57,15 @@ ETH-USDT, SOL-USDT, NEAR-USDT, ARB-USDT
 - Cost ~42% of gross edge, survivable
 - Decision: **remain_production** — paper supports backtest assumptions
 
+## v2.4 Hybrid Exit Review (2026-04-24)
+- HybridExit (SL→fast_exit→trailing→trend_reversal) formally outperformed current_exit
+- Portfolio: +31.2% vs +26.5%, PF 2.53 vs 2.37
+- BUT v2.4 data = v2.3R data (not independent), trade concentration top5=78.8%
+- Decision: **conditional_promote_to_shadow_paper**
+- current_exit remains production default
+- hybrid_exit may enter v2.5 shadow only
+- No production/default/optional mode allowed from v2.4 alone
+
 ## Production Rules
 - Do not change params without new experiment
 - Stop after 5 consecutive losses (24h cooldown)
