@@ -30,27 +30,6 @@ production:
       paper_calibration: "ETH +24.5%, SOL +9.4%, signal count matches backtest (93 vs 92)"
 
 candidate:
-  - name: fast_exit_eth
-    file: src/strategies/combo/fast_exit.py
-    status: candidate
-    direction: long
-    timeframe: "5m"
-    symbols:
-      - ETH-USDT
-    sharpe: 3.753
-    validation:
-      oos: pending
-      walk_forward: pending
-    reason: "ETH-only combo: MinSwing entry + fast MA(90) death cross exit. +34% improvement over baseline."
-    review:
-      last_reviewed_version: v2.2-paper-calibration
-      last_reviewed_at: "2026-04-24"
-      v2_1_decision: remain_candidate
-      v2_2_decision: remain_candidate
-      gate_result: "7/9 pass (OOS fail = trade_count < 30 due to short test window)"
-      paper_calibration: "ETH +27.1%, outperformed MinSwing but single session insufficient"
-      promotion_allowed: false
-      promotion_blocker: "single session, single coin, possible overlap with MinSwing v3, needs multi-window observation"
 
   - name: short_session_filter
     file: src/strategies/short/short_session_filter.py
@@ -103,6 +82,40 @@ candidate:
       promotion_allowed: false
 
 research:
+  - name: fast_exit_eth
+    file: src/strategies/combo/fast_exit.py
+    status: research
+    previous_status: candidate
+    direction: long
+    timeframe: "5m"
+    symbols: ["ETH-USDT"]
+    relationship_to_minswing: exit_variant_only
+    entry_overlap_with_minswing: 0.96
+    reason: "v2.3R proved +0.009%/trade over current (noise). 4/7 promotion criteria failed. Not eligible for integration."
+    review:
+      last_reviewed_version: v2.3-paper-observation-hardening
+      last_reviewed_at: "2026-04-24"
+      v2_3r_decision: remain_research_exit_mode
+      production_allowed: false
+      integration_allowed: false
+
+  - name: hybrid_exit
+    file: null
+    status: research_lead
+    direction: long
+    timeframe: "5m"
+    symbols: ["ETH-USDT"]
+    relationship_to_minswing: exit_variant (SL→fast_exit→trailing→trend_reversal)
+    source: "v2.3R unexpected finding"
+    reason: "Portfolio +31.2% vs current +26.5%, PF 2.53 vs 2.37, lowest DD. Requires preregistered validation."
+    review:
+      last_reviewed_version: v2.3-paper-observation-hardening
+      last_reviewed_at: "2026-04-24"
+      v2_3r_decision: promising_research_lead
+      next_step: v2.4-hybrid-exit-candidate-validation
+      production_allowed: false
+      integration_allowed: false
+
   - name: minute_swing_dual
     file: src/strategies/minute_swing_dual.py
     status: research

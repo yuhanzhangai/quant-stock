@@ -1,5 +1,27 @@
 # Changelog
 
+## v2.3-paper-observation-hardening (2026-04-24)
+
+Paper observation + historical replay maturity.
+
+### Key Findings
+- FastExit ETH: 96% entry overlap with MinSwing → exit_variant_only
+- FastExit: +0.009%/trade over current (noise), 4/7 criteria failed → demoted to research
+- HybridExit (unexpected): +31.2% vs current +26.5%, PF 2.53, best exit_mode → forwarded to v2.4
+- 9-gate: random_baseline fixed, all gates 0 ERROR
+
+### Infrastructure
+- v2.3R.1 compliance fix: portfolio artifacts persisted, backtest_runs written,
+  windowed/cost summaries saved, 9-gate validation objects aligned
+- New modules: src/replay/ (common_entries, exit_modes, paired_replay, portfolio_replay)
+- Tests: 49/49 pass (9 new replay tests)
+
+### Strategy Status Changes
+- FastExit ETH: candidate → research (remain_research_exit_mode)
+- HybridExit: new → research_lead (promising, requires v2.4 validation)
+- MinSwing v3: remain_production
+- Short strategies: remain candidate_blocked
+
 ## v2.2-paper-calibration (2026-04-24)
 
 Paper trading calibration against live OKX data.
