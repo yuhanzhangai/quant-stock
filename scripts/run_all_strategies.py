@@ -1,4 +1,9 @@
-"""多策略回测：跑所有策略并比较。"""
+"""多策略回测：跑所有策略并比较。
+
+⚠️ PAUSED (2026-04-23)
+当前阶段不继续扩张策略数量。
+只有在完成 validation pipeline (Checkpoint 7) 后，才允许重新启用。
+"""
 
 import sys
 from pathlib import Path

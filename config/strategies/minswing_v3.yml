@@ -1,0 +1,66 @@
+# MinSwing v3 — Frozen Production Config
+# Version: 1.1.0
+# Last modified: 2026-04-23
+# DO NOT modify without creating a new experiment config.
+
+strategy_name: minswing_v3
+strategy_version: "1.1.0"
+status: production
+direction: long
+timeframe: "5m"
+
+# Entry logic
+entry:
+  trend_ma: 180          # SMA period for trend filter (price > SMA → allow long)
+  rsi_period: 14         # RSI period for bounce detection
+  macd_fast: 12          # MACD fast EMA
+  macd_slow: 26          # MACD slow EMA
+  macd_signal: 9         # MACD signal line
+
+# Risk management
+risk:
+  stop_loss_pct: 2.0     # Fixed stop loss (%)
+  min_gap: 144           # Minimum bars between entries (12h at 5m)
+
+# Per-coin exit config
+symbols:
+  ETH-USDT:
+    trailing_stop: true
+    trailing_stop_pct: 2.0
+    take_profit_pct: null      # No fixed TP, trailing handles exit
+    notes: "Trailing stop outperforms fixed TP by +17%"
+
+  SOL-USDT:
+    trailing_stop: false
+    trailing_stop_pct: null
+    take_profit_pct: 8.0
+    notes: "Fixed TP=8% works better than trailing for SOL"
+
+  NEAR-USDT:
+    trailing_stop: true
+    trailing_stop_pct: 2.0
+    take_profit_pct: null
+    notes: "Trailing stop outperforms fixed TP by +34%"
+
+  ARB-USDT:
+    trailing_stop: false
+    trailing_stop_pct: null
+    take_profit_pct: 8.0
+    notes: "Fixed TP=8% works better for ARB"
+
+# Validation history
+validation:
+  oos_sharpe: 2.13
+  walk_forward: pass
+  monte_carlo_profit_prob: 0.72
+  hurst_exponent: 0.49
+  factor_ablation:
+    trend_ma: "+6.2 sharpe contribution"
+    rsi: "+1.2 sharpe contribution"
+    macd: "+1.2 sharpe contribution"
+
+notes:
+  - "Baseline production config."
+  - "Do not modify without creating a new experiment config."
+  - "Simple > Complex: trend_MA alone is the dominant factor."
+  - "5m markets are near-random (Hurst ~0.49), risk management > signal quality."

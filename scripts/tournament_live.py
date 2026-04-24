@@ -1,4 +1,9 @@
-"""淘汰赛实盘：32 个策略同时跑 paper trade。
+"""
+⚠️ PAUSED (2026-04-23)
+当前阶段不继续扩张策略数量。
+只有在完成 validation pipeline (Checkpoint 7) 后，才允许重新启用。
+
+淘汰赛实盘：32 个策略同时跑 paper trade。
 
 每 5 分钟：
 1. 拉最新 5m 数据

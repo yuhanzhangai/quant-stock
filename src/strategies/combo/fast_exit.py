@@ -1,4 +1,16 @@
-"""FastExit 组合策略：MinSwing 入场 + 快 MA 死叉早出场。
+"""
+Strategy Status: Candidate
+Strategy Name: fast_exit_eth
+Strategy Version: 1.0.0
+Research State: Needs more OOS validation
+Allowed Changes:
+- bug fix
+- logging
+Not Allowed:
+- silent parameter changes
+- unrecorded optimization
+
+FastExit 组合策略：MinSwing 入场 + 快 MA 死叉早出场。
 
 仅 ETH 有效（+34% 改进），其他币用原版 MinSwing。
 """

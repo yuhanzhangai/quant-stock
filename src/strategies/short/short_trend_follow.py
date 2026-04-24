@@ -1,4 +1,16 @@
-"""趋势跟空策略：MA 死叉 + MACD 死叉双重确认做空。
+"""
+Strategy Status: Candidate
+Strategy Name: short_trend_follow
+Strategy Version: 1.0.0
+Research State: Needs full validation pipeline
+Allowed Changes:
+- bug fix
+- logging
+Not Allowed:
+- silent parameter changes
+- unrecorded optimization
+
+趋势跟空策略：MA 死叉 + MACD 死叉双重确认做空。
 
 设计理念：
 - 不猜顶/不抄底，只在趋势确认后跟随

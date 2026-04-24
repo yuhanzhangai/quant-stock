@@ -1,4 +1,17 @@
-"""MinSwing v3 最终版：集成 55 轮迭代的所有发现。
+"""
+Strategy Status: Production
+Strategy Name: minswing_v3
+Strategy Version: 1.1.0
+Research State: Frozen baseline
+Allowed Changes:
+- bug fix
+- logging
+- compatibility
+Not Allowed:
+- silent parameter changes
+- unrecorded optimization
+
+MinSwing v3 最终版：集成 55 轮迭代的所有发现。
 
 核心公式（经过验证）：
   入场 = trend_MA(核心) + (RSI bounce | MACD cross)(消除随机性)

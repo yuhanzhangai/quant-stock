@@ -1,0 +1,145 @@
+# Strategy Registry
+# Last updated: 2026-04-23
+# Status: production | candidate | research | archive
+
+production:
+  - name: minswing_v3
+    file: src/strategies/minswing_v3_final.py
+    status: production
+    direction: long
+    timeframe: "5m"
+    symbols:
+      - ETH-USDT
+      - SOL-USDT
+      - NEAR-USDT
+      - ARB-USDT
+    sharpe: 2.13
+    validation:
+      oos: pass
+      walk_forward: pass
+      monte_carlo: pass
+    reason: "Champion long strategy. Passed OOS, walk-forward, Monte Carlo. Trend MA(180) + RSI + MACD + TP/SL."
+    owner_note: "Only allow bug fixes, no silent parameter changes."
+
+candidate:
+  - name: fast_exit_eth
+    file: src/strategies/combo/fast_exit.py
+    status: candidate
+    direction: long
+    timeframe: "5m"
+    symbols:
+      - ETH-USDT
+    sharpe: 3.753
+    validation:
+      oos: pending
+      walk_forward: pending
+    reason: "ETH-only combo: MinSwing entry + fast MA(90) death cross exit. +34% improvement over baseline. Needs more OOS validation."
+
+  - name: short_session_filter
+    file: src/strategies/short/short_session_filter.py
+    status: candidate
+    direction: short
+    timeframe: "5m"
+    symbols:
+      - ARB-USDT
+      - NEAR-USDT
+      - FIL-USDT
+      - DOT-USDT
+      - PEPE-USDT
+      - OP-USDT
+      - ETH-USDT
+    sharpe: 2.83
+    validation:
+      oos: pending
+      walk_forward: pending
+    reason: "Best short strategy. Excludes UTC 13-20 (US afternoon). Stop=3%. Verified by independent review."
+
+  - name: short_trend_follow
+    file: src/strategies/short/short_trend_follow.py
+    status: candidate
+    direction: short
+    timeframe: "5m"
+    symbols:
+      - SOL-USDT
+      - SUI-USDT
+      - ATOM-USDT
+    sharpe: 2.35
+    validation:
+      oos: pending
+      walk_forward: pending
+    reason: "Trend-following short for coins where session_filter hurts performance."
+
+research:
+  - name: minute_swing_dual
+    file: src/strategies/minute_swing_dual.py
+    status: research
+    direction: long
+    timeframe: "5m"
+    reason: "Short-signal exit enhancement of MinSwing. Too similar to v3 for simultaneous production."
+
+  - name: extreme_reversal
+    file: src/strategies/extreme_reversal.py
+    status: research
+    direction: long
+    timeframe: "5m"
+    reason: "Crash dip buying. Works in specific conditions but low trade count."
+
+  - name: aggressive_momentum_4h
+    file: src/strategies/long/aggressive_momentum.py
+    status: research
+    direction: long
+    timeframe: "4h"
+    reason: "Best 4h strategy (OOS +0.572). Needs separate research track for medium-term."
+
+  - name: ichimoku_momentum_4h
+    file: src/strategies/long/ichimoku_momentum.py
+    status: research
+    direction: long
+    timeframe: "4h"
+    reason: "Second 4h strategy (OOS +0.443). Robust but lower priority."
+
+  - name: regime_filter
+    file: null
+    status: research
+    reason: "Future research: market regime detection to filter signals."
+
+  - name: exit_optimization
+    file: null
+    status: research
+    reason: "Future research: systematic exit strategy improvement."
+
+archive:
+  - name: long_strategy_zoo
+    path: src/strategies/long/
+    count: 41
+    reason: "Historical iteration archive. 40+ strategies tested, most failed OOS validation. Do not use for production. Keep for reference only."
+
+  - name: short_archive
+    files:
+      - src/strategies/short/short_rsi_overbought.py
+      - src/strategies/short/short_swing.py
+      - src/strategies/short/short_swing_trail.py
+      - src/strategies/short/short_vol_atr.py
+    reason: "Weaker short strategies. session_filter and trend_follow dominate."
+
+  - name: combo_archive
+    files:
+      - src/strategies/combo/fund_mode.py
+      - src/strategies/combo/long_short_auto.py
+    reason: "Fund mode didn't work. Long/short auto failed (signals don't overlap)."
+
+  - name: meta_strategies
+    path: src/strategies/meta/
+    count: 6
+    reason: "Routing/ensemble strategies. Not validated through full pipeline."
+
+  - name: tsla_experiment
+    path: src/strategies/us_stock/
+    reason: "Cross-market TSLA news experiment. Separate research track."
+
+  - name: overfit_strategies
+    note: "Ichimoku standalone (+0.89 IS / -0.37 OOS), MACD_Hist (+0.69 / -0.69), MomBreakout (+1.15 / -0.68). CONFIRMED OVERFIT. Do not reactivate."
+
+# Tournament scripts: PAUSED
+# scripts/tournament.py, tournament_live.py, short_iterate.py, run_all_strategies.py
+# Do not resume until validation pipeline (Checkpoint 7) is complete.

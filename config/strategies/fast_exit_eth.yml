@@ -1,0 +1,45 @@
+# FastExit ETH — Frozen Candidate Config
+# Version: 1.0.0
+# Last modified: 2026-04-23
+# DO NOT modify without creating a new experiment config.
+
+strategy_name: fast_exit_eth
+strategy_version: "1.0.0"
+status: candidate
+direction: long
+timeframe: "5m"
+
+# Entry: same as MinSwing v3
+entry:
+  trend_ma: 180
+  rsi_period: 14
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+
+# Exit: fast MA death cross early exit
+exit:
+  fast_ma: 90             # Fast moving average period
+  profit_threshold: 0.3   # Minimum profit (%) before allowing fast exit
+  stop_loss_pct: 2.0
+  take_profit_pct: 8.0
+
+# Risk
+risk:
+  min_gap: 144
+
+# Universe
+symbols:
+  - ETH-USDT
+
+# Validation
+validation:
+  sharpe: 3.753
+  improvement_vs_baseline: "+34%"
+  oos: pending
+  walk_forward: pending
+
+notes:
+  - "ETH-only strategy. Other coins use standard MinSwing v3."
+  - "Fast MA(90) death cross triggers early profit-taking when pnl > 0.3%."
+  - "Needs more OOS validation before promotion to production."

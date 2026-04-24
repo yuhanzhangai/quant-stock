@@ -1,4 +1,16 @@
-"""时段过滤做空策略：利用亚洲时段信号质量更高的发现。
+"""
+Strategy Status: Candidate
+Strategy Name: short_session_filter
+Strategy Version: 1.0.0
+Research State: Needs full validation pipeline
+Allowed Changes:
+- bug fix
+- logging
+Not Allowed:
+- silent parameter changes
+- unrecorded optimization
+
+时段过滤做空策略：利用亚洲时段信号质量更高的发现。
 
 来自 v3 研究：亚洲时段(UTC 0-8)信号质量最高(68%胜率)。
 本策略在 trend_follow 基础上加入时段过滤，只在特定时段入场。

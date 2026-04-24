@@ -1,0 +1,55 @@
+# Short Session Filter — Frozen Candidate Config
+# Version: 1.0.0
+# Last modified: 2026-04-23
+# DO NOT modify without creating a new experiment config.
+
+strategy_name: short_session_filter
+strategy_version: "1.0.0"
+status: candidate
+direction: short
+timeframe: "5m"
+
+# Entry logic
+entry:
+  fast_ma: 84
+  slow_ma: 180
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  session_start: 0        # UTC hour (inclusive)
+  session_end: 12          # UTC hour (exclusive) — excludes US afternoon UTC 13-20
+
+# Risk management
+risk:
+  stop_loss_pct: 3.0       # IMPORTANT: stop=7% is deceptive (5x leverage × 7% = 35% loss)
+  take_profit_pct: 10.0
+  trailing_stop_pct: 1.0
+  min_gap: 288             # 24h at 5m
+
+# Universe (per-coin routing)
+symbols:
+  - ARB-USDT
+  - NEAR-USDT
+  - FIL-USDT
+  - DOT-USDT
+  - PEPE-USDT
+  - OP-USDT
+  - ETH-USDT
+
+# For these coins, use short_trend_follow instead:
+excluded_symbols:
+  - SOL-USDT
+  - SUI-USDT
+  - ATOM-USDT
+
+# Validation
+validation:
+  sharpe: 2.83
+  session_filter_effect: "+0.87 sharpe vs no filter"
+  oos: pending
+  walk_forward: pending
+
+notes:
+  - "Excluding UTC 13-20 (US afternoon) boosts sharpe by +0.87"
+  - "stop=3% is the safe choice; stop=7% looks better but 5x leverage = 35% loss per trade"
+  - "SOL/SUI/ATOM should use trend_follow instead (session filter hurts these coins)"
