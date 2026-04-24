@@ -1,0 +1,316 @@
+"""标准化回测输出。
+
+每次回测输出统一结构:
+data/research/backtests/run_id=xxx/
+  config.yml
+  metrics.json
+  trades.parquet
+  equity.parquet
+"""
+
+import json
+import subprocess
+import uuid
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+import pandas as pd
+import polars as pl
+import vectorbt as vbt
+import yaml
+from loguru import logger
+
+from src.backtest.metrics import compute_metrics
+
+OUTPUT_DIR = Path("data/research/backtests")
+DB_PATH = Path("data/meta/research.duckdb")
+
+
+def generate_run_id(strategy_name: str, symbol: str, purpose: str = "baseline") -> str:
+    """生成人类可读 run_id。
+
+    格式: YYYYMMDD_strategy_symbol_purpose_seq
+    """
+    date = datetime.now(tz=UTC).strftime("%Y%m%d")
+    symbol_short = symbol.replace("-USDT", "").lower()
+    seq = uuid.uuid4().hex[:6]
+    return f"{date}_{strategy_name}_{symbol_short}_{purpose}_{seq}"
+
+
+def save_config(
+    run_dir: Path,
+    run_id: str,
+    strategy_name: str,
+    strategy_version: str,
+    symbol: str,
+    timeframe: str,
+    params: dict,
+    data_version: str = "",
+    cost_model: str = "okx_spot",
+    **extra: Any,
+) -> Path:
+    """保存回测配置 YAML。"""
+    config = {
+        "run_id": run_id,
+        "strategy_name": strategy_name,
+        "strategy_version": strategy_version,
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "params": params,
+        "data_version": data_version,
+        "cost_model": cost_model,
+        "code_commit": _get_git_commit(),
+        "created_at": datetime.now(tz=UTC).isoformat(),
+    }
+    config.update(extra)
+
+    path = run_dir / "config.yml"
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
+
+    return path
+
+
+def save_metrics(
+    run_dir: Path,
+    run_id: str,
+    strategy_name: str,
+    strategy_version: str,
+    symbol: str,
+    timeframe: str,
+    portfolio: vbt.Portfolio,
+    initial_cash: float = 50.0,
+    leverage: int = 5,
+) -> dict:
+    """保存标准化 metrics.json。"""
+    metrics = compute_metrics(portfolio)
+
+    # Extract trade-level stats
+    trades = portfolio.trades.records_readable
+    trade_returns = []
+    if len(trades) > 0 and "Return" in trades.columns:
+        trade_returns = trades["Return"].dropna().tolist()
+
+    avg_win = 0.0
+    avg_loss = 0.0
+    if trade_returns:
+        wins = [r for r in trade_returns if r > 0]
+        losses = [r for r in trade_returns if r < 0]
+        avg_win = sum(wins) / len(wins) if wins else 0.0
+        avg_loss = sum(losses) / len(losses) if losses else 0.0
+
+    output = {
+        "run_id": run_id,
+        "strategy_name": strategy_name,
+        "strategy_version": strategy_version,
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "initial_cash": initial_cash,
+        "leverage": leverage,
+        "net_return": round(metrics["total_return"], 6),
+        "sharpe": round(metrics["sharpe_ratio"], 4),
+        "sortino": round(metrics["sortino_ratio"], 4),
+        "max_drawdown": round(-metrics["max_drawdown_pct"] / 100, 4),
+        "profit_factor": _safe_profit_factor(trade_returns),
+        "win_rate": round(metrics["win_rate_pct"] / 100, 4),
+        "avg_win": round(avg_win, 6),
+        "avg_loss": round(avg_loss, 6),
+        "expectancy": round(
+            (avg_win * len([r for r in trade_returns if r > 0]) + avg_loss * len([r for r in trade_returns if r < 0]))
+            / max(len(trade_returns), 1),
+            6,
+        ),
+        "trade_count": metrics["total_trades"],
+        "created_at": datetime.now(tz=UTC).isoformat(),
+    }
+
+    path = run_dir / "metrics.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+
+    logger.info(f"Metrics saved: sharpe={output['sharpe']}, trades={output['trade_count']}")
+    return output
+
+
+def save_trades(run_dir: Path, run_id: str, portfolio: vbt.Portfolio, symbol: str) -> Path | None:
+    """保存 trades.parquet。"""
+    try:
+        trades = portfolio.trades.records_readable
+        if len(trades) == 0:
+            logger.debug("No trades to save")
+            return None
+
+        # Standardize columns
+        trade_data = []
+        for idx, row in trades.iterrows():
+            trade_data.append(
+                {
+                    "run_id": run_id,
+                    "trade_id": idx,
+                    "symbol": symbol,
+                    "side": "long",
+                    "entry_ts": str(row.get("Entry Timestamp", "")),
+                    "exit_ts": str(row.get("Exit Timestamp", "")),
+                    "entry_price": float(row.get("Avg Entry Price", 0)),
+                    "exit_price": float(row.get("Avg Exit Price", 0)),
+                    "size": float(row.get("Size", 0)),
+                    "gross_pnl": float(row.get("PnL", 0)),
+                    "return_pct": float(row.get("Return", 0)) * 100,
+                    "exit_reason": str(row.get("Status", "unknown")),
+                }
+            )
+
+        df = pl.DataFrame(trade_data)
+        path = run_dir / "trades.parquet"
+        df.write_parquet(str(path))
+        logger.debug(f"Trades saved: {len(trade_data)} trades")
+        return path
+    except Exception as e:
+        logger.warning(f"Could not save trades: {e}")
+        return None
+
+
+def save_equity(run_dir: Path, run_id: str, portfolio: vbt.Portfolio) -> Path:
+    """保存 equity.parquet。"""
+    equity_series = portfolio.value()
+    if isinstance(equity_series, pd.DataFrame):
+        equity_series = equity_series.iloc[:, 0]
+
+    eq_df = pd.DataFrame(
+        {
+            "ts": equity_series.index,
+            "equity": equity_series.values,
+        }
+    )
+
+    # Add drawdown
+    running_max = equity_series.cummax()
+    drawdown = (equity_series - running_max) / running_max
+    eq_df["drawdown"] = drawdown.values
+    eq_df["run_id"] = run_id
+
+    pl_df = pl.from_pandas(eq_df)
+    path = run_dir / "equity.parquet"
+    pl_df.write_parquet(str(path))
+    logger.debug(f"Equity saved: {len(eq_df)} bars")
+    return path
+
+
+def save_to_db(metrics: dict) -> None:
+    """写入 research.duckdb backtest_runs 表。"""
+    if not DB_PATH.exists():
+        logger.warning("research.duckdb not found, skipping DB write")
+        return
+
+    import duckdb
+
+    conn = duckdb.connect(str(DB_PATH))
+    backtest_id = f"bt_{uuid.uuid4().hex[:12]}"
+
+    conn.execute(
+        """
+        INSERT INTO backtest_runs
+        (backtest_id, run_id, strategy_name, symbol, timeframe,
+         initial_cash, net_return, sharpe, sortino, max_drawdown,
+         profit_factor, win_rate, expectancy, trade_count,
+         avg_trade_return, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            backtest_id,
+            metrics["run_id"],
+            metrics["strategy_name"],
+            metrics["symbol"],
+            metrics["timeframe"],
+            metrics["initial_cash"],
+            metrics["net_return"],
+            metrics["sharpe"],
+            metrics["sortino"],
+            metrics["max_drawdown"],
+            metrics["profit_factor"],
+            metrics["win_rate"],
+            metrics["expectancy"],
+            metrics["trade_count"],
+            metrics.get("avg_win", 0),
+            metrics["created_at"],
+        ],
+    )
+    conn.close()
+    logger.info(f"Backtest saved to DB: {backtest_id}")
+
+
+def save_all(
+    run_id: str,
+    strategy_name: str,
+    strategy_version: str,
+    symbol: str,
+    timeframe: str,
+    params: dict,
+    portfolio: vbt.Portfolio,
+    initial_cash: float = 50.0,
+    leverage: int = 5,
+    data_version: str = "",
+    cost_model: str = "okx_spot",
+    write_db: bool = True,
+) -> Path:
+    """一键保存所有标准化输出。"""
+    run_dir = OUTPUT_DIR / f"run_id={run_id}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    save_config(
+        run_dir,
+        run_id,
+        strategy_name,
+        strategy_version,
+        symbol,
+        timeframe,
+        params,
+        data_version,
+        cost_model,
+    )
+
+    metrics = save_metrics(
+        run_dir,
+        run_id,
+        strategy_name,
+        strategy_version,
+        symbol,
+        timeframe,
+        portfolio,
+        initial_cash,
+        leverage,
+    )
+
+    save_trades(run_dir, run_id, portfolio, symbol)
+    save_equity(run_dir, run_id, portfolio)
+
+    if write_db:
+        metrics["timeframe"] = timeframe
+        save_to_db(metrics)
+
+    logger.info(f"Backtest output saved to: {run_dir}")
+    return run_dir
+
+
+def _get_git_commit() -> str:
+    """获取当前 git commit hash。"""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return result.stdout.strip() if result.returncode == 0 else "unknown"
+    except Exception:
+        return "unknown"
+
+
+def _safe_profit_factor(returns: list[float]) -> float:
+    """安全计算 profit factor。"""
+    gross_win = sum(r for r in returns if r > 0)
+    gross_loss = abs(sum(r for r in returns if r < 0))
+    if gross_loss == 0:
+        return 0.0
+    return round(gross_win / gross_loss, 4)
