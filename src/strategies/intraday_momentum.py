@@ -1,4 +1,9 @@
-"""日内动量效应：基于学术研究的分钟线策略。
+"""
+Strategy Status: Archive
+Strategy Name: intraday_momentum
+Research State: Academic-based, not validated through pipeline
+
+日内动量效应：基于学术研究的分钟线策略。
 
 来源: ScienceDirect 论文 "Intraday return predictability in cryptocurrency"
 发现: 前几个小时的方向预测后几个小时的方向（日内动量）

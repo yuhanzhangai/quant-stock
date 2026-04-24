@@ -1,4 +1,9 @@
-"""极端波动后均值回归策略。
+"""
+Strategy Status: Research
+Strategy Name: extreme_reversal
+Research State: Works in specific conditions but low trade count
+
+极端波动后均值回归策略。
 
 大跌后反弹是 crypto 最可靠的模式之一。
 检测极端下跌（N 日跌幅 > X%），在企稳后入场。

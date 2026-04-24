@@ -1,4 +1,9 @@
-"""MinSwing 双向版：趋势向上做多，趋势向下做空。
+"""
+Strategy Status: Research
+Strategy Name: minute_swing_dual
+Research State: Too similar to MinSwing v3 for simultaneous production
+
+MinSwing 双向版：趋势向上做多，趋势向下做空。
 
 永续合约天然支持做空，不利用等于浪费一半机会。
 做空逻辑是做多的镜像：

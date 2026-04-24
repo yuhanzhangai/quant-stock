@@ -108,6 +108,13 @@ research:
     status: research
     reason: "Future research: systematic exit strategy improvement."
 
+  - name: intraday_momentum
+    file: src/strategies/intraday_momentum.py
+    status: archive
+    direction: long
+    timeframe: "5m"
+    reason: "Academic paper-based intraday momentum. Not validated through pipeline."
+
 archive:
   - name: long_strategy_zoo
     path: src/strategies/long/
