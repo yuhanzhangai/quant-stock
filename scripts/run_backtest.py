@@ -8,13 +8,15 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.strategies.trend_ma import TrendMAStrategy, trend_ma_signal_func
+
 from config.settings import get_settings
 from src.backtest.costs import OKX_SPOT
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.backtest.reports import generate_report
+from src.backtest.standardized_output import generate_run_id, save_all
 from src.data_quality.checks import has_critical_failure, run_all_checks
-from src.strategies.trend_ma import TrendMAStrategy, trend_ma_signal_func
 from src.storage.parquet_writer import ParquetWriter
 
 
@@ -46,6 +48,7 @@ def load_price_data(symbol: str, timeframe: str) -> pd.Series:
 def get_demo_price() -> pd.Series:
     """生成模拟价格数据用于演示。"""
     import numpy as np
+
     np.random.seed(42)
     dates = pd.date_range("2024-01-01", periods=2000, freq="1h", tz="UTC")
     returns = np.random.normal(0.0001, 0.01, 2000)
@@ -80,6 +83,18 @@ def main() -> None:
     report_path = generate_report(portfolio, title="BTC-USDT TrendMA 10-50")
     logger.info(f"报告: {report_path}")
 
+    # 标准化输出
+    run_id = generate_run_id("trend_ma", "BTC-USDT", "demo")
+    save_all(
+        run_id=run_id,
+        strategy_name="trend_ma",
+        strategy_version="1.0.0",
+        symbol="BTC-USDT",
+        timeframe="1h",
+        params={"short_window": 10, "long_window": 50},
+        portfolio=portfolio,
+    )
+
     # 2. 参数搜索
     logger.info("\n--- 参数网格搜索 ---")
     param_grid = {
@@ -87,9 +102,7 @@ def main() -> None:
         "long_window": [50, 100, 200],
     }
 
-    results_df, best_params = engine.run_grid_search(
-        price, trend_ma_signal_func, param_grid
-    )
+    results_df, best_params = engine.run_grid_search(price, trend_ma_signal_func, param_grid)
 
     logger.info(f"\n最优参数: {best_params}")
     logger.info("\n全部结果:")

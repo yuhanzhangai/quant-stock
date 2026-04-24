@@ -8,6 +8,7 @@ data/research/backtests/run_id=xxx/
   equity.parquet
 """
 
+import contextlib
 import json
 import subprocess
 import uuid
@@ -100,28 +101,67 @@ def save_metrics(
         avg_win = sum(wins) / len(wins) if wins else 0.0
         avg_loss = sum(losses) / len(losses) if losses else 0.0
 
+    # Date range from portfolio index
+    idx = portfolio.value().index
+    start_date = str(idx[0])[:10] if len(idx) > 0 else ""
+    end_date = str(idx[-1])[:10] if len(idx) > 0 else ""
+
+    # Calmar ratio
+    calmar = 0.0
+    ann_return = metrics["total_return"]
+    dd = metrics["max_drawdown_pct"] / 100
+    if dd > 0:
+        calmar = round(ann_return / dd, 4)
+
+    # Consecutive losses + avg holding bars
+    max_consec_losses = 0
+    avg_holding_bars = 0
+    if trade_returns:
+        streak = 0
+        for r in trade_returns:
+            if r < 0:
+                streak += 1
+                max_consec_losses = max(max_consec_losses, streak)
+            else:
+                streak = 0
+        # Holding bars from trade records
+        if "Entry Idx" in trades.columns and "Exit Idx" in trades.columns:
+            holding = (trades["Exit Idx"] - trades["Entry Idx"]).dropna()
+            avg_holding_bars = int(holding.mean()) if len(holding) > 0 else 0
+
+    # Fee total (from portfolio)
+    fee_total = 0.0
+    with contextlib.suppress(Exception):
+        fee_total = float(portfolio.trades.records_readable.get("Fees Paid", pd.Series([0])).sum())
+
+    n_wins = len([r for r in trade_returns if r > 0])
+    wr = n_wins / max(len(trade_returns), 1)
+
     output = {
         "run_id": run_id,
         "strategy_name": strategy_name,
         "strategy_version": strategy_version,
         "symbol": symbol,
         "timeframe": timeframe,
+        "start": start_date,
+        "end": end_date,
         "initial_cash": initial_cash,
         "leverage": leverage,
         "net_return": round(metrics["total_return"], 6),
         "sharpe": round(metrics["sharpe_ratio"], 4),
         "sortino": round(metrics["sortino_ratio"], 4),
+        "calmar": calmar,
         "max_drawdown": round(-metrics["max_drawdown_pct"] / 100, 4),
         "profit_factor": _safe_profit_factor(trade_returns),
-        "win_rate": round(metrics["win_rate_pct"] / 100, 4),
+        "win_rate": round(wr, 4),
         "avg_win": round(avg_win, 6),
         "avg_loss": round(avg_loss, 6),
-        "expectancy": round(
-            (avg_win * len([r for r in trade_returns if r > 0]) + avg_loss * len([r for r in trade_returns if r < 0]))
-            / max(len(trade_returns), 1),
-            6,
-        ),
+        "expectancy": round(avg_win * wr + avg_loss * (1 - wr), 6),
         "trade_count": metrics["total_trades"],
+        "avg_holding_bars": avg_holding_bars,
+        "max_consecutive_losses": max_consec_losses,
+        "fee_total": round(fee_total, 4),
+        "slippage_total": 0.0,
         "created_at": datetime.now(tz=UTC).isoformat(),
     }
 
@@ -144,6 +184,10 @@ def save_trades(run_dir: Path, run_id: str, portfolio: vbt.Portfolio, symbol: st
         # Standardize columns
         trade_data = []
         for idx, row in trades.iterrows():
+            gross = float(row.get("PnL", 0))
+            fee = float(row.get("Fees Paid", 0))
+            entry_idx = int(row.get("Entry Idx", 0))
+            exit_idx = int(row.get("Exit Idx", 0))
             trade_data.append(
                 {
                     "run_id": run_id,
@@ -155,8 +199,15 @@ def save_trades(run_dir: Path, run_id: str, portfolio: vbt.Portfolio, symbol: st
                     "entry_price": float(row.get("Avg Entry Price", 0)),
                     "exit_price": float(row.get("Avg Exit Price", 0)),
                     "size": float(row.get("Size", 0)),
-                    "gross_pnl": float(row.get("PnL", 0)),
+                    "gross_pnl": gross,
+                    "fee": fee,
+                    "slippage": 0.0,
+                    "funding_cost": 0.0,
+                    "net_pnl": gross - fee,
                     "return_pct": float(row.get("Return", 0)) * 100,
+                    "mae_pct": 0.0,  # requires intra-trade tracking
+                    "mfe_pct": 0.0,  # requires intra-trade tracking
+                    "holding_bars": exit_idx - entry_idx,
                     "exit_reason": str(row.get("Status", "unknown")),
                 }
             )
@@ -177,10 +228,18 @@ def save_equity(run_dir: Path, run_id: str, portfolio: vbt.Portfolio) -> Path:
     if isinstance(equity_series, pd.DataFrame):
         equity_series = equity_series.iloc[:, 0]
 
+    # Cash and position value
+    cash_series = portfolio.cash()
+    if isinstance(cash_series, pd.DataFrame):
+        cash_series = cash_series.iloc[:, 0]
+    position_value = equity_series - cash_series
+
     eq_df = pd.DataFrame(
         {
             "ts": equity_series.index,
             "equity": equity_series.values,
+            "cash": cash_series.values,
+            "position_value": position_value.values,
         }
     )
 
@@ -188,6 +247,8 @@ def save_equity(run_dir: Path, run_id: str, portfolio: vbt.Portfolio) -> Path:
     running_max = equity_series.cummax()
     drawdown = (equity_series - running_max) / running_max
     eq_df["drawdown"] = drawdown.values
+    eq_df["gross_exposure"] = position_value.abs().values
+    eq_df["net_exposure"] = position_value.values
     eq_df["run_id"] = run_id
 
     pl_df = pl.from_pandas(eq_df)
