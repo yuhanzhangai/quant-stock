@@ -1,0 +1,38 @@
+version: v2.3-paper-observation-hardening
+start_commit: f31d79e
+start_data_version: manifest_20260424_031446
+
+observation_window:
+  min_days: 14
+  target_days: 30
+  min_combined_trades: 100
+
+sessions:
+  - name: minswing_v3_observation
+    strategy: minswing_v3
+    strategy_version: "1.1.0"
+    symbols: ["ETH-USDT", "SOL-USDT"]
+    config_path: config/strategies/minswing_v3.yml
+    status: production_observation
+
+  - name: fast_exit_eth_observation
+    strategy: fast_exit_eth
+    strategy_version: "1.0.0"
+    symbols: ["ETH-USDT"]
+    config_path: config/strategies/fast_exit_eth.yml
+    status: candidate_observation
+
+rules:
+  no_parameter_change: true
+  no_strategy_promotion: true
+  no_manual_trade_filtering: true
+  record_rejected_signals: true
+  record_fee_slippage: true
+  record_mae_mfe: true
+  record_exit_reason: true
+
+thresholds:
+  signal_count_deviation_warning: 0.25
+  rejected_ratio_warning: 0.20
+  fee_gross_pnl_warning: 0.50
+  slippage_multiplier_warning: 2.0
