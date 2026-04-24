@@ -47,3 +47,6 @@ Thumbs.db
 
 # 报告（可选保留）
 reports/*.html
+
+# 基线备份
+_archive/
