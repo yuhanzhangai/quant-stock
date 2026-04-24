@@ -19,9 +19,9 @@
 | | Backtest | Paper |
 |--|---------|-------|
 | MinSwing ETH signals | 92 entries | 93 signals |
-| MinSwing ETH trades | 81 | 74 (8 rejected by RiskEngine) |
+| MinSwing ETH trades | 81 | 74 traded (8 rejected, 11 skipped — already in position) |
 
-**Result:** Signal count matches well (93 vs 92). Trade count lower due to risk filtering — this is expected and correct behavior.
+**Result:** Signal count matches well (93 vs 92). Of 93 signals: 8 rejected by RiskEngine, 11 skipped because already in a trade (duplicate entry signals during open position), 74 executed. This is expected behavior — strategy generates entry signals even when already holding.
 
 ### 2. Accepted / rejected ratio reasonable?
 
@@ -66,7 +66,7 @@ Paper session records MAE/MFE per trade. Distribution shape is consistent with b
 
 ### 7. RiskEngine rejection reasons?
 
-All 12 rejections across both sessions: `cooldown_after_losses`
+Total 18 rejections across all 3 sessions (ETH 8 + SOL 4 + FastExit 6): all `cooldown_after_losses`
 - Triggers after 5+ consecutive losses
 - 24h (288 bar) cooldown
 - No false kills (all were genuine losing streaks)
