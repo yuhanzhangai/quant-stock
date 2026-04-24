@@ -8,13 +8,14 @@ from loguru import logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from config.settings import get_settings
 from src.backtest.costs import OKX_SPOT
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.backtest.reports import generate_report
+from src.data_quality.checks import has_critical_failure, run_all_checks
 from src.strategies.trend_ma import TrendMAStrategy, trend_ma_signal_func
 from src.storage.parquet_writer import ParquetWriter
-from config.settings import get_settings
 
 
 def load_price_data(symbol: str, timeframe: str) -> pd.Series:
@@ -26,6 +27,13 @@ def load_price_data(symbol: str, timeframe: str) -> pd.Series:
     if df.is_empty():
         logger.warning(f"无数据: {symbol} {timeframe}，返回 None")
         return None
+
+    # Data quality gate
+    logger.info(f"Running data quality checks for {symbol}/{timeframe}...")
+    results = run_all_checks(df, timeframe=timeframe)
+    if has_critical_failure(results):
+        raise RuntimeError(f"Data quality gate failed for {symbol}/{timeframe}")
+    logger.info("Data quality: PASS")
 
     pdf = df.to_pandas()
     pdf["datetime"] = pd.to_datetime(pdf["timestamp"], unit="ms", utc=True)
