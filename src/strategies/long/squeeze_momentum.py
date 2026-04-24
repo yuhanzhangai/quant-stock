@@ -6,7 +6,6 @@ TradingView 上 76000 赞的超人气指标。
 """
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 from src.strategies.base import StrategyBase
@@ -46,9 +45,7 @@ class SqueezeMomentumStrategy(StrategyBase):
         high = price.rolling(2).max()
         low = price.rolling(2).min()
         prev_close = price.shift(1)
-        tr = pd.concat([
-            high - low, (high - prev_close).abs(), (low - prev_close).abs()
-        ], axis=1).max(axis=1)
+        tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
         atr = tr.rolling(window=kc_period).mean()
         kc_upper = kc_mid + kc_mult * atr
         kc_lower = kc_mid - kc_mult * atr
@@ -64,7 +61,7 @@ class SqueezeMomentumStrategy(StrategyBase):
         momentum = price - price.rolling(window=mom_period).mean()
         mom_positive = momentum > 0
         mom_negative = momentum < 0
-        mom_increasing = momentum > momentum.shift(1)
+        momentum > momentum.shift(1)
 
         # 入场：squeeze 释放 或 动量从负转正（不要求同时发生）
         mom_cross_up = mom_positive & (~mom_positive.shift(1).fillna(True))
@@ -88,8 +85,11 @@ class SqueezeMomentumStrategy(StrategyBase):
 
 
 def squeeze_momentum_signal(
-    price: pd.Series, bb_period: int = 20, bb_mult: float = 2.0,
-    kc_period: int = 20, kc_mult: float = 1.5,
+    price: pd.Series,
+    bb_period: int = 20,
+    bb_mult: float = 2.0,
+    kc_period: int = 20,
+    kc_mult: float = 1.5,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return SqueezeMomentumStrategy().generate_signals(

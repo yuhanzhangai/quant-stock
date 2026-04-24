@@ -11,7 +11,6 @@
 """
 
 import pandas as pd
-import polars as pl
 from loguru import logger
 
 from src.strategies.base import StrategyBase
@@ -62,13 +61,13 @@ class FundingArbStrategy(StrategyBase):
         exits = exits.fillna(False)
 
         logger.debug(
-            f"FundingArb | high_funding_bars:{high_funding.sum()} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
+            f"FundingArb | high_funding_bars:{high_funding.sum()} | 入场: {entries.sum()} | 出场: {exits.sum()}"
         )
         return entries, exits
 
 
 def funding_arb_signal(
-    price: pd.Series, **kwargs: int | float,
+    price: pd.Series,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return FundingArbStrategy().generate_signals(price)

@@ -40,7 +40,7 @@ async def send_telegram(message: str) -> bool:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                 if resp.status == 200:
-                    logger.debug(f"Telegram 通知已发送")
+                    logger.debug("Telegram 通知已发送")
                     return True
                 else:
                     data = await resp.json()

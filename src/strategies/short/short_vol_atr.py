@@ -14,7 +14,6 @@
 """
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 from src.strategies.base import StrategyBase
@@ -34,20 +33,20 @@ class ShortVolATRStrategy(StrategyBase):
         high: pd.Series | None = None,
         low: pd.Series | None = None,
         # 成交量参数
-        vol_ma_period: int = 60,           # 成交量均线周期（60*5m=5h）
-        vol_spike_mult: float = 2.0,       # 放量倍数阈值
+        vol_ma_period: int = 60,  # 成交量均线周期（60*5m=5h）
+        vol_spike_mult: float = 2.0,  # 放量倍数阈值
         # ATR 参数
         atr_period: int = 14,
-        atr_expand_mult: float = 1.5,      # ATR > 均值*1.5 = 波动率扩张
+        atr_expand_mult: float = 1.5,  # ATR > 均值*1.5 = 波动率扩张
         # 趋势过滤（轻量，只做基本方向确认）
         trend_ma: int = 120,
         # 入场确认
-        bearish_bars: int = 3,             # 最近N根中收阴占多数
+        bearish_bars: int = 3,  # 最近N根中收阴占多数
         min_gap: int = 192,
         # 出场
         stop_pct: float = 2.5,
         trail_pct: float = 1.5,
-        atr_contract_exit: bool = True,    # ATR收缩时出场
+        atr_contract_exit: bool = True,  # ATR收缩时出场
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成成交量+ATR做空信号。
@@ -72,11 +71,14 @@ class ShortVolATRStrategy(StrategyBase):
 
         # === ATR 波动率 ===
         if high is not None and low is not None and len(high) == n:
-            tr = pd.concat([
-                high - low,
-                abs(high - price.shift(1)),
-                abs(low - price.shift(1)),
-            ], axis=1).max(axis=1)
+            tr = pd.concat(
+                [
+                    high - low,
+                    abs(high - price.shift(1)),
+                    abs(low - price.shift(1)),
+                ],
+                axis=1,
+            ).max(axis=1)
         else:
             # 用价格变动近似 True Range
             tr = abs(price - price.shift(1))
@@ -126,11 +128,7 @@ class ShortVolATRStrategy(StrategyBase):
                 bounce = (price.iloc[i] - trough) / trough * 100 if trough > 0 else 0
 
                 # 止损
-                if pnl > stop_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # Trailing stop
-                elif bounce > trail_pct and pnl < -0.5:
+                if pnl > stop_pct or bounce > trail_pct and pnl < -0.5:
                     exits.iloc[i] = True
                     in_trade = False
                 # ATR 收缩出场（波动率回归正常 = 恐慌结束）

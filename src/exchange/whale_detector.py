@@ -29,9 +29,7 @@ class WhaleDetector:
         self._window = window_seconds
         self._rate_limiter = RateLimiterManager()
 
-    async def fetch_recent_trades(
-        self, inst_id: str, limit: int = 100
-    ) -> list[dict[str, Any]]:
+    async def fetch_recent_trades(self, inst_id: str, limit: int = 100) -> list[dict[str, Any]]:
         """拉取最近成交记录。
 
         Args:
@@ -58,9 +56,7 @@ class WhaleDetector:
                 logger.debug(f"trades | {inst_id} | {len(trades)} 笔 | {elapsed:.0f}ms")
                 return trades
 
-    def detect_whales(
-        self, trades: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def detect_whales(self, trades: list[dict[str, Any]]) -> dict[str, Any]:
         """从成交记录中检测鲸鱼活动。
 
         Returns:
@@ -83,13 +79,15 @@ class WhaleDetector:
             trade_usd = price * size
 
             if trade_usd >= self._threshold:
-                whale_trades.append({
-                    "price": price,
-                    "size": size,
-                    "usd": trade_usd,
-                    "side": side,
-                    "ts": t.get("ts", ""),
-                })
+                whale_trades.append(
+                    {
+                        "price": price,
+                        "size": size,
+                        "usd": trade_usd,
+                        "side": side,
+                        "ts": t.get("ts", ""),
+                    }
+                )
                 if side == "buy":
                     buy_vol += trade_usd
                 else:

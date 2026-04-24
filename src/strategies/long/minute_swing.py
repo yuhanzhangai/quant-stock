@@ -30,27 +30,26 @@ class MinuteSwingStrategy(StrategyBase):
     def generate_signals(
         self,
         price: pd.Series,
-        trend_ma: int = 240,       # 大趋势（240*5m=20h）
-        mid_ma: int = 60,          # 中趋势（60*5m=5h）
-        fast_ma: int = 12,         # 快线（12*5m=1h）
+        trend_ma: int = 240,  # 大趋势（240*5m=20h）
+        mid_ma: int = 60,  # 中趋势（60*5m=5h）
+        fast_ma: int = 12,  # 快线（12*5m=1h）
         rsi_period: int = 14,
         rsi_entry: int = 40,
         macd_fast: int = 12,
         macd_slow: int = 26,
         macd_signal: int = 9,
-        min_gap: int = 72,         # 最少间隔（72*5m=6h）
-        stop_pct: float = 2.0,     # 止损 2%
+        min_gap: int = 72,  # 最少间隔（72*5m=6h）
+        stop_pct: float = 2.0,  # 止损 2%
         take_profit_pct: float = 4.0,  # 止盈 4%（盈亏比 2:1）
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成分钟线波段信号。"""
         # === 趋势层 ===
         ma_trend = price.rolling(window=trend_ma).mean()
-        ma_mid = price.rolling(window=mid_ma).mean()
-        ma_fast = price.rolling(window=fast_ma).mean()
+        price.rolling(window=mid_ma).mean()
+        price.rolling(window=fast_ma).mean()
 
         uptrend = (price > ma_trend) & (ma_trend > ma_trend.shift(20))
-        mid_up = ma_fast > ma_mid
 
         # === RSI ===
         delta = price.diff()
@@ -92,15 +91,7 @@ class MinuteSwingStrategy(StrategyBase):
             elif in_trade and entry_price > 0:
                 pnl_pct = (price.iloc[i] - entry_price) / entry_price * 100
                 # 止损
-                if pnl_pct < -stop_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 止盈
-                elif pnl_pct > take_profit_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 趋势反转
-                elif price.iloc[i] < ma_trend.iloc[i]:
+                if pnl_pct < -stop_pct or pnl_pct > take_profit_pct or price.iloc[i] < ma_trend.iloc[i]:
                     exits.iloc[i] = True
                     in_trade = False
 
@@ -116,11 +107,13 @@ class MinuteSwingStrategy(StrategyBase):
 
 
 def minute_swing_signal(
-    price: pd.Series, trend_ma: int = 240, stop_pct: float = 2.0,
-    take_profit_pct: float = 4.0, min_gap: int = 72,
+    price: pd.Series,
+    trend_ma: int = 240,
+    stop_pct: float = 2.0,
+    take_profit_pct: float = 4.0,
+    min_gap: int = 72,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return MinuteSwingStrategy().generate_signals(
-        price, trend_ma=trend_ma, stop_pct=stop_pct,
-        take_profit_pct=take_profit_pct, min_gap=min_gap
+        price, trend_ma=trend_ma, stop_pct=stop_pct, take_profit_pct=take_profit_pct, min_gap=min_gap
     )

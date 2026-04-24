@@ -39,18 +39,13 @@ class MinuteSwingV2Strategy(StrategyBase):
         high = price.rolling(2).max()
         low = price.rolling(2).min()
         prev_close = price.shift(1)
-        tr = pd.concat([
-            high - low, (high - prev_close).abs(), (low - prev_close).abs()
-        ], axis=1).max(axis=1)
+        tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
         atr = tr.rolling(window=atr_period).mean()
         atr_pct = atr / price * 100
         atr_median = atr_pct.rolling(window=500).median()
 
         # 高波动 = 不交易（被频繁止损的根源）
-        if vol_filter:
-            safe_vol = atr_pct < atr_median * 1.3
-        else:
-            safe_vol = pd.Series(True, index=price.index)
+        safe_vol = atr_pct < atr_median * 1.3 if vol_filter else pd.Series(True, index=price.index)
 
         # === 趋势 ===
         ma_long = price.rolling(window=trend_ma).mean()
@@ -103,11 +98,7 @@ class MinuteSwingV2Strategy(StrategyBase):
                 dynamic_tp = base_tp / max(vol_ratio, 0.5)  # 高波动时缩小目标
                 dynamic_sl = base_sl * max(vol_ratio, 0.5)  # 高波动时放大止损
 
-                if pnl < -dynamic_sl or pnl > dynamic_tp:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 趋势反转强制出场
-                elif price.iloc[i] < ma_long.iloc[i]:
+                if pnl < -dynamic_sl or pnl > dynamic_tp or price.iloc[i] < ma_long.iloc[i]:
                     exits.iloc[i] = True
                     in_trade = False
 
@@ -115,15 +106,17 @@ class MinuteSwingV2Strategy(StrategyBase):
         exits = exits.fillna(False)
 
         logger.debug(
-            f"MinSwingV2 | safe_bars:{safe_vol.sum()}/{len(price)} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
+            f"MinSwingV2 | safe_bars:{safe_vol.sum()}/{len(price)} | 入场: {entries.sum()} | 出场: {exits.sum()}"
         )
         return entries, exits
 
 
 def minute_swing_v2_signal(
-    price: pd.Series, trend_ma: int = 180, min_gap: int = 36,
-    base_tp: float = 4.0, base_sl: float = 2.0,
+    price: pd.Series,
+    trend_ma: int = 180,
+    min_gap: int = 36,
+    base_tp: float = 4.0,
+    base_sl: float = 2.0,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return MinuteSwingV2Strategy().generate_signals(

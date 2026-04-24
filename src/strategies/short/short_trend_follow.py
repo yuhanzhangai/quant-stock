@@ -47,15 +47,15 @@ class ShortTrendFollowStrategy(StrategyBase):
     def generate_signals(
         self,
         price: pd.Series,
-        fast_ma: int = 60,                 # 短期 MA（60*5m=5h）
-        slow_ma: int = 180,                # 长期 MA（180*5m=15h）
+        fast_ma: int = 60,  # 短期 MA（60*5m=5h）
+        slow_ma: int = 180,  # 长期 MA（180*5m=15h）
         macd_fast: int = 12,
         macd_slow: int = 26,
         macd_signal: int = 9,
-        min_gap: int = 288,                # 最少间隔（288*5m=24h，保守）
-        stop_pct: float = 3.0,             # 止损宽一些（趋势策略需要给空间）
-        take_profit_pct: float = 10.0,     # 止盈大（趋势跟踪追求大利润）
-        trail_pct: float = 2.0,            # trailing stop
+        min_gap: int = 288,  # 最少间隔（288*5m=24h，保守）
+        stop_pct: float = 3.0,  # 止损宽一些（趋势策略需要给空间）
+        take_profit_pct: float = 10.0,  # 止盈大（趋势跟踪追求大利润）
+        trail_pct: float = 2.0,  # trailing stop
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成趋势跟空信号。"""
@@ -66,7 +66,7 @@ class ShortTrendFollowStrategy(StrategyBase):
         ma_slow = price.rolling(window=slow_ma).mean()
 
         # 空头排列：短MA < 长MA 且两条MA都向下
-        bearish_cross = (ma_fast < ma_slow)
+        bearish_cross = ma_fast < ma_slow
         ma_fast_slope = ma_fast - ma_fast.shift(10)
         ma_slow_slope = ma_slow - ma_slow.shift(10)
         both_declining = (ma_fast_slope < 0) & (ma_slow_slope < 0)
@@ -79,14 +79,11 @@ class ShortTrendFollowStrategy(StrategyBase):
         ema_slow = price.ewm(span=macd_slow, adjust=False).mean()
         macd_line = ema_fast - ema_slow
         signal_line = macd_line.ewm(span=macd_signal, adjust=False).mean()
-        macd_hist = macd_line - signal_line
+        macd_line - signal_line
 
         # MACD 在零轴下方且死叉
-        macd_bearish = (macd_line < 0) & (macd_line < signal_line)
-        macd_death_cross = (
-            (macd_line < signal_line) &
-            (macd_line.shift(1) >= signal_line.shift(1))
-        )
+        (macd_line < 0) & (macd_line < signal_line)
+        macd_death_cross = (macd_line < signal_line) & (macd_line.shift(1) >= signal_line.shift(1))
 
         # === 入场：空头排列 + MA 下行 + MACD 确认 ===
         raw_entries = bearish_cross & both_declining & price_below_both & macd_death_cross
@@ -118,19 +115,13 @@ class ShortTrendFollowStrategy(StrategyBase):
                 bounce = (price.iloc[i] - trough) / trough * 100 if trough > 0 else 0
 
                 # 止损
-                if price_change > stop_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 止盈
-                elif price_change < -take_profit_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # Trailing stop：趋势中利润回撤
-                elif bounce > trail_pct and price_change < -2.0:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 均线金叉（趋势反转）
-                elif ma_fast.iloc[i] > ma_slow.iloc[i]:
+                if (
+                    price_change > stop_pct
+                    or price_change < -take_profit_pct
+                    or bounce > trail_pct
+                    and price_change < -2.0
+                    or ma_fast.iloc[i] > ma_slow.iloc[i]
+                ):
                     exits.iloc[i] = True
                     in_trade = False
 

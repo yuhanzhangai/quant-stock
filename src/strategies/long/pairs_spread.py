@@ -6,7 +6,6 @@
 """
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 from src.strategies.base import StrategyBase
@@ -61,15 +60,17 @@ class PairsSpreadStrategy(StrategyBase):
         exits = exits.fillna(False)
 
         logger.debug(
-            f"PairsSpread | lookback={spread_lookback} entry_z={entry_z} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
+            f"PairsSpread | lookback={spread_lookback} entry_z={entry_z} | 入场: {entries.sum()} | 出场: {exits.sum()}"
         )
         return entries, exits
 
 
 def pairs_spread_signal(
-    price: pd.Series, spread_lookback: int = 200, entry_z: float = -1.5,
-    min_gap: int = 72, **kwargs: int | float,
+    price: pd.Series,
+    spread_lookback: int = 200,
+    entry_z: float = -1.5,
+    min_gap: int = 72,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return PairsSpreadStrategy().generate_signals(
         price, spread_lookback=spread_lookback, entry_z=entry_z, min_gap=min_gap

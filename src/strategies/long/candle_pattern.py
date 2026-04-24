@@ -25,8 +25,8 @@ class CandlePatternStrategy(StrategyBase):
         self,
         price: pd.Series,
         trend_ma: int = 200,
-        body_ratio: float = 1.5,   # 当前 K 线实体 > 前一根的 1.5 倍
-        pullback_bars: int = 12,   # 回调持续至少 12 根
+        body_ratio: float = 1.5,  # 当前 K 线实体 > 前一根的 1.5 倍
+        pullback_bars: int = 12,  # 回调持续至少 12 根
         min_gap: int = 48,
         stop_pct: float = 2.0,
         take_profit_pct: float = 4.0,
@@ -41,8 +41,7 @@ class CandlePatternStrategy(StrategyBase):
         prev_change = price.shift(1) - price.shift(2)
 
         # 看涨吞没：前一根跌，当前涨，且当前涨幅更大
-        bullish_engulf = (prev_change < 0) & (current_change > 0) & \
-                         (current_change > (-prev_change) * body_ratio)
+        bullish_engulf = (prev_change < 0) & (current_change > 0) & (current_change > (-prev_change) * body_ratio)
 
         # 回调确认：最近 N 根有跌（不是一路涨中的正常 K 线）
         recent_low = price.rolling(window=pullback_bars).min()
@@ -68,10 +67,7 @@ class CandlePatternStrategy(StrategyBase):
                 in_trade = True
             elif in_trade and entry_price > 0:
                 pnl = (price.iloc[i] - entry_price) / entry_price * 100
-                if pnl < -stop_pct or pnl > take_profit_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                elif price.iloc[i] < ma.iloc[i]:
+                if pnl < -stop_pct or pnl > take_profit_pct or price.iloc[i] < ma.iloc[i]:
                     exits.iloc[i] = True
                     in_trade = False
 
@@ -86,11 +82,19 @@ class CandlePatternStrategy(StrategyBase):
 
 
 def candle_pattern_signal(
-    price: pd.Series, trend_ma: int = 200, body_ratio: float = 1.5,
-    min_gap: int = 48, stop_pct: float = 2.0, take_profit_pct: float = 4.0,
+    price: pd.Series,
+    trend_ma: int = 200,
+    body_ratio: float = 1.5,
+    min_gap: int = 48,
+    stop_pct: float = 2.0,
+    take_profit_pct: float = 4.0,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return CandlePatternStrategy().generate_signals(
-        price, trend_ma=trend_ma, body_ratio=body_ratio, min_gap=min_gap,
-        stop_pct=stop_pct, take_profit_pct=take_profit_pct
+        price,
+        trend_ma=trend_ma,
+        body_ratio=body_ratio,
+        min_gap=min_gap,
+        stop_pct=stop_pct,
+        take_profit_pct=take_profit_pct,
     )

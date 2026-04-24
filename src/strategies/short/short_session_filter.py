@@ -45,8 +45,8 @@ class ShortSessionFilterStrategy(StrategyBase):
         macd_slow: int = 26,
         macd_signal: int = 9,
         # 时段过滤
-        session_start: int = 0,            # UTC 开始小时
-        session_end: int = 12,             # UTC 结束小时（亚洲+欧洲早盘）
+        session_start: int = 0,  # UTC 开始小时
+        session_end: int = 12,  # UTC 结束小时（亚洲+欧洲早盘）
         # 交易参数
         min_gap: int = 288,
         stop_pct: float = 3.0,
@@ -75,7 +75,7 @@ class ShortSessionFilterStrategy(StrategyBase):
         macd_death = (macd_line < signal_line) & (macd_line.shift(1) >= signal_line.shift(1))
 
         # === 时段过滤 ===
-        if hasattr(price.index, 'hour'):
+        if hasattr(price.index, "hour"):
             if session_start < session_end:
                 in_session = (price.index.hour >= session_start) & (price.index.hour < session_end)
             else:  # 跨午夜
@@ -111,16 +111,13 @@ class ShortSessionFilterStrategy(StrategyBase):
                 pnl = (price.iloc[i] - entry_price) / entry_price * 100
                 bounce = (price.iloc[i] - trough) / trough * 100 if trough > 0 else 0
 
-                if pnl > stop_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                elif pnl < -take_profit_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                elif bounce > trail_pct and pnl < -2.0:
-                    exits.iloc[i] = True
-                    in_trade = False
-                elif ma_fast.iloc[i] > ma_slow.iloc[i]:
+                if (
+                    pnl > stop_pct
+                    or pnl < -take_profit_pct
+                    or bounce > trail_pct
+                    and pnl < -2.0
+                    or ma_fast.iloc[i] > ma_slow.iloc[i]
+                ):
                     exits.iloc[i] = True
                     in_trade = False
 

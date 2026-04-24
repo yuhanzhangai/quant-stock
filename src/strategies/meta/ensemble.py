@@ -41,9 +41,9 @@ class EnsembleStrategy(StrategyBase):
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成集成信号。"""
-        from src.strategies.trend_ma_filtered import TrendMAFilteredStrategy
         from src.strategies.aggressive_momentum import AggressiveMomentumStrategy
         from src.strategies.rsi_extreme import RSIExtremeStrategy
+        from src.strategies.trend_ma_filtered import TrendMAFilteredStrategy
 
         # 子策略信号
         e1, x1 = TrendMAFilteredStrategy().generate_signals(
@@ -78,18 +78,15 @@ class EnsembleStrategy(StrategyBase):
         entries = entries.fillna(False)
         exits = exits.fillna(False)
 
-        logger.debug(
-            f"Ensemble | min_agree={min_agree} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
-        )
+        logger.debug(f"Ensemble | min_agree={min_agree} | 入场: {entries.sum()} | 出场: {exits.sum()}")
         return entries, exits
 
 
 def ensemble_signal(
-    price: pd.Series, min_agree: int = 2,
-    tf_short: int = 25, tf_long: int = 200,
+    price: pd.Series,
+    min_agree: int = 2,
+    tf_short: int = 25,
+    tf_long: int = 200,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
-    return EnsembleStrategy().generate_signals(
-        price, min_agree=min_agree, tf_short=tf_short, tf_long=tf_long
-    )
+    return EnsembleStrategy().generate_signals(price, min_agree=min_agree, tf_short=tf_short, tf_long=tf_long)

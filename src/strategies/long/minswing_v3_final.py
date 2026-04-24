@@ -15,11 +15,9 @@
 """
 
 import pandas as pd
-from loguru import logger
 
 from src.strategies.base import StrategyBase
 from src.strategies.minute_swing import MinuteSwingStrategy
-
 
 # Per-coin 最优配置
 COIN_CONFIGS = {
@@ -54,13 +52,11 @@ class MinSwingV3Strategy(StrategyBase):
         strat = MinuteSwingStrategy()
         if config.get("trail"):
             entries, _ = strat.generate_signals(
-                price, trend_ma=trend_ma, stop_pct=stop_pct,
-                take_profit_pct=99.0, min_gap=min_gap
+                price, trend_ma=trend_ma, stop_pct=stop_pct, take_profit_pct=99.0, min_gap=min_gap
             )
         else:
             entries, exits_fixed = strat.generate_signals(
-                price, trend_ma=trend_ma, stop_pct=stop_pct,
-                take_profit_pct=take_profit_pct, min_gap=min_gap
+                price, trend_ma=trend_ma, stop_pct=stop_pct, take_profit_pct=take_profit_pct, min_gap=min_gap
             )
             return entries, exits_fixed
 
@@ -90,6 +86,8 @@ class MinSwingV3Strategy(StrategyBase):
 
 
 def minswing_v3_signal(
-    price: pd.Series, coin: str = "ETH", **kwargs: int | float,
+    price: pd.Series,
+    coin: str = "ETH",
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return MinSwingV3Strategy().generate_signals(price, coin=coin, **kwargs)

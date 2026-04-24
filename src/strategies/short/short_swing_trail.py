@@ -33,9 +33,9 @@ class ShortSwingTrailStrategy(StrategyBase):
         macd_slow: int = 26,
         macd_signal: int = 9,
         min_gap: int = 288,
-        stop_pct: float = 2.0,            # 止损
-        trail_pct: float = 1.5,           # 从最低点反弹 1.5% 止盈
-        min_profit: float = 1.0,          # 至少盈利 1% 才启动 trailing
+        stop_pct: float = 2.0,  # 止损
+        trail_pct: float = 1.5,  # 从最低点反弹 1.5% 止盈
+        min_profit: float = 1.0,  # 至少盈利 1% 才启动 trailing
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成做空 trailing stop 信号。"""
@@ -90,15 +90,12 @@ class ShortSwingTrailStrategy(StrategyBase):
                 bounce = (price.iloc[i] - trough) / trough * 100 if trough > 0 else 0
 
                 # 止损
-                if price.iloc[i] > entry_price * (1 + stop_pct / 100):
-                    exits.iloc[i] = True
-                    in_trade = False
-                # Trailing：盈利超过 min_profit 后，从最低点反弹 trail_pct 止盈
-                elif pnl_pct >= min_profit and bounce > trail_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 趋势反转
-                elif price.iloc[i] > ma.iloc[i]:
+                if (
+                    price.iloc[i] > entry_price * (1 + stop_pct / 100)
+                    or pnl_pct >= min_profit
+                    and bounce > trail_pct
+                    or price.iloc[i] > ma.iloc[i]
+                ):
                     exits.iloc[i] = True
                     in_trade = False
 
@@ -121,5 +118,8 @@ def short_swing_trail_signal(
 ) -> tuple[pd.Series, pd.Series]:
     """便捷函数。"""
     return ShortSwingTrailStrategy().generate_signals(
-        price, min_gap=min_gap, trail_pct=trail_pct, **kwargs,
+        price,
+        min_gap=min_gap,
+        trail_pct=trail_pct,
+        **kwargs,
     )

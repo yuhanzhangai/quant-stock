@@ -35,9 +35,9 @@ class SmartSwingStrategy(StrategyBase):
         base_tp: float = 8.0,
         base_sl: float = 2.0,
         base_gap: int = 144,
-        overheat_pct: float = 3.0,     # 4h 涨>3% = 过热
-        squeeze_pct: float = -3.0,     # 4h 跌>3% = 空头挤压机会
-        vol_surge_mult: float = 2.0,   # 波动率 > 2 倍均值 = 高杠杆
+        overheat_pct: float = 3.0,  # 4h 涨>3% = 过热
+        squeeze_pct: float = -3.0,  # 4h 跌>3% = 空头挤压机会
+        vol_surge_mult: float = 2.0,  # 波动率 > 2 倍均值 = 高杠杆
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成 SmartSwing 信号。"""
@@ -51,13 +51,12 @@ class SmartSwingStrategy(StrategyBase):
         # 市场温度
         is_overheated = ret_4h > overheat_pct
         is_squeeze = ret_4h < squeeze_pct
-        is_high_leverage = vol > vol_median * vol_surge_mult
+        vol > vol_median * vol_surge_mult
 
         # 基础 MinSwing 信号
         strat = MinuteSwingStrategy()
         base_e, base_x = strat.generate_signals(
-            price, trend_ma=trend_ma, stop_pct=base_sl,
-            take_profit_pct=base_tp, min_gap=base_gap
+            price, trend_ma=trend_ma, stop_pct=base_sl, take_profit_pct=base_tp, min_gap=base_gap
         )
 
         # 调整规则（最少干预）：
@@ -68,8 +67,7 @@ class SmartSwingStrategy(StrategyBase):
         # 用更短的趋势确认
         squeeze_strat = MinuteSwingStrategy()
         squeeze_e, squeeze_x = squeeze_strat.generate_signals(
-            price, trend_ma=90, stop_pct=base_sl,
-            take_profit_pct=base_tp * 1.5, min_gap=base_gap // 2
+            price, trend_ma=90, stop_pct=base_sl, take_profit_pct=base_tp * 1.5, min_gap=base_gap // 2
         )
         entries = entries | (squeeze_e & is_squeeze)
 
@@ -91,9 +89,10 @@ class SmartSwingStrategy(StrategyBase):
 
 
 def smart_swing_signal(
-    price: pd.Series, trend_ma: int = 180, base_tp: float = 8.0,
-    base_gap: int = 144, **kwargs: int | float,
+    price: pd.Series,
+    trend_ma: int = 180,
+    base_tp: float = 8.0,
+    base_gap: int = 144,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
-    return SmartSwingStrategy().generate_signals(
-        price, trend_ma=trend_ma, base_tp=base_tp, base_gap=base_gap
-    )
+    return SmartSwingStrategy().generate_signals(price, trend_ma=trend_ma, base_tp=base_tp, base_gap=base_gap)

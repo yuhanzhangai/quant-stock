@@ -45,6 +45,8 @@ class PerCoinRouter(StrategyBase):
 
 
 def per_coin_signal(
-    price: pd.Series, symbol: str = "", **kwargs: int | float,
+    price: pd.Series,
+    symbol: str = "",
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return PerCoinRouter().generate_signals(price, symbol=symbol)

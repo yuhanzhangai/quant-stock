@@ -57,9 +57,7 @@ class FundingIngestor(IngestorBase):
             {
                 "funding_time": [int(r["fundingTime"]) for r in raw_data],
                 "funding_rate": [float(r["fundingRate"]) for r in raw_data],
-                "realized_rate": [
-                    float(r["realizedRate"]) if r.get("realizedRate") else None for r in raw_data
-                ],
+                "realized_rate": [float(r["realizedRate"]) if r.get("realizedRate") else None for r in raw_data],
                 "symbol": [symbol] * len(raw_data),
             }
         )

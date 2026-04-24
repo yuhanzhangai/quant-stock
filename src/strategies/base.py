@@ -15,9 +15,7 @@ class StrategyBase(ABC):
         ...
 
     @abstractmethod
-    def generate_signals(
-        self, price: pd.Series, **params: int | float
-    ) -> tuple[pd.Series, pd.Series]:
+    def generate_signals(self, price: pd.Series, **params: int | float) -> tuple[pd.Series, pd.Series]:
         """生成交易信号。
 
         Args:

@@ -60,11 +60,14 @@ class AggressiveMomentumStrategy(StrategyBase):
         high = price.rolling(2).max()
         low = price.rolling(2).min()
         prev_close = price.shift(1)
-        tr = pd.concat([
-            high - low,
-            (high - prev_close).abs(),
-            (low - prev_close).abs(),
-        ], axis=1).max(axis=1)
+        tr = pd.concat(
+            [
+                high - low,
+                (high - prev_close).abs(),
+                (low - prev_close).abs(),
+            ],
+            axis=1,
+        ).max(axis=1)
         atr = tr.rolling(window=atr_period).mean()
 
         # 出场：价格跌破最近高点 - ATR * mult
@@ -129,11 +132,14 @@ class MultiFactorAggressive(StrategyBase):
         high = price.rolling(2).max()
         low = price.rolling(2).min()
         prev_close = price.shift(1)
-        tr = pd.concat([
-            high - low,
-            (high - prev_close).abs(),
-            (low - prev_close).abs(),
-        ], axis=1).max(axis=1)
+        tr = pd.concat(
+            [
+                high - low,
+                (high - prev_close).abs(),
+                (low - prev_close).abs(),
+            ],
+            axis=1,
+        ).max(axis=1)
         atr = tr.rolling(window=atr_period).mean()
         atr_ma = atr.rolling(window=50).mean()
         f_vol = atr > atr_ma
@@ -160,8 +166,11 @@ class MultiFactorAggressive(StrategyBase):
 
 
 def aggressive_momentum_signal(
-    price: pd.Series, lookback: int = 20, consec_bars: int = 3,
-    trail_atr_mult: float = 2.0, **kwargs: int | float,
+    price: pd.Series,
+    lookback: int = 20,
+    consec_bars: int = 3,
+    trail_atr_mult: float = 2.0,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return AggressiveMomentumStrategy().generate_signals(
         price, lookback=lookback, consec_bars=consec_bars, trail_atr_mult=trail_atr_mult
@@ -169,8 +178,11 @@ def aggressive_momentum_signal(
 
 
 def multi_factor_signal(
-    price: pd.Series, ma_period: int = 200, mom_period: int = 10,
-    min_votes: int = 3, **kwargs: int | float,
+    price: pd.Series,
+    ma_period: int = 200,
+    mom_period: int = 10,
+    min_votes: int = 3,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return MultiFactorAggressive().generate_signals(
         price, ma_period=ma_period, mom_period=mom_period, min_votes=min_votes

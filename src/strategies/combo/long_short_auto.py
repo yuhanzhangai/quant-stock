@@ -7,7 +7,6 @@
 """
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 from src.strategies.base import StrategyBase
@@ -49,10 +48,10 @@ def short_signal_trend_follow(price, fast_ma=84, slow_ma=180, min_gap=288):
 
 def short_exit(price, fast_ma=84, slow_ma=180, trail_pct=1.0, stop_pct=3.0, tp_pct=12.0):
     """做空出场：trailing + 趋势反转 + 止损。"""
-    sma_f = price.rolling(window=fast_ma).mean()
-    sma_s = price.rolling(window=slow_ma).mean()
+    price.rolling(window=fast_ma).mean()
+    price.rolling(window=slow_ma).mean()
     # 做空用反转价格模拟
-    inv = price.iloc[0] * 2 - price
+    price.iloc[0] * 2 - price
     exits = pd.Series(False, index=price.index)
     return exits  # 由 combo 统一管理
 
@@ -89,8 +88,7 @@ class LongShortAutoStrategy(StrategyBase):
         # === 做多信号 (MinSwing) ===
         strat_long = MinuteSwingStrategy()
         e_long, x_long = strat_long.generate_signals(
-            price, trend_ma=trend_ma, stop_pct=long_sl,
-            take_profit_pct=long_tp, min_gap=long_gap
+            price, trend_ma=trend_ma, stop_pct=long_sl, take_profit_pct=long_tp, min_gap=long_gap
         )
         # 只在 UP 趋势做多
         e_long = e_long & (trend == "UP")
@@ -110,7 +108,7 @@ class LongShortAutoStrategy(StrategyBase):
         e_short_raw = (death_cross | macd_death) & (trend == "DOWN")
 
         # session filter：排除 UTC 13-20（美盘下午噪音大）
-        if hasattr(price.index, 'hour'):
+        if hasattr(price.index, "hour"):
             us_afternoon = price.index.hour.isin(range(13, 21))
             e_short_raw = e_short_raw & (~us_afternoon)
 
@@ -134,7 +132,7 @@ class LongShortAutoStrategy(StrategyBase):
         entry_type = ""
         in_trade = False
         peak = 0.0
-        trough = float('inf')
+        trough = float("inf")
 
         for i in range(len(price)):
             if e_long.iloc[i] and not in_trade:
@@ -162,16 +160,12 @@ class LongShortAutoStrategy(StrategyBase):
                         trough = price.iloc[i]
                     trail_from_low = (price.iloc[i] - trough) / trough * 100
                     # 出场条件
-                    if pnl < -short_stop:  # 做空止损（价格涨了）
-                        exits.iloc[i] = True
-                        in_trade = False
-                    elif pnl > short_tp:  # 做空止盈
-                        exits.iloc[i] = True
-                        in_trade = False
-                    elif trail_from_low > short_trail:  # trailing
-                        exits.iloc[i] = True
-                        in_trade = False
-                    elif sma_f.iloc[i] > sma_s.iloc[i]:  # 趋势反转
+                    if (
+                        pnl < -short_stop
+                        or pnl > short_tp
+                        or trail_from_low > short_trail
+                        or sma_f.iloc[i] > sma_s.iloc[i]
+                    ):  # 做空止损（价格涨了）
                         exits.iloc[i] = True
                         in_trade = False
 
@@ -185,8 +179,7 @@ class LongShortAutoStrategy(StrategyBase):
         n_short = e_short.sum()
 
         logger.debug(
-            f"L/S Auto | UP:{n_up} DOWN:{n_down} FLAT:{n_flat} | "
-            f"long:{n_long} short:{n_short} | total:{entries.sum()}"
+            f"L/S Auto | UP:{n_up} DOWN:{n_down} FLAT:{n_flat} | long:{n_long} short:{n_short} | total:{entries.sum()}"
         )
         return entries, exits
 

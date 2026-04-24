@@ -112,14 +112,11 @@ class CCXTClient:
         await self._rate_limiter.acquire("market/candles")
         start = time.monotonic()
 
-        result = await self._exchange.fetch_ohlcv(
-            symbol, timeframe=timeframe, since=since, limit=limit
-        )
+        result = await self._exchange.fetch_ohlcv(symbol, timeframe=timeframe, since=since, limit=limit)
 
         elapsed = (time.monotonic() - start) * 1000
         logger.debug(
-            f"fetch_ohlcv | {symbol} {timeframe} | since: {since} | "
-            f"返回: {len(result)}根 | 耗时: {elapsed:.0f}ms"
+            f"fetch_ohlcv | {symbol} {timeframe} | since: {since} | 返回: {len(result)}根 | 耗时: {elapsed:.0f}ms"
         )
         return result
 
@@ -149,9 +146,7 @@ class CCXTClient:
 
         while True:
             page += 1
-            candles = await self.fetch_ohlcv(
-                symbol, timeframe=timeframe, since=current_since, limit=batch_size
-            )
+            candles = await self.fetch_ohlcv(symbol, timeframe=timeframe, since=current_since, limit=batch_size)
 
             if not candles:
                 break
@@ -172,14 +167,9 @@ class CCXTClient:
                 break
 
             if page % 10 == 0:
-                logger.info(
-                    f"fetch_ohlcv_range | {symbol} {timeframe} | "
-                    f"已拉取 {len(all_candles)} 根（第 {page} 页）"
-                )
+                logger.info(f"fetch_ohlcv_range | {symbol} {timeframe} | 已拉取 {len(all_candles)} 根（第 {page} 页）")
 
-        logger.info(
-            f"fetch_ohlcv_range 完成 | {symbol} {timeframe} | 共 {len(all_candles)} 根 | {page} 页"
-        )
+        logger.info(f"fetch_ohlcv_range 完成 | {symbol} {timeframe} | 共 {len(all_candles)} 根 | {page} 页")
         return all_candles
 
     @retry(

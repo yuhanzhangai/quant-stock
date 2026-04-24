@@ -95,9 +95,7 @@ class OKXNativeClient:
 
         elapsed = (time.monotonic() - start) * 1000
         data = self._check_response(response, f"funding_rate_history | {inst_id}")
-        logger.debug(
-            f"funding_rate_history | {inst_id} | 返回: {len(data)}条 | 耗时: {elapsed:.0f}ms"
-        )
+        logger.debug(f"funding_rate_history | {inst_id} | 返回: {len(data)}条 | 耗时: {elapsed:.0f}ms")
         return data
 
     async def fetch_funding_rate_history_range(
@@ -122,9 +120,7 @@ class OKXNativeClient:
 
         while True:
             page += 1
-            records = await self.fetch_funding_rate_history(
-                inst_id, after=after_cursor, limit="100"
-            )
+            records = await self.fetch_funding_rate_history(inst_id, after=after_cursor, limit="100")
 
             if not records:
                 break
@@ -150,14 +146,9 @@ class OKXNativeClient:
             after_cursor = records[-1]["fundingTime"]
 
             if page % 5 == 0:
-                logger.info(
-                    f"funding_rate_history_range | {inst_id} | "
-                    f"已拉取 {len(all_data)} 条（第 {page} 页）"
-                )
+                logger.info(f"funding_rate_history_range | {inst_id} | 已拉取 {len(all_data)} 条（第 {page} 页）")
 
-        logger.info(
-            f"funding_rate_history_range 完成 | {inst_id} | 共 {len(all_data)} 条 | {page} 页"
-        )
+        logger.info(f"funding_rate_history_range 完成 | {inst_id} | 共 {len(all_data)} 条 | {page} 页")
         return all_data
 
     @retry(
@@ -193,10 +184,7 @@ class OKXNativeClient:
 
         elapsed = (time.monotonic() - start) * 1000
         data = self._check_response(response, f"open_interest | {inst_type} {inst_id or 'ALL'}")
-        logger.debug(
-            f"open_interest | {inst_type} {inst_id or 'ALL'} | "
-            f"返回: {len(data)}条 | 耗时: {elapsed:.0f}ms"
-        )
+        logger.debug(f"open_interest | {inst_type} {inst_id or 'ALL'} | 返回: {len(data)}条 | 耗时: {elapsed:.0f}ms")
         return data
 
     @retry(

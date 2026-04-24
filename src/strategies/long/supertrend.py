@@ -5,16 +5,14 @@ SuperTrend = ATR 通道 + 趋势翻转检测。
 翻转时入场/出场，天然带移动止损。
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from loguru import logger
 
 from src.strategies.base import StrategyBase
 
 
-def calc_supertrend(
-    price: pd.Series, atr_period: int = 14, multiplier: float = 3.0
-) -> tuple[pd.Series, pd.Series]:
+def calc_supertrend(price: pd.Series, atr_period: int = 14, multiplier: float = 3.0) -> tuple[pd.Series, pd.Series]:
     """计算 SuperTrend 指标。
 
     Returns:
@@ -23,9 +21,7 @@ def calc_supertrend(
     high = price.rolling(2).max()
     low = price.rolling(2).min()
     prev_close = price.shift(1)
-    tr = pd.concat([
-        high - low, (high - prev_close).abs(), (low - prev_close).abs()
-    ], axis=1).max(axis=1)
+    tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
     atr = tr.rolling(window=atr_period).mean()
 
     hl2 = (high + low) / 2
@@ -119,8 +115,11 @@ class SuperTrendStrategy(StrategyBase):
 
 
 def supertrend_signal(
-    price: pd.Series, atr_period: int = 14, multiplier: float = 3.0,
-    adx_threshold: int = 20, **kwargs: int | float,
+    price: pd.Series,
+    atr_period: int = 14,
+    multiplier: float = 3.0,
+    adx_threshold: int = 20,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return SuperTrendStrategy().generate_signals(
         price, atr_period=atr_period, multiplier=multiplier, adx_threshold=adx_threshold

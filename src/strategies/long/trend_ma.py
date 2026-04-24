@@ -47,8 +47,7 @@ class TrendMAStrategy(StrategyBase):
         exits = exits.fillna(False)
 
         logger.debug(
-            f"TrendMA 信号 | short={short_window} long={long_window} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
+            f"TrendMA 信号 | short={short_window} long={long_window} | 入场: {entries.sum()} | 出场: {exits.sum()}"
         )
 
         return entries, exits

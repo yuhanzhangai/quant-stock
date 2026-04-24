@@ -15,9 +15,9 @@
 import pandas as pd
 from loguru import logger
 
+from src.strategies.aggressive_momentum import AggressiveMomentumStrategy
 from src.strategies.base import StrategyBase
 from src.strategies.extreme_reversal import ExtremeReversalStrategy
-from src.strategies.aggressive_momentum import AggressiveMomentumStrategy
 from src.strategies.ichimoku_momentum import IchimokuMomentumStrategy
 from src.strategies.trend_ma_filtered import TrendMAFilteredStrategy
 
@@ -43,18 +43,10 @@ class RobustEnsemble(StrategyBase):
         """生成 ROBUST ensemble 信号。"""
 
         # 4 个 ROBUST 策略
-        e1, x1 = ExtremeReversalStrategy().generate_signals(
-            price, drop_threshold=-15.0, stabilize_bars=3
-        )
-        e2, x2 = AggressiveMomentumStrategy().generate_signals(
-            price, lookback=50, consec_bars=4, trail_atr_mult=1.5
-        )
-        e3, x3 = IchimokuMomentumStrategy().generate_signals(
-            price, tenkan=9, kijun=26, lookback=50, consec_bars=4
-        )
-        e4, x4 = TrendMAFilteredStrategy().generate_signals(
-            price, short_window=25, long_window=200, atr_mult=0.5
-        )
+        e1, x1 = ExtremeReversalStrategy().generate_signals(price, drop_threshold=-15.0, stabilize_bars=3)
+        e2, x2 = AggressiveMomentumStrategy().generate_signals(price, lookback=50, consec_bars=4, trail_atr_mult=1.5)
+        e3, x3 = IchimokuMomentumStrategy().generate_signals(price, tenkan=9, kijun=26, lookback=50, consec_bars=4)
+        e4, x4 = TrendMAFilteredStrategy().generate_signals(price, short_window=25, long_window=200, atr_mult=0.5)
 
         # 窗口入场投票（5 根内有信号算 1 票）
         vote_window = 3
@@ -76,14 +68,15 @@ class RobustEnsemble(StrategyBase):
         exits = exits.fillna(False)
 
         logger.debug(
-            f"RobustEnsemble | min_entry={min_entry} min_exit={min_exit} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
+            f"RobustEnsemble | min_entry={min_entry} min_exit={min_exit} | 入场: {entries.sum()} | 出场: {exits.sum()}"
         )
         return entries, exits
 
 
 def robust_ensemble_signal(
-    price: pd.Series, min_entry: int = 1, min_exit: int = 2,
+    price: pd.Series,
+    min_entry: int = 1,
+    min_exit: int = 2,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return RobustEnsemble().generate_signals(price, min_entry=min_entry, min_exit=min_exit)

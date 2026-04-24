@@ -47,11 +47,14 @@ class TurtleTradingStrategy(StrategyBase):
         high = price.rolling(2).max()
         low = price.rolling(2).min()
         prev_close = price.shift(1)
-        tr = pd.concat([
-            high - low,
-            (high - prev_close).abs(),
-            (low - prev_close).abs(),
-        ], axis=1).max(axis=1)
+        tr = pd.concat(
+            [
+                high - low,
+                (high - prev_close).abs(),
+                (low - prev_close).abs(),
+            ],
+            axis=1,
+        ).max(axis=1)
         atr = tr.rolling(window=atr_period).mean()
 
         # 入场：突破 entry_period 日新高
@@ -80,8 +83,11 @@ class TurtleTradingStrategy(StrategyBase):
 
 
 def turtle_signal(
-    price: pd.Series, entry_period: int = 20, exit_period: int = 10,
-    atr_stop_mult: float = 2.0, **kwargs: int | float,
+    price: pd.Series,
+    entry_period: int = 20,
+    exit_period: int = 10,
+    atr_stop_mult: float = 2.0,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return TurtleTradingStrategy().generate_signals(
         price, entry_period=entry_period, exit_period=exit_period, atr_stop_mult=atr_stop_mult

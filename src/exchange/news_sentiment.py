@@ -24,9 +24,7 @@ async def get_market_sentiment() -> dict:
     try:
         async with aiohttp.ClientSession() as session:
             # 拉最新新闻
-            async with session.get(
-                f"{NEWS_API_BASE}/news?limit=5", timeout=aiohttp.ClientTimeout(total=10)
-            ) as resp:
+            async with session.get(f"{NEWS_API_BASE}/news?limit=5", timeout=aiohttp.ClientTimeout(total=10)) as resp:
                 if resp.status != 200:
                     return _default_sentiment()
                 data = await resp.json()
@@ -41,12 +39,8 @@ async def get_market_sentiment() -> dict:
             bullish_words = ["surge", "rally", "breakout", "soar", "pump", "bull", "high", "gain", "up"]
             bearish_words = ["crash", "dump", "plunge", "drop", "fall", "bear", "low", "loss", "down", "fear"]
 
-            bull_count = sum(
-                1 for h in headlines for w in bullish_words if w.lower() in h.lower()
-            )
-            bear_count = sum(
-                1 for h in headlines for w in bearish_words if w.lower() in h.lower()
-            )
+            bull_count = sum(1 for h in headlines for w in bullish_words if w.lower() in h.lower())
+            bear_count = sum(1 for h in headlines for w in bearish_words if w.lower() in h.lower())
 
             if bull_count > bear_count + 2:
                 sentiment = "bullish"
@@ -55,10 +49,7 @@ async def get_market_sentiment() -> dict:
             else:
                 sentiment = "neutral"
 
-            logger.debug(
-                f"NewsAPI | {len(articles)} articles | "
-                f"bull:{bull_count} bear:{bear_count} -> {sentiment}"
-            )
+            logger.debug(f"NewsAPI | {len(articles)} articles | bull:{bull_count} bear:{bear_count} -> {sentiment}")
 
             return {
                 "news_count": len(articles),

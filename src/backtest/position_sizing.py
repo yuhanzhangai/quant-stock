@@ -7,8 +7,8 @@ Kelly 公式：f* = (p * b - q) / b
 波动率调整：高波动时减仓，低波动时加仓
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from loguru import logger
 
 
@@ -34,9 +34,7 @@ def kelly_fraction(win_rate: float, avg_win: float, avg_loss: float) -> float:
     # 限制在 0-1 之间，实践中用半 Kelly
     half_kelly = max(0, min(kelly * 0.5, 1.0))
 
-    logger.debug(
-        f"Kelly | wr:{p:.2f} b:{b:.2f} full:{kelly:.3f} half:{half_kelly:.3f}"
-    )
+    logger.debug(f"Kelly | wr:{p:.2f} b:{b:.2f} full:{kelly:.3f} half:{half_kelly:.3f}")
     return half_kelly
 
 
@@ -61,9 +59,7 @@ def vol_adjusted_size(
     return position_size
 
 
-def estimate_kelly_from_backtest(
-    returns: pd.Series, entries: pd.Series, exits: pd.Series
-) -> dict:
+def estimate_kelly_from_backtest(returns: pd.Series, entries: pd.Series, exits: pd.Series) -> dict:
     """从回测信号估算 Kelly 参数。"""
     trade_returns = []
     in_trade = False
@@ -98,5 +94,7 @@ def estimate_kelly_from_backtest(
         "avg_win": round(avg_win, 4),
         "avg_loss": round(avg_loss, 4),
         "n_trades": len(trade_returns),
-        "profit_factor": round(avg_win * win_rate / (avg_loss * (1 - win_rate)), 2) if avg_loss > 0 and win_rate < 1 else 0,
+        "profit_factor": (
+            round(avg_win * win_rate / (avg_loss * (1 - win_rate)), 2) if avg_loss > 0 and win_rate < 1 else 0
+        ),
     }

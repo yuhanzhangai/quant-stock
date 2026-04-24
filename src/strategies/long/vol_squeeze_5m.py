@@ -8,8 +8,8 @@
 - min_gap 限频：96 根（8h）
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from loguru import logger
 
 from src.strategies.base import StrategyBase
@@ -32,11 +32,11 @@ class VolSqueeze5mStrategy(StrategyBase):
         atr_period: int = 14,
         median_window: int = 50,
         squeeze_mult: float = 0.7,
-        squeeze_bars: int = 24,         # 收缩持续至少 24 根（2h）
-        expand_mult: float = 1.5,       # ATR 扩大出场阈值
-        trend_ma: int = 200,            # 趋势过滤均线
-        stop_pct: float = 2.0,          # 止损 2%
-        min_gap: int = 96,              # 限频 96 根（8h）
+        squeeze_bars: int = 24,  # 收缩持续至少 24 根（2h）
+        expand_mult: float = 1.5,  # ATR 扩大出场阈值
+        trend_ma: int = 200,  # 趋势过滤均线
+        stop_pct: float = 2.0,  # 止损 2%
+        min_gap: int = 96,  # 限频 96 根（8h）
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成波动率收缩爆发信号。"""
@@ -46,11 +46,14 @@ class VolSqueeze5mStrategy(StrategyBase):
         high = price.rolling(2).max()
         low = price.rolling(2).min()
         prev_close = price.shift(1)
-        tr = pd.concat([
-            high - low,
-            (high - prev_close).abs(),
-            (low - prev_close).abs(),
-        ], axis=1).max(axis=1)
+        tr = pd.concat(
+            [
+                high - low,
+                (high - prev_close).abs(),
+                (low - prev_close).abs(),
+            ],
+            axis=1,
+        ).max(axis=1)
         atr = tr.rolling(window=atr_period).mean()
 
         # ATR 的 50 期滚动中位数
@@ -103,11 +106,7 @@ class VolSqueeze5mStrategy(StrategyBase):
                 med_val = atr_median.iloc[i] if not np.isnan(atr_median.iloc[i]) else 0
 
                 # ATR 扩大到中位数 * 1.5 = 波动率爆发完成
-                if med_val > 0 and atr_val > med_val * expand_mult:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 止损
-                elif pnl_pct < -stop_pct:
+                if med_val > 0 and atr_val > med_val * expand_mult or pnl_pct < -stop_pct:
                     exits.iloc[i] = True
                     in_trade = False
 
@@ -131,6 +130,10 @@ def vol_squeeze_5m_signal(
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return VolSqueeze5mStrategy().generate_signals(
-        price, atr_period=atr_period, squeeze_bars=squeeze_bars,
-        stop_pct=stop_pct, min_gap=min_gap, **kwargs,
+        price,
+        atr_period=atr_period,
+        squeeze_bars=squeeze_bars,
+        stop_pct=stop_pct,
+        min_gap=min_gap,
+        **kwargs,
     )

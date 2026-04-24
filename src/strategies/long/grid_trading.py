@@ -6,7 +6,6 @@
 """
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 from src.strategies.base import StrategyBase
@@ -50,9 +49,7 @@ class GridTradingStrategy(StrategyBase):
         high = price.rolling(2).max()
         low = price.rolling(2).min()
         prev_close = price.shift(1)
-        tr = pd.concat([
-            high - low, (high - prev_close).abs(), (low - prev_close).abs()
-        ], axis=1).max(axis=1)
+        tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
         atr = tr.rolling(window=atr_period).mean()
 
         grid_size = atr * grid_mult
@@ -87,11 +84,13 @@ class GridTradingStrategy(StrategyBase):
 
 
 def grid_trading_signal(
-    price: pd.Series, ma_period: int = 100, grid_mult: float = 1.0,
-    entry_grids: int = 2, cooldown: int = 24,
+    price: pd.Series,
+    ma_period: int = 100,
+    grid_mult: float = 1.0,
+    entry_grids: int = 2,
+    cooldown: int = 24,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return GridTradingStrategy().generate_signals(
-        price, ma_period=ma_period, grid_mult=grid_mult,
-        entry_grids=entry_grids, cooldown=cooldown
+        price, ma_period=ma_period, grid_mult=grid_mult, entry_grids=entry_grids, cooldown=cooldown
     )

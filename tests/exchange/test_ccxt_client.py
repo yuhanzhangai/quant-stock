@@ -22,13 +22,10 @@ class TestCCXTClient:
         fixture = load_fixture("market_candles.json")
         # CCXT 返回格式: [[ts, o, h, l, c, v], ...]
         mock_data = [
-            [int(c[0]), float(c[1]), float(c[2]), float(c[3]), float(c[4]), float(c[5])]
-            for c in fixture["data"]
+            [int(c[0]), float(c[1]), float(c[2]), float(c[3]), float(c[4]), float(c[5])] for c in fixture["data"]
         ]
 
-        with patch.object(
-            mock_ccxt_client._exchange, "fetch_ohlcv", new_callable=AsyncMock
-        ) as mock_fetch:
+        with patch.object(mock_ccxt_client._exchange, "fetch_ohlcv", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = mock_data
             result = await mock_ccxt_client.fetch_ohlcv("BTC/USDT", "1h", limit=5)
 
@@ -46,9 +43,7 @@ class TestCCXTClient:
             "ETH/USDT": {"symbol": "ETH/USDT", "last": 1750.0},
         }
 
-        with patch.object(
-            mock_ccxt_client._exchange, "fetch_tickers", new_callable=AsyncMock
-        ) as mock_fetch:
+        with patch.object(mock_ccxt_client._exchange, "fetch_tickers", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = mock_data
             result = await mock_ccxt_client.fetch_tickers(["BTC/USDT", "ETH/USDT"])
 
@@ -65,9 +60,7 @@ class TestCCXTClient:
             "BTC/USDT": {"symbol": "BTC/USDT", "base": "BTC", "quote": "USDT"},
         }
 
-        with patch.object(
-            mock_ccxt_client._exchange, "load_markets", new_callable=AsyncMock
-        ) as mock_load:
+        with patch.object(mock_ccxt_client._exchange, "load_markets", new_callable=AsyncMock) as mock_load:
             mock_load.return_value = mock_markets
             result = await mock_ccxt_client.fetch_markets()
 

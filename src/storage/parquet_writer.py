@@ -15,9 +15,7 @@ class ParquetWriter:
     def __init__(self, base_dir: Path) -> None:
         self._base_dir = base_dir
 
-    def _get_partition_path(
-        self, data_type: str, market_type: str, symbol: str, timeframe: str, year: int
-    ) -> Path:
+    def _get_partition_path(self, data_type: str, market_type: str, symbol: str, timeframe: str, year: int) -> Path:
         """构建分区文件路径。
 
         Args:
@@ -57,9 +55,7 @@ class ParquetWriter:
         total_written = 0
 
         # 按年分组写入
-        df_with_year = df.with_columns(
-            pl.from_epoch("timestamp", time_unit="ms").dt.year().alias("_year")
-        )
+        df_with_year = df.with_columns(pl.from_epoch("timestamp", time_unit="ms").dt.year().alias("_year"))
 
         for year in df_with_year["_year"].unique().sort().to_list():
             year_df = df_with_year.filter(pl.col("_year") == year).drop("_year")
@@ -67,10 +63,7 @@ class ParquetWriter:
             written = self._append_and_dedup(path, year_df, dedup_col="timestamp")
             total_written += written
 
-        logger.info(
-            f"OHLCV 写入完成 | {symbol} {timeframe} | "
-            f"输入: {len(df)} 行 | 实际写入: {total_written} 行"
-        )
+        logger.info(f"OHLCV 写入完成 | {symbol} {timeframe} | 输入: {len(df)} 行 | 实际写入: {total_written} 行")
         return total_written
 
     def write_funding(self, df: pl.DataFrame, symbol: str) -> int:

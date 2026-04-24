@@ -71,9 +71,10 @@ class ZScoreReversionStrategy(StrategyBase):
 
 
 def zscore_reversion_signal(
-    price: pd.Series, lookback: int = 100, entry_z: float = -2.0,
-    exit_z: float = 0.0, **kwargs: int | float,
+    price: pd.Series,
+    lookback: int = 100,
+    entry_z: float = -2.0,
+    exit_z: float = 0.0,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
-    return ZScoreReversionStrategy().generate_signals(
-        price, lookback=lookback, entry_z=entry_z, exit_z=exit_z
-    )
+    return ZScoreReversionStrategy().generate_signals(price, lookback=lookback, entry_z=entry_z, exit_z=exit_z)

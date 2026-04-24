@@ -38,8 +38,7 @@ class MomentumBreakoutStrategy(StrategyBase):
         exits = exits.fillna(False)
 
         logger.debug(
-            f"MomentumBreakout | entry={entry_window} exit={exit_window} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
+            f"MomentumBreakout | entry={entry_window} exit={exit_window} | 入场: {entries.sum()} | 出场: {exits.sum()}"
         )
         return entries, exits
 

@@ -37,9 +37,7 @@ def classify_market(
     high = price.rolling(2).max()
     low = price.rolling(2).min()
     prev_close = price.shift(1)
-    tr = pd.concat([
-        high - low, (high - prev_close).abs(), (low - prev_close).abs()
-    ], axis=1).max(axis=1)
+    tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
     atr = tr.rolling(window=atr_period).mean()
     atr_pct = atr / price * 100  # ATR 占价格百分比
     atr_median = atr_pct.rolling(window=lookback).median()
@@ -120,11 +118,7 @@ class StrategyRouter(StrategyBase):
         is_range = regime == "RANGING"
         is_down = (regime == "TREND_DOWN") | (regime == "VOLATILE_DOWN")
 
-        entries = (
-            (strong_entry & is_strong)
-            | (weak_entry & is_weak)
-            | (range_entry & is_range)
-        )
+        entries = (strong_entry & is_strong) | (weak_entry & is_weak) | (range_entry & is_range)
 
         # 出场逻辑
         # 趋势策略：跌破 MA 出场
@@ -143,14 +137,13 @@ class StrategyRouter(StrategyBase):
 
         # 统计
         regime_counts = regime.value_counts()
-        logger.debug(
-            f"Router | 状态分布: {dict(regime_counts)} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
-        )
+        logger.debug(f"Router | 状态分布: {dict(regime_counts)} | 入场: {entries.sum()} | 出场: {exits.sum()}")
         return entries, exits
 
 
 def strategy_router_signal(
-    price: pd.Series, ma_period: int = 100, **kwargs: int | float,
+    price: pd.Series,
+    ma_period: int = 100,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return StrategyRouter().generate_signals(price, ma_period=ma_period)

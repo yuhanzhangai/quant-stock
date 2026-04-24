@@ -50,8 +50,7 @@ class OBVMomentumStrategy(StrategyBase):
         obv_cross_up = (obv_sma_short > obv_sma_long) & (obv_sma_short.shift(1) <= obv_sma_long.shift(1))
 
         # OBV 新高
-        obv_high = obv.rolling(window=obv_lookback).max()
-        obv_new_high = obv >= obv_high
+        obv.rolling(window=obv_lookback).max()
 
         # 价格趋势
         ma = price.rolling(window=price_ma).mean()
@@ -76,9 +75,10 @@ class OBVMomentumStrategy(StrategyBase):
 
 
 def obv_momentum_signal(
-    price: pd.Series, obv_short: int = 10, obv_long: int = 30,
-    price_ma: int = 50, **kwargs: int | float,
+    price: pd.Series,
+    obv_short: int = 10,
+    obv_long: int = 30,
+    price_ma: int = 50,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
-    return OBVMomentumStrategy().generate_signals(
-        price, obv_short=obv_short, obv_long=obv_long, price_ma=price_ma
-    )
+    return OBVMomentumStrategy().generate_signals(price, obv_short=obv_short, obv_long=obv_long, price_ma=price_ma)

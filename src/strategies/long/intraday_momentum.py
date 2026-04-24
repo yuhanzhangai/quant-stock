@@ -11,7 +11,6 @@
 """
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 from src.strategies.base import StrategyBase
@@ -33,11 +32,11 @@ class IntradayMomentumStrategy(StrategyBase):
     def generate_signals(
         self,
         price: pd.Series,
-        session_bars: int = 48,     # 前 4h = 48 根 5m
+        session_bars: int = 48,  # 前 4h = 48 根 5m
         momentum_threshold: float = 0.005,  # 前 4h 涨 > 0.5% 才入场
-        day_bars: int = 288,        # 1 天 = 288 根 5m
-        hold_bars: int = 192,       # 持仓 16h = 192 根 5m
-        stop_pct: float = 1.0,      # 止损 1%
+        day_bars: int = 288,  # 1 天 = 288 根 5m
+        hold_bars: int = 192,  # 持仓 16h = 192 根 5m
+        stop_pct: float = 1.0,  # 止损 1%
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成日内动量信号。"""
@@ -83,11 +82,13 @@ class IntradayMomentumStrategy(StrategyBase):
 
 
 def intraday_momentum_signal(
-    price: pd.Series, session_bars: int = 48,
-    momentum_threshold: float = 0.005, hold_bars: int = 192,
-    stop_pct: float = 1.0, **kwargs: int | float,
+    price: pd.Series,
+    session_bars: int = 48,
+    momentum_threshold: float = 0.005,
+    hold_bars: int = 192,
+    stop_pct: float = 1.0,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return IntradayMomentumStrategy().generate_signals(
-        price, session_bars=session_bars, momentum_threshold=momentum_threshold,
-        hold_bars=hold_bars, stop_pct=stop_pct
+        price, session_bars=session_bars, momentum_threshold=momentum_threshold, hold_bars=hold_bars, stop_pct=stop_pct
     )

@@ -41,9 +41,7 @@ class TestOKXNativeClient:
             "get_open_interest",
             return_value=fixture,
         ):
-            result = await mock_okx_client.fetch_open_interest(
-                inst_type="SWAP", inst_id="BTC-USDT-SWAP"
-            )
+            result = await mock_okx_client.fetch_open_interest(inst_type="SWAP", inst_id="BTC-USDT-SWAP")
 
             assert len(result) > 0
             assert "oi" in result[0]

@@ -7,9 +7,9 @@ AggressiveMom 提供精确入场时机（最高夏普）。
 import pandas as pd
 from loguru import logger
 
+from src.strategies.aggressive_momentum import AggressiveMomentumStrategy
 from src.strategies.base import StrategyBase
 from src.strategies.ichimoku import IchimokuStrategy
-from src.strategies.aggressive_momentum import AggressiveMomentumStrategy
 
 
 class IchimokuMomentumStrategy(StrategyBase):
@@ -37,9 +37,7 @@ class IchimokuMomentumStrategy(StrategyBase):
         """生成组合信号。"""
         # Ichimoku 信号
         ichi = IchimokuStrategy()
-        e_ichi, x_ichi = ichi.generate_signals(
-            price, tenkan=tenkan, kijun=kijun, senkou_b=senkou_b
-        )
+        e_ichi, x_ichi = ichi.generate_signals(price, tenkan=tenkan, kijun=kijun, senkou_b=senkou_b)
 
         # Ichimoku 多头状态（不只是入场信号，而是持续状态）
         tenkan_line = (price.rolling(window=tenkan).max() + price.rolling(window=tenkan).min()) / 2
@@ -72,8 +70,11 @@ class IchimokuMomentumStrategy(StrategyBase):
 
 
 def ichimoku_momentum_signal(
-    price: pd.Series, tenkan: int = 9, kijun: int = 26,
-    lookback: int = 30, consec_bars: int = 3,
+    price: pd.Series,
+    tenkan: int = 9,
+    kijun: int = 26,
+    lookback: int = 30,
+    consec_bars: int = 3,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return IchimokuMomentumStrategy().generate_signals(

@@ -69,9 +69,10 @@ class WilliamsStochStrategy(StrategyBase):
 
 
 def williams_stoch_signal(
-    price: pd.Series, wr_period: int = 14, stoch_k: int = 14,
-    ma_period: int = 100, **kwargs: int | float,
+    price: pd.Series,
+    wr_period: int = 14,
+    stoch_k: int = 14,
+    ma_period: int = 100,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
-    return WilliamsStochStrategy().generate_signals(
-        price, wr_period=wr_period, stoch_k=stoch_k, ma_period=ma_period
-    )
+    return WilliamsStochStrategy().generate_signals(price, wr_period=wr_period, stoch_k=stoch_k, ma_period=ma_period)

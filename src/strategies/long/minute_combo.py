@@ -9,8 +9,8 @@ import pandas as pd
 from loguru import logger
 
 from src.strategies.base import StrategyBase
-from src.strategies.minute_swing import MinuteSwingStrategy
 from src.strategies.intraday_momentum import IntradayMomentumStrategy
+from src.strategies.minute_swing import MinuteSwingStrategy
 
 
 class MinuteComboStrategy(StrategyBase):
@@ -41,12 +41,10 @@ class MinuteComboStrategy(StrategyBase):
     ) -> tuple[pd.Series, pd.Series]:
         """生成组合信号。"""
         e1, x1 = MinuteSwingStrategy().generate_signals(
-            price, trend_ma=ms_trend_ma, take_profit_pct=ms_tp,
-            stop_pct=ms_sl, min_gap=ms_gap
+            price, trend_ma=ms_trend_ma, take_profit_pct=ms_tp, stop_pct=ms_sl, min_gap=ms_gap
         )
         e2, x2 = IntradayMomentumStrategy().generate_signals(
-            price, session_bars=im_session, momentum_threshold=im_threshold,
-            hold_bars=im_hold, stop_pct=im_sl
+            price, session_bars=im_session, momentum_threshold=im_threshold, hold_bars=im_hold, stop_pct=im_sl
         )
 
         # OR 入场
@@ -60,14 +58,12 @@ class MinuteComboStrategy(StrategyBase):
         entries = entries.fillna(False)
         exits = exits.fillna(False)
 
-        logger.debug(
-            f"MinCombo | e1:{e1.sum()} e2:{e2.sum()} -> combined:{entries.sum()} | "
-            f"出场: {exits.sum()}"
-        )
+        logger.debug(f"MinCombo | e1:{e1.sum()} e2:{e2.sum()} -> combined:{entries.sum()} | 出场: {exits.sum()}")
         return entries, exits
 
 
 def minute_combo_signal(
-    price: pd.Series, **kwargs: int | float,
+    price: pd.Series,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return MinuteComboStrategy().generate_signals(price, **kwargs)

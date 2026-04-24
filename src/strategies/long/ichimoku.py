@@ -37,8 +37,8 @@ class IchimokuStrategy(StrategyBase):
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成 Ichimoku 信号。"""
-        high = price.rolling(2).max()
-        low = price.rolling(2).min()
+        price.rolling(2).max()
+        price.rolling(2).min()
 
         # 转换线 (Tenkan-sen): (N日最高 + N日最低) / 2
         tenkan_line = (price.rolling(window=tenkan).max() + price.rolling(window=tenkan).min()) / 2
@@ -54,16 +54,15 @@ class IchimokuStrategy(StrategyBase):
 
         # 云层上沿和下沿
         cloud_top = pd.concat([senkou_a, senkou_b_line], axis=1).max(axis=1)
-        cloud_bottom = pd.concat([senkou_a, senkou_b_line], axis=1).min(axis=1)
+        pd.concat([senkou_a, senkou_b_line], axis=1).min(axis=1)
 
         # 条件
         tk_cross = (tenkan_line > kijun_line) & (tenkan_line.shift(1) <= kijun_line.shift(1))
         above_cloud = price > cloud_top
-        below_cloud = price < cloud_bottom
 
         # 延迟线 (Chikou Span): 收盘价后移 kijun 期
         if use_chikou:
-            chikou = price.shift(-kijun)  # 实际用时要小心未来数据
+            price.shift(-kijun)  # 实际用时要小心未来数据
             chikou_ok = price > price.shift(kijun)  # 用历史代替
         else:
             chikou_ok = pd.Series(True, index=price.index)
@@ -87,9 +86,10 @@ class IchimokuStrategy(StrategyBase):
 
 
 def ichimoku_signal(
-    price: pd.Series, tenkan: int = 9, kijun: int = 26,
-    senkou_b: int = 52, **kwargs: int | float,
+    price: pd.Series,
+    tenkan: int = 9,
+    kijun: int = 26,
+    senkou_b: int = 52,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
-    return IchimokuStrategy().generate_signals(
-        price, tenkan=tenkan, kijun=kijun, senkou_b=senkou_b
-    )
+    return IchimokuStrategy().generate_signals(price, tenkan=tenkan, kijun=kijun, senkou_b=senkou_b)

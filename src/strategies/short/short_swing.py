@@ -39,14 +39,14 @@ class ShortSwingStrategy(StrategyBase):
     def generate_signals(
         self,
         price: pd.Series,
-        trend_ma: int = 180,           # 大趋势 MA 周期（180*5m=15h）
+        trend_ma: int = 180,  # 大趋势 MA 周期（180*5m=15h）
         rsi_period: int = 14,
-        rsi_entry: int = 60,           # RSI 跌破此值触发
+        rsi_entry: int = 60,  # RSI 跌破此值触发
         macd_fast: int = 12,
         macd_slow: int = 26,
         macd_signal: int = 9,
-        min_gap: int = 144,            # 最少间隔（144*5m=12h）
-        stop_pct: float = 2.0,         # 止损：价格上涨 2%（做空亏损）
+        min_gap: int = 144,  # 最少间隔（144*5m=12h）
+        stop_pct: float = 2.0,  # 止损：价格上涨 2%（做空亏损）
         take_profit_pct: float = 8.0,  # 止盈：价格下跌 8%（做空盈利）
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
@@ -75,10 +75,7 @@ class ShortSwingStrategy(StrategyBase):
         ema_slow = price.ewm(span=macd_slow, adjust=False).mean()
         macd_line = ema_fast - ema_slow
         signal_line = macd_line.ewm(span=macd_signal, adjust=False).mean()
-        macd_death_cross = (
-            (macd_line < signal_line) &
-            (macd_line.shift(1) >= signal_line.shift(1))
-        )
+        macd_death_cross = (macd_line < signal_line) & (macd_line.shift(1) >= signal_line.shift(1))
 
         # === 入场：下降趋势 + RSI 回落 + MACD 死叉 ===
         raw_entries = downtrend & (rsi_drop | macd_death_cross)
@@ -104,15 +101,11 @@ class ShortSwingStrategy(StrategyBase):
                 # 做空: 价格上涨=亏损, 价格下跌=盈利
                 price_change_pct = (price.iloc[i] - entry_price) / entry_price * 100
                 # 止损：价格上涨超过 stop_pct
-                if price_change_pct > stop_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 止盈：价格下跌超过 take_profit_pct
-                elif price_change_pct < -take_profit_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 趋势反转（价格回到 MA 上方）
-                elif price.iloc[i] > ma_trend.iloc[i]:
+                if (
+                    price_change_pct > stop_pct
+                    or price_change_pct < -take_profit_pct
+                    or price.iloc[i] > ma_trend.iloc[i]
+                ):
                     exits.iloc[i] = True
                     in_trade = False
 

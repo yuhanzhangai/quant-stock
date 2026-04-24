@@ -30,12 +30,12 @@ class MinuteBreakoutStrategy(StrategyBase):
     def generate_signals(
         self,
         price: pd.Series,
-        donchian_period: int = 120,     # 突破窗口（120*5m=10h）
-        atr_period: int = 20,           # ATR 周期
-        atr_stop_mult: float = 2.0,     # ATR 止损倍数
-        trend_ma: int = 300,            # 趋势 MA（300*5m=25h）
-        min_gap: int = 72,              # 最少间隔（72*5m=6h）
-        take_profit_pct: float = 3.0,   # 止盈 3%
+        donchian_period: int = 120,  # 突破窗口（120*5m=10h）
+        atr_period: int = 20,  # ATR 周期
+        atr_stop_mult: float = 2.0,  # ATR 止损倍数
+        trend_ma: int = 300,  # 趋势 MA（300*5m=25h）
+        min_gap: int = 72,  # 最少间隔（72*5m=6h）
+        take_profit_pct: float = 3.0,  # 止盈 3%
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成 Donchian 突破分钟线信号。"""
@@ -52,11 +52,14 @@ class MinuteBreakoutStrategy(StrategyBase):
         high = price.rolling(2).max()
         low = price.rolling(2).min()
         prev_close = price.shift(1)
-        tr = pd.concat([
-            high - low,
-            (high - prev_close).abs(),
-            (low - prev_close).abs(),
-        ], axis=1).max(axis=1)
+        tr = pd.concat(
+            [
+                high - low,
+                (high - prev_close).abs(),
+                (low - prev_close).abs(),
+            ],
+            axis=1,
+        ).max(axis=1)
         atr = tr.rolling(window=atr_period).mean()
 
         # === 原始入场信号：突破 + 趋势确认 ===
@@ -94,10 +97,7 @@ class MinuteBreakoutStrategy(StrategyBase):
                 # 止盈：涨幅 > take_profit_pct%
                 pnl_pct = (cur_price - entry_price) / entry_price * 100
 
-                if cur_price < stop_level:
-                    exits.iloc[i] = True
-                    in_trade = False
-                elif pnl_pct > take_profit_pct:
+                if cur_price < stop_level or pnl_pct > take_profit_pct:
                     exits.iloc[i] = True
                     in_trade = False
 

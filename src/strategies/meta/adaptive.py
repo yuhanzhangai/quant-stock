@@ -28,9 +28,7 @@ def detect_regime(price: pd.Series, atr_period: int = 14, lookback: int = 50) ->
     high = price.rolling(2).max()
     low = price.rolling(2).min()
     prev_close = price.shift(1)
-    tr = pd.concat([
-        high - low, (high - prev_close).abs(), (low - prev_close).abs()
-    ], axis=1).max(axis=1)
+    tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
     atr = tr.rolling(window=atr_period).mean()
     atr_median = atr.rolling(window=lookback).median()
 
@@ -46,7 +44,7 @@ def detect_regime(price: pd.Series, atr_period: int = 14, lookback: int = 50) ->
     trending = ma_slope.abs() > 0.02  # 50MA 10期变化 > 2%
 
     volatile = atr > atr_median * 1.5
-    ranging = bb_width < bb_width_median * 0.8
+    bb_width < bb_width_median * 0.8
 
     regime = pd.Series("ranging", index=price.index)
     regime[trending] = "trending"
@@ -124,16 +122,16 @@ class AdaptiveStrategy(StrategyBase):
         n_range = is_ranging.sum()
         n_vol = is_volatile.sum()
         logger.debug(
-            f"Adaptive | trend:{n_trend} range:{n_range} vol:{n_vol} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
+            f"Adaptive | trend:{n_trend} range:{n_range} vol:{n_vol} | 入场: {entries.sum()} | 出场: {exits.sum()}"
         )
         return entries, exits
 
 
 def adaptive_signal(
-    price: pd.Series, short_ma: int = 20, long_ma: int = 100,
-    bb_period: int = 20, **kwargs: int | float,
+    price: pd.Series,
+    short_ma: int = 20,
+    long_ma: int = 100,
+    bb_period: int = 20,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
-    return AdaptiveStrategy().generate_signals(
-        price, short_ma=short_ma, long_ma=long_ma, bb_period=bb_period
-    )
+    return AdaptiveStrategy().generate_signals(price, short_ma=short_ma, long_ma=long_ma, bb_period=bb_period)

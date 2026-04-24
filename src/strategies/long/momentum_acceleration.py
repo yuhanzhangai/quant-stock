@@ -40,17 +40,17 @@ class MomentumAccelerationStrategy(StrategyBase):
     def generate_signals(
         self,
         price: pd.Series,
-        velocity_window: int = 36,       # 速度平滑窗口 (36*5m=3h)
-        accel_window: int = 18,          # 加速度平滑窗口 (18*5m=1.5h)
-        trend_ma: int = 240,             # 趋势过滤 MA (240*5m=20h)
-        trend_slope_len: int = 48,       # 趋势斜率检测长度 (48*5m=4h)
-        velocity_thresh: float = 0.0,    # 最低速度阈值（0=不过滤）
-        rsi_period: int = 14,            # RSI 周期
-        rsi_floor: int = 35,             # RSI 不能太超卖
-        rsi_ceil: int = 65,              # RSI 不能太超买
-        min_gap: int = 144,              # 最少间隔 (144*5m=12h)
-        stop_pct: float = 2.0,           # 止损 2%
-        take_profit_pct: float = 8.0,    # 止盈 8%
+        velocity_window: int = 36,  # 速度平滑窗口 (36*5m=3h)
+        accel_window: int = 18,  # 加速度平滑窗口 (18*5m=1.5h)
+        trend_ma: int = 240,  # 趋势过滤 MA (240*5m=20h)
+        trend_slope_len: int = 48,  # 趋势斜率检测长度 (48*5m=4h)
+        velocity_thresh: float = 0.0,  # 最低速度阈值（0=不过滤）
+        rsi_period: int = 14,  # RSI 周期
+        rsi_floor: int = 35,  # RSI 不能太超卖
+        rsi_ceil: int = 65,  # RSI 不能太超买
+        min_gap: int = 144,  # 最少间隔 (144*5m=12h)
+        stop_pct: float = 2.0,  # 止损 2%
+        take_profit_pct: float = 8.0,  # 止盈 8%
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成动量加速度信号。"""
@@ -85,7 +85,7 @@ class MomentumAccelerationStrategy(StrategyBase):
 
         # === 7. 加速度幅度过滤：只选强信号 ===
         accel_std = accel.rolling(window=velocity_window * 3).std()
-        accel_strong = accel > 0.3 * accel_std  # 上穿后加速度要有一定幅度
+        accel > 0.3 * accel_std  # 上穿后加速度要有一定幅度
 
         # === 原始入场信号 ===
         raw_entries = in_uptrend & accel_cross_up & velocity_ok & rsi_ok
@@ -120,15 +120,13 @@ class MomentumAccelerationStrategy(StrategyBase):
                 bars_held = i - entry_bar
 
                 # 止损（立即生效）
-                if pnl_pct < -stop_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 止盈（立即生效）
-                elif pnl_pct > take_profit_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 加速度信号出场：只有持仓足够久且有正收益时才触发
-                elif bars_held >= min_hold and pnl_pct > 0.5 and accel_cross_down.iloc[i]:
+                if (
+                    pnl_pct < -stop_pct
+                    or pnl_pct > take_profit_pct
+                    or bars_held >= min_hold
+                    and pnl_pct > 0.5
+                    and accel_cross_down.iloc[i]
+                ):
                     exits.iloc[i] = True
                     in_trade = False
 

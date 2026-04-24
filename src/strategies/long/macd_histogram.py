@@ -77,9 +77,11 @@ class MACDHistogramStrategy(StrategyBase):
 
 
 def macd_histogram_signal(
-    price: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9,
-    trend_ma: int = 200, **kwargs: int | float,
+    price: pd.Series,
+    fast: int = 12,
+    slow: int = 26,
+    signal: int = 9,
+    trend_ma: int = 200,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
-    return MACDHistogramStrategy().generate_signals(
-        price, fast=fast, slow=slow, signal=signal, trend_ma=trend_ma
-    )
+    return MACDHistogramStrategy().generate_signals(price, fast=fast, slow=slow, signal=signal, trend_ma=trend_ma)

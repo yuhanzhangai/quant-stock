@@ -76,10 +76,12 @@ class ExtremeReversalStrategy(StrategyBase):
 
 
 def extreme_reversal_signal(
-    price: pd.Series, drop_period: int = 18, drop_threshold: float = -10.0,
-    stabilize_bars: int = 3, **kwargs: int | float,
+    price: pd.Series,
+    drop_period: int = 18,
+    drop_threshold: float = -10.0,
+    stabilize_bars: int = 3,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return ExtremeReversalStrategy().generate_signals(
-        price, drop_period=drop_period, drop_threshold=drop_threshold,
-        stabilize_bars=stabilize_bars
+        price, drop_period=drop_period, drop_threshold=drop_threshold, stabilize_bars=stabilize_bars
     )

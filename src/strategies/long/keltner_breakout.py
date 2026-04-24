@@ -38,15 +38,18 @@ class KeltnerBreakoutStrategy(StrategyBase):
         high = price.rolling(2).max()
         low = price.rolling(2).min()
         prev_close = price.shift(1)
-        tr = pd.concat([
-            high - low,
-            (high - prev_close).abs(),
-            (low - prev_close).abs(),
-        ], axis=1).max(axis=1)
+        tr = pd.concat(
+            [
+                high - low,
+                (high - prev_close).abs(),
+                (low - prev_close).abs(),
+            ],
+            axis=1,
+        ).max(axis=1)
         atr = tr.rolling(window=atr_period).mean()
 
         upper = mid + atr_mult * atr
-        lower = mid - atr_mult * atr
+        mid - atr_mult * atr
 
         # 突破上轨入场
         entries = (price > upper) & (price.shift(1) <= upper.shift(1))
@@ -57,15 +60,17 @@ class KeltnerBreakoutStrategy(StrategyBase):
         exits = exits.fillna(False)
 
         logger.debug(
-            f"Keltner | ema={ema_period} atr={atr_period} mult={atr_mult} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
+            f"Keltner | ema={ema_period} atr={atr_period} mult={atr_mult} | 入场: {entries.sum()} | 出场: {exits.sum()}"
         )
         return entries, exits
 
 
 def keltner_signal(
-    price: pd.Series, ema_period: int = 20, atr_period: int = 14,
-    atr_mult: float = 2.0, **kwargs: int | float,
+    price: pd.Series,
+    ema_period: int = 20,
+    atr_period: int = 14,
+    atr_mult: float = 2.0,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return KeltnerBreakoutStrategy().generate_signals(
         price, ema_period=ema_period, atr_period=atr_period, atr_mult=atr_mult

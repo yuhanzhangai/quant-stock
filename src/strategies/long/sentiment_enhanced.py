@@ -7,9 +7,10 @@
 - 不是加更多判断条件，而是调节 MinSwing 的 aggressiveness
 """
 
-import pandas as pd
 import json
 from pathlib import Path
+
+import pandas as pd
 from loguru import logger
 
 from src.strategies.base import StrategyBase
@@ -50,8 +51,8 @@ class SentimentEnhancedStrategy(StrategyBase):
         base_tp: float = 8.0,
         base_sl: float = 2.0,
         base_gap: int = 144,
-        fear_gap_mult: float = 0.5,    # Fear 时 gap 减半（更激进）
-        greed_gap_mult: float = 2.0,   # Greed 时 gap 翻倍（更保守）
+        fear_gap_mult: float = 0.5,  # Fear 时 gap 减半（更激进）
+        greed_gap_mult: float = 2.0,  # Greed 时 gap 翻倍（更保守）
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成情绪增强信号。"""
@@ -59,11 +60,8 @@ class SentimentEnhancedStrategy(StrategyBase):
 
         # 根据 Fear & Greed 调整参数
         # 如果没有情绪数据，用 50（neutral）
-        if hasattr(price.index, 'strftime'):
-            fg_values = pd.Series(
-                [fg_data.get(d.strftime("%Y-%m-%d"), 50) for d in price.index],
-                index=price.index
-            )
+        if hasattr(price.index, "strftime"):
+            fg_values = pd.Series([fg_data.get(d.strftime("%Y-%m-%d"), 50) for d in price.index], index=price.index)
         else:
             fg_values = pd.Series(50, index=price.index)
 
@@ -79,8 +77,7 @@ class SentimentEnhancedStrategy(StrategyBase):
         if fear_mask.any():
             fear_gap = max(int(base_gap * fear_gap_mult), 12)
             e, x = strat.generate_signals(
-                price, trend_ma=trend_ma, stop_pct=base_sl,
-                take_profit_pct=base_tp, min_gap=fear_gap
+                price, trend_ma=trend_ma, stop_pct=base_sl, take_profit_pct=base_tp, min_gap=fear_gap
             )
             all_entries = all_entries | (e & fear_mask)
             all_exits = all_exits | (x & fear_mask)
@@ -89,8 +86,7 @@ class SentimentEnhancedStrategy(StrategyBase):
         neutral_mask = (fg_values >= 30) & (fg_values <= 70)
         if neutral_mask.any():
             e, x = strat.generate_signals(
-                price, trend_ma=trend_ma, stop_pct=base_sl,
-                take_profit_pct=base_tp, min_gap=base_gap
+                price, trend_ma=trend_ma, stop_pct=base_sl, take_profit_pct=base_tp, min_gap=base_gap
             )
             all_entries = all_entries | (e & neutral_mask)
             all_exits = all_exits | (x & neutral_mask)
@@ -100,8 +96,7 @@ class SentimentEnhancedStrategy(StrategyBase):
         if greed_mask.any():
             greed_gap = int(base_gap * greed_gap_mult)
             e, x = strat.generate_signals(
-                price, trend_ma=trend_ma, stop_pct=base_sl * 0.7,
-                take_profit_pct=base_tp * 0.7, min_gap=greed_gap
+                price, trend_ma=trend_ma, stop_pct=base_sl * 0.7, take_profit_pct=base_tp * 0.7, min_gap=greed_gap
             )
             all_entries = all_entries | (e & greed_mask)
             all_exits = all_exits | (x & greed_mask)
@@ -119,9 +114,10 @@ class SentimentEnhancedStrategy(StrategyBase):
 
 
 def sentiment_enhanced_signal(
-    price: pd.Series, trend_ma: int = 180, base_tp: float = 8.0,
-    base_gap: int = 144, **kwargs: int | float,
+    price: pd.Series,
+    trend_ma: int = 180,
+    base_tp: float = 8.0,
+    base_gap: int = 144,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
-    return SentimentEnhancedStrategy().generate_signals(
-        price, trend_ma=trend_ma, base_tp=base_tp, base_gap=base_gap
-    )
+    return SentimentEnhancedStrategy().generate_signals(price, trend_ma=trend_ma, base_tp=base_tp, base_gap=base_gap)

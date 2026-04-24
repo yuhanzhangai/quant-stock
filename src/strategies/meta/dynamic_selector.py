@@ -7,15 +7,15 @@
 - 每隔 step_size 根 K 线重新评估
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from loguru import logger
 
-from src.strategies.base import StrategyBase
-from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
 from src.strategies.aggressive_momentum import aggressive_momentum_signal
-from src.strategies.ichimoku_momentum import ichimoku_momentum_signal
+from src.strategies.base import StrategyBase
 from src.strategies.extreme_reversal import extreme_reversal_signal
+from src.strategies.ichimoku_momentum import ichimoku_momentum_signal
+from src.strategies.trend_ma_filtered import trend_ma_filtered_signal
 
 # 候选策略池：只保留 4 个通过 OOS 验证的 ROBUST 策略
 CANDIDATES = {
@@ -132,13 +132,15 @@ class DynamicSelectorStrategy(StrategyBase):
                 if exits.iloc[j]:
                     in_position = False
 
-            strategy_log.append({
-                "bar": i,
-                "date": str(price.index[i]) if hasattr(price.index[i], "strftime") else i,
-                "best": best_name,
-                "sharpe": round(best_sharpe, 3),
-                "vol_regime": "HIGH" if recent_vol > hist_vol * 1.5 else "NORMAL",
-            })
+            strategy_log.append(
+                {
+                    "bar": i,
+                    "date": str(price.index[i]) if hasattr(price.index[i], "strftime") else i,
+                    "best": best_name,
+                    "sharpe": round(best_sharpe, 3),
+                    "vol_regime": "HIGH" if recent_vol > hist_vol * 1.5 else "NORMAL",
+                }
+            )
 
             i += actual_step
 
@@ -156,9 +158,9 @@ class DynamicSelectorStrategy(StrategyBase):
 
 
 def dynamic_selector_signal(
-    price: pd.Series, lookback: int = 180, step_size: int = 42,
+    price: pd.Series,
+    lookback: int = 180,
+    step_size: int = 42,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
-    return DynamicSelectorStrategy().generate_signals(
-        price, lookback=lookback, step_size=step_size
-    )
+    return DynamicSelectorStrategy().generate_signals(price, lookback=lookback, step_size=step_size)

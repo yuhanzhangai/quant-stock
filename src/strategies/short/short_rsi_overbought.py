@@ -36,13 +36,13 @@ class ShortRSIOverboughtStrategy(StrategyBase):
         price: pd.Series,
         trend_ma: int = 180,
         rsi_period: int = 14,
-        rsi_overbought: int = 70,          # RSI 超买阈值
-        rsi_entry_cross: int = 65,         # RSI 跌破此值入场（从超买回落确认）
-        bb_period: int = 20,               # 布林带周期
-        bb_std: float = 2.0,               # 布林带标准差倍数
+        rsi_overbought: int = 70,  # RSI 超买阈值
+        rsi_entry_cross: int = 65,  # RSI 跌破此值入场（从超买回落确认）
+        bb_period: int = 20,  # 布林带周期
+        bb_std: float = 2.0,  # 布林带标准差倍数
         min_gap: int = 144,
         stop_pct: float = 2.0,
-        take_profit_pct: float = 5.0,      # 比 short_swing 的 8% 更小，更频繁止盈
+        take_profit_pct: float = 5.0,  # 比 short_swing 的 8% 更小，更频繁止盈
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成 RSI 超买做空信号。"""
@@ -71,7 +71,7 @@ class ShortRSIOverboughtStrategy(StrategyBase):
         bb_upper = bb_ma + bb_std * bb_std_val
 
         # 最近有触碰过上轨（价格过度偏离）
-        touched_upper = (price.rolling(window=12).max() >= bb_upper.shift(1))
+        touched_upper = price.rolling(window=12).max() >= bb_upper.shift(1)
 
         # === 入场 ===
         raw_entries = downtrend & rsi_signal & touched_upper
@@ -97,19 +97,14 @@ class ShortRSIOverboughtStrategy(StrategyBase):
                 price_change = (price.iloc[i] - entry_price) / entry_price * 100
 
                 # 止损
-                if price_change > stop_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 止盈
-                elif price_change < -take_profit_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # RSI 极度超卖反弹（做空获利了结）
-                elif rsi.iloc[i] < 20 and i > 0 and rsi.iloc[i] > rsi.iloc[i - 1]:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 趋势反转
-                elif price.iloc[i] > ma.iloc[i]:
+                if (
+                    price_change > stop_pct
+                    or price_change < -take_profit_pct
+                    or rsi.iloc[i] < 20
+                    and i > 0
+                    and rsi.iloc[i] > rsi.iloc[i - 1]
+                    or price.iloc[i] > ma.iloc[i]
+                ):
                     exits.iloc[i] = True
                     in_trade = False
 

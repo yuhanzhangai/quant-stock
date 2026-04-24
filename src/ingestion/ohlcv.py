@@ -51,9 +51,7 @@ class OHLCVIngestor(IngestorBase):
         ccxt_symbol = self._symbol_to_ccxt(symbol)
         end_ts = kwargs.get("end_ts")
 
-        candles = await self._client.fetch_ohlcv_range(
-            ccxt_symbol, timeframe=timeframe, since=since, end=end_ts
-        )
+        candles = await self._client.fetch_ohlcv_range(ccxt_symbol, timeframe=timeframe, since=since, end=end_ts)
         return candles
 
     def transform(self, raw_data: Any, symbol: str, **kwargs: Any) -> pl.DataFrame:
@@ -84,6 +82,4 @@ class OHLCVIngestor(IngestorBase):
 
     def save(self, df: pl.DataFrame, symbol: str, timeframe: str) -> int:
         """保存 OHLCV 数据到 Parquet。"""
-        return self._writer.write_ohlcv(
-            df, symbol=symbol, timeframe=timeframe, market_type=self._market_type
-        )
+        return self._writer.write_ohlcv(df, symbol=symbol, timeframe=timeframe, market_type=self._market_type)

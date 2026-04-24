@@ -45,11 +45,11 @@ class SessionTradingStrategy(StrategyBase):
         exits = pd.Series(False, index=price.index)
 
         # 需要 datetime index
-        if not hasattr(price.index, 'hour'):
+        if not hasattr(price.index, "hour"):
             # 无时间信息，使用模拟：每 288 根（1天）为一周期
             day_bars = 288  # 5m * 288 = 24h
             asia_bars = 96  # 8h
-            eu_start = 96   # UTC 8:00
+            eu_start = 96  # UTC 8:00
 
             i = 0
             while i + day_bars < len(price):
@@ -87,19 +87,17 @@ class SessionTradingStrategy(StrategyBase):
         entries = entries.fillna(False)
         exits = exits.fillna(False)
 
-        logger.debug(
-            f"Session | asia_thr={asia_threshold} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
-        )
+        logger.debug(f"Session | asia_thr={asia_threshold} | 入场: {entries.sum()} | 出场: {exits.sum()}")
         return entries, exits
 
 
 def session_trading_signal(
-    price: pd.Series, asia_threshold: float = 0.003,
-    stop_pct: float = 1.5, take_profit_pct: float = 3.0,
+    price: pd.Series,
+    asia_threshold: float = 0.003,
+    stop_pct: float = 1.5,
+    take_profit_pct: float = 3.0,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return SessionTradingStrategy().generate_signals(
-        price, asia_threshold=asia_threshold, stop_pct=stop_pct,
-        take_profit_pct=take_profit_pct
+        price, asia_threshold=asia_threshold, stop_pct=stop_pct, take_profit_pct=take_profit_pct
     )

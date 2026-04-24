@@ -26,12 +26,12 @@ class ScalpTrendStrategy(StrategyBase):
     def generate_signals(
         self,
         price: pd.Series,
-        trend_ma: int = 200,       # 大趋势判断（200*15m≈50h）
-        support_ma: int = 20,      # 短期支撑（20*15m≈5h）
+        trend_ma: int = 200,  # 大趋势判断（200*15m≈50h）
+        support_ma: int = 20,  # 短期支撑（20*15m≈5h）
         rsi_period: int = 14,
-        rsi_entry: int = 35,       # RSI 超卖入场
-        rsi_exit: int = 70,        # RSI 超买出场
-        min_gap_bars: int = 96,    # 两笔交易最少间隔（96*15m=24h）
+        rsi_entry: int = 35,  # RSI 超卖入场
+        rsi_exit: int = 70,  # RSI 超买出场
+        min_gap_bars: int = 96,  # 两笔交易最少间隔（96*15m=24h）
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成分钟线信号。"""
@@ -76,8 +76,11 @@ class ScalpTrendStrategy(StrategyBase):
 
 
 def scalp_trend_signal(
-    price: pd.Series, trend_ma: int = 200, rsi_entry: int = 35,
-    min_gap_bars: int = 96, **kwargs: int | float,
+    price: pd.Series,
+    trend_ma: int = 200,
+    rsi_entry: int = 35,
+    min_gap_bars: int = 96,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return ScalpTrendStrategy().generate_signals(
         price, trend_ma=trend_ma, rsi_entry=rsi_entry, min_gap_bars=min_gap_bars

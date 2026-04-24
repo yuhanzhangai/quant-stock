@@ -39,11 +39,14 @@ class TrendMAFilteredStrategy(StrategyBase):
         high = price.rolling(2).max()
         low = price.rolling(2).min()
         prev_close = price.shift(1)
-        tr = pd.concat([
-            high - low,
-            (high - prev_close).abs(),
-            (low - prev_close).abs(),
-        ], axis=1).max(axis=1)
+        tr = pd.concat(
+            [
+                high - low,
+                (high - prev_close).abs(),
+                (low - prev_close).abs(),
+            ],
+            axis=1,
+        ).max(axis=1)
         atr = tr.rolling(window=atr_period).mean()
 
         # RSI 计算
@@ -88,6 +91,4 @@ def trend_ma_filtered_signal(
 ) -> tuple[pd.Series, pd.Series]:
     """独立函数版本，用于网格搜索。"""
     strategy = TrendMAFilteredStrategy()
-    return strategy.generate_signals(
-        price, short_window=short_window, long_window=long_window, atr_mult=atr_mult
-    )
+    return strategy.generate_signals(price, short_window=short_window, long_window=long_window, atr_mult=atr_mult)

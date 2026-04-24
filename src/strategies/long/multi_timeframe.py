@@ -73,9 +73,10 @@ class MultiTimeframeStrategy(StrategyBase):
 
 
 def multi_timeframe_signal(
-    price: pd.Series, daily_ma: int = 150, short_ma: int = 10,
-    long_ma: int = 40, **kwargs: int | float,
+    price: pd.Series,
+    daily_ma: int = 150,
+    short_ma: int = 10,
+    long_ma: int = 40,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
-    return MultiTimeframeStrategy().generate_signals(
-        price, daily_ma=daily_ma, short_ma=short_ma, long_ma=long_ma
-    )
+    return MultiTimeframeStrategy().generate_signals(price, daily_ma=daily_ma, short_ma=short_ma, long_ma=long_ma)

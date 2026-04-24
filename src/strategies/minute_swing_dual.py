@@ -48,8 +48,8 @@ class MinuteSwingDualStrategy(StrategyBase):
         （vectorbt 不直接支持做空，这里用做多信号模拟反向交易的收益）
         """
         ma_trend = price.rolling(window=trend_ma).mean()
-        ma_mid = price.rolling(window=mid_ma).mean()
-        ma_fast_line = price.rolling(window=fast_ma).mean()
+        price.rolling(window=mid_ma).mean()
+        price.rolling(window=fast_ma).mean()
 
         # RSI
         delta = price.diff()
@@ -100,14 +100,7 @@ class MinuteSwingDualStrategy(StrategyBase):
             elif in_trade and entry_price > 0:
                 pnl = (price.iloc[i] - entry_price) / entry_price * 100
                 # 出场条件
-                if pnl < -stop_pct or pnl > take_profit_pct:
-                    exits.iloc[i] = True
-                    in_trade = False
-                elif price.iloc[i] < ma_trend.iloc[i]:
-                    exits.iloc[i] = True
-                    in_trade = False
-                # 额外：做空信号出现 = 强制出场
-                elif short_raw.iloc[i]:
+                if pnl < -stop_pct or pnl > take_profit_pct or price.iloc[i] < ma_trend.iloc[i] or short_raw.iloc[i]:
                     exits.iloc[i] = True
                     in_trade = False
 
@@ -117,18 +110,19 @@ class MinuteSwingDualStrategy(StrategyBase):
         n_long = long_raw.sum()
         n_short = short_raw.sum()
         logger.debug(
-            f"DualSwing | long_signals:{n_long} short_signals:{n_short} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
+            f"DualSwing | long_signals:{n_long} short_signals:{n_short} | 入场: {entries.sum()} | 出场: {exits.sum()}"
         )
         return entries, exits
 
 
 def minute_swing_dual_signal(
-    price: pd.Series, trend_ma: int = 180, min_gap: int = 144,
-    stop_pct: float = 2.0, take_profit_pct: float = 8.0,
+    price: pd.Series,
+    trend_ma: int = 180,
+    min_gap: int = 144,
+    stop_pct: float = 2.0,
+    take_profit_pct: float = 8.0,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return MinuteSwingDualStrategy().generate_signals(
-        price, trend_ma=trend_ma, min_gap=min_gap,
-        stop_pct=stop_pct, take_profit_pct=take_profit_pct
+        price, trend_ma=trend_ma, min_gap=min_gap, stop_pct=stop_pct, take_profit_pct=take_profit_pct
     )

@@ -56,16 +56,13 @@ class StateTracker:
             最后采集的毫秒时间戳，若无记录返回 None
         """
         cursor = self._conn.execute(
-            "SELECT last_timestamp FROM ingestion_state "
-            "WHERE source=? AND symbol=? AND timeframe=?",
+            "SELECT last_timestamp FROM ingestion_state WHERE source=? AND symbol=? AND timeframe=?",
             (source, symbol, timeframe),
         )
         row = cursor.fetchone()
         return row[0] if row else None
 
-    def update_last_timestamp(
-        self, source: str, symbol: str, timeframe: str, last_timestamp: int
-    ) -> None:
+    def update_last_timestamp(self, source: str, symbol: str, timeframe: str, last_timestamp: int) -> None:
         """更新最后采集的时间戳。
 
         Args:
@@ -87,9 +84,7 @@ class StateTracker:
         self._conn.commit()
         logger.debug(f"状态更新 | {source}/{symbol}/{timeframe} -> {last_timestamp}")
 
-    def update_universe(
-        self, symbol: str, market_type: str, quote_currency: str, volume_24h: float, rank: int
-    ) -> None:
+    def update_universe(self, symbol: str, market_type: str, quote_currency: str, volume_24h: float, rank: int) -> None:
         """更新标的池信息。
 
         Args:
@@ -123,13 +118,10 @@ class StateTracker:
             标的信息列表
         """
         cursor = self._conn.execute(
-            "SELECT symbol, volume_24h, rank FROM universe "
-            "WHERE market_type=? ORDER BY rank LIMIT ?",
+            "SELECT symbol, volume_24h, rank FROM universe WHERE market_type=? ORDER BY rank LIMIT ?",
             (market_type, top_n),
         )
-        return [
-            {"symbol": row[0], "volume_24h": row[1], "rank": row[2]} for row in cursor.fetchall()
-        ]
+        return [{"symbol": row[0], "volume_24h": row[1], "rank": row[2]} for row in cursor.fetchall()]
 
     def close(self) -> None:
         """关闭连接。"""

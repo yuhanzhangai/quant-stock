@@ -66,17 +66,18 @@ class HeikinAshiTrendStrategy(StrategyBase):
         exits = exits.fillna(False)
 
         logger.debug(
-            f"HeikinAshi | consec={consec_bullish} ma={ma_period} | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
+            f"HeikinAshi | consec={consec_bullish} ma={ma_period} | 入场: {entries.sum()} | 出场: {exits.sum()}"
         )
         return entries, exits
 
 
 def heikin_ashi_signal(
-    price: pd.Series, consec_bullish: int = 3, ma_period: int = 50,
-    exit_consec_bearish: int = 2, **kwargs: int | float,
+    price: pd.Series,
+    consec_bullish: int = 3,
+    ma_period: int = 50,
+    exit_consec_bearish: int = 2,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return HeikinAshiTrendStrategy().generate_signals(
-        price, consec_bullish=consec_bullish, ma_period=ma_period,
-        exit_consec_bearish=exit_consec_bearish
+        price, consec_bullish=consec_bullish, ma_period=ma_period, exit_consec_bearish=exit_consec_bearish
     )

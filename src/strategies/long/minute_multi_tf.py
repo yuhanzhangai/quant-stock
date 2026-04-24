@@ -31,17 +31,17 @@ class MinuteMultiTFStrategy(StrategyBase):
         self,
         price: pd.Series,
         # 4h 级别（用 5m bars 模拟）
-        h4_ma_bars: int = 200,      # 200*5m ≈ 17h (接近 4h*4)
-        h4_slope_check: int = 48,   # 48*5m = 4h 检查斜率
+        h4_ma_bars: int = 200,  # 200*5m ≈ 17h (接近 4h*4)
+        h4_slope_check: int = 48,  # 48*5m = 4h 检查斜率
         # 5m 入场
         ema_fast: int = 12,
         ema_slow: int = 26,
         rsi_period: int = 14,
-        rsi_max: int = 60,          # RSI 不超买才入场
+        rsi_max: int = 60,  # RSI 不超买才入场
         # 风控
         stop_pct: float = 1.5,
         take_profit_pct: float = 3.0,
-        min_gap: int = 48,          # 48*5m = 4h 间隔
+        min_gap: int = 48,  # 48*5m = 4h 间隔
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成多周期信号。"""
@@ -83,7 +83,9 @@ class MinuteMultiTFStrategy(StrategyBase):
                 in_trade = True
             elif in_trade and entry_price > 0:
                 pnl = (price.iloc[i] - entry_price) / entry_price * 100
-                ema_death = (ema_f.iloc[i] < ema_s.iloc[i]) and (ema_f.iloc[i-1] >= ema_s.iloc[i-1]) if i > 0 else False
+                ema_death = (
+                    (ema_f.iloc[i] < ema_s.iloc[i]) and (ema_f.iloc[i - 1] >= ema_s.iloc[i - 1]) if i > 0 else False
+                )
                 if pnl < -stop_pct or pnl > take_profit_pct or ema_death:
                     exits.iloc[i] = True
                     in_trade = False
@@ -93,18 +95,19 @@ class MinuteMultiTFStrategy(StrategyBase):
 
         n_allowed = allow_long.sum()
         logger.debug(
-            f"MinMultiTF | 4h允许做多:{n_allowed}/{len(price)} bars | "
-            f"入场: {entries.sum()} | 出场: {exits.sum()}"
+            f"MinMultiTF | 4h允许做多:{n_allowed}/{len(price)} bars | 入场: {entries.sum()} | 出场: {exits.sum()}"
         )
         return entries, exits
 
 
 def minute_multi_tf_signal(
-    price: pd.Series, h4_ma_bars: int = 200, stop_pct: float = 1.5,
-    take_profit_pct: float = 3.0, min_gap: int = 48,
+    price: pd.Series,
+    h4_ma_bars: int = 200,
+    stop_pct: float = 1.5,
+    take_profit_pct: float = 3.0,
+    min_gap: int = 48,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return MinuteMultiTFStrategy().generate_signals(
-        price, h4_ma_bars=h4_ma_bars, stop_pct=stop_pct,
-        take_profit_pct=take_profit_pct, min_gap=min_gap
+        price, h4_ma_bars=h4_ma_bars, stop_pct=stop_pct, take_profit_pct=take_profit_pct, min_gap=min_gap
     )

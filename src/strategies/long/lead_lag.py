@@ -27,14 +27,14 @@ class LeadLagStrategy(StrategyBase):
     def generate_signals(
         self,
         price: pd.Series,
-        fast_bars: int = 3,        # 最近 15 分钟（3*5m）的涨幅
-        slow_bars: int = 24,       # 最近 2 小时的涨幅
+        fast_bars: int = 3,  # 最近 15 分钟（3*5m）的涨幅
+        slow_bars: int = 24,  # 最近 2 小时的涨幅
         fast_threshold: float = 0.005,  # 短期涨 > 0.5%
-        slow_max: float = 0.02,    # 中期涨幅 < 2%（还有空间）
-        hold_bars: int = 12,       # 持仓 1 小时
-        stop_pct: float = 0.5,     # 紧止损 0.5%
-        min_gap: int = 24,         # 2 小时间隔
-        trend_ma: int = 200,       # 趋势过滤
+        slow_max: float = 0.02,  # 中期涨幅 < 2%（还有空间）
+        hold_bars: int = 12,  # 持仓 1 小时
+        stop_pct: float = 0.5,  # 紧止损 0.5%
+        min_gap: int = 24,  # 2 小时间隔
+        trend_ma: int = 200,  # 趋势过滤
         **kwargs: int | float,
     ) -> tuple[pd.Series, pd.Series]:
         """生成领先-滞后信号。"""
@@ -86,11 +86,13 @@ class LeadLagStrategy(StrategyBase):
 
 
 def lead_lag_signal(
-    price: pd.Series, fast_bars: int = 3, hold_bars: int = 12,
-    stop_pct: float = 0.5, min_gap: int = 24,
+    price: pd.Series,
+    fast_bars: int = 3,
+    hold_bars: int = 12,
+    stop_pct: float = 0.5,
+    min_gap: int = 24,
     **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return LeadLagStrategy().generate_signals(
-        price, fast_bars=fast_bars, hold_bars=hold_bars,
-        stop_pct=stop_pct, min_gap=min_gap
+        price, fast_bars=fast_bars, hold_bars=hold_bars, stop_pct=stop_pct, min_gap=min_gap
     )

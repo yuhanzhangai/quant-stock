@@ -76,8 +76,11 @@ class MomentumMeanBlendStrategy(StrategyBase):
 
 
 def momentum_mean_blend_signal(
-    price: pd.Series, ma_period: int = 50, rsi_period: int = 14,
-    bb_period: int = 20, **kwargs: int | float,
+    price: pd.Series,
+    ma_period: int = 50,
+    rsi_period: int = 14,
+    bb_period: int = 20,
+    **kwargs: int | float,
 ) -> tuple[pd.Series, pd.Series]:
     return MomentumMeanBlendStrategy().generate_signals(
         price, ma_period=ma_period, rsi_period=rsi_period, bb_period=bb_period

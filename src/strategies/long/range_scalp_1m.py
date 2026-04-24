@@ -12,14 +12,14 @@
 """
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 from src.strategies.base import StrategyBase
 
 
-def detect_ranging(price: pd.Series, bb_period: int = 20, adx_period: int = 14,
-                   bb_squeeze_mult: float = 0.8) -> pd.Series:
+def detect_ranging(
+    price: pd.Series, bb_period: int = 20, adx_period: int = 14, bb_squeeze_mult: float = 0.8
+) -> pd.Series:
     """检测横盘区间。
 
     横盘条件：
@@ -62,7 +62,7 @@ class RangeScalp1mStrategy(StrategyBase):
         rsi_entry: int = 35,
         rsi_exit: int = 55,
         exit_at_mid: bool = True,
-        min_gap: int = 30,           # 最少 30 根间隔（30 分钟）
+        min_gap: int = 30,  # 最少 30 根间隔（30 分钟）
         stop_atr_mult: float = 1.5,  # 止损 = 下轨 - 1.5*ATR
         atr_period: int = 14,
         **kwargs: int | float,
@@ -85,9 +85,7 @@ class RangeScalp1mStrategy(StrategyBase):
         high = price.rolling(2).max()
         low = price.rolling(2).min()
         prev_close = price.shift(1)
-        tr = pd.concat([
-            high - low, (high - prev_close).abs(), (low - prev_close).abs()
-        ], axis=1).max(axis=1)
+        tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
         atr = tr.rolling(window=atr_period).mean()
 
         # 区间检测
@@ -148,7 +146,7 @@ class RangeScalp1mStrategy(StrategyBase):
         n_ranging = is_ranging.sum()
         logger.debug(
             f"RangeScalp1m | ranging_bars:{n_ranging}/{len(price)} "
-            f"({n_ranging/len(price)*100:.0f}%) | "
+            f"({n_ranging / len(price) * 100:.0f}%) | "
             f"entries:{entries.sum()} exits:{exits.sum()}"
         )
         return entries, exits
@@ -187,8 +185,7 @@ class RangeScalpComboStrategy(StrategyBase):
         # 横盘信号
         range_strat = RangeScalp1mStrategy()
         e_range, x_range = range_strat.generate_signals(
-            price, bb_period=bb_period, rsi_entry=rsi_entry,
-            min_gap=min_gap_range
+            price, bb_period=bb_period, rsi_entry=rsi_entry, min_gap=min_gap_range
         )
 
         # 趋势信号（简化版 MinSwing for 1m）
@@ -232,14 +229,14 @@ class RangeScalpComboStrategy(StrategyBase):
         n_range_entries = e_range.sum()
         n_trend_entries = e_trend.sum()
         logger.debug(
-            f"RangeCombo | range_entries:{n_range_entries} "
-            f"trend_entries:{n_trend_entries} | total:{entries.sum()}"
+            f"RangeCombo | range_entries:{n_range_entries} trend_entries:{n_trend_entries} | total:{entries.sum()}"
         )
         return entries.fillna(False), exits.fillna(False)
 
 
 def range_scalp_1m_signal(price, **kwargs):
     return RangeScalp1mStrategy().generate_signals(price, **kwargs)
+
 
 def range_scalp_combo_signal(price, **kwargs):
     return RangeScalpComboStrategy().generate_signals(price, **kwargs)

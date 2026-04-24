@@ -13,7 +13,6 @@
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -40,29 +39,24 @@ class NewsEvent:
 TSLA_NEWS_EVENTS: list[NewsEvent] = [
     # ---- 2026 Q1 财报季 ----
     NewsEvent("2026-04-22", "earnings", "Q1 2026 财报发布", "unknown"),
-
     # ---- CEO / 治理 ----
     NewsEvent("2026-02-26", "ceo", "Musk DOGE 持续争议 / 欧洲抵制扩大", "bearish"),
     NewsEvent("2026-03-10", "ceo", "Musk 宣布缩减 DOGE 投入 / 回归特斯拉", "bullish"),
     NewsEvent("2026-03-25", "ceo", "Musk 确认全职回归特斯拉 CEO 职务", "bullish"),
-
     # ---- 产品与技术 ----
     NewsEvent("2026-03-01", "product", "Model Y Juniper 全球交付开始", "bullish"),
     NewsEvent("2026-03-15", "product", "FSD v13 大规模推送 / 安全数据公布", "bullish"),
     NewsEvent("2026-04-10", "product", "Robotaxi Austin 试运营首周数据", "unknown"),
-
     # ---- 监管与关税 ----
     NewsEvent("2026-03-05", "regulatory", "美国新一轮对华关税生效", "bearish"),
     NewsEvent("2026-03-20", "regulatory", "EU 确认对中国 EV 关税 / 利好特斯拉欧洲", "bullish"),
     NewsEvent("2026-04-02", "regulatory", "Trump 全面关税政策升级", "bearish"),
     NewsEvent("2026-04-09", "regulatory", "部分关税 90 天暂停", "bullish"),
-
     # ---- 宏观市场 ----
     NewsEvent("2026-03-08", "macro", "美股大跌 / 衰退恐慌", "bearish"),
     NewsEvent("2026-03-18", "macro", "美联储维持利率 / 鸽派表态", "bullish"),
     NewsEvent("2026-04-07", "macro", "全球股市暴跌 / 关税恐慌升级", "bearish"),
     NewsEvent("2026-04-14", "macro", "市场反弹 / 风险偏好回升", "bullish"),
-
     # ---- 销量与业绩 ----
     NewsEvent("2026-03-03", "earnings", "2月全球交付数据发布：同比下降", "bearish"),
     NewsEvent("2026-04-01", "earnings", "Q1 全球交付数据：低于预期", "bearish"),
@@ -185,8 +179,12 @@ class TslaNewsEventStrategy(StrategyBase):
     ) -> tuple[pd.Series, pd.Series]:
         """生成做多信号（兼容基类接口）。"""
         long_entries, long_exits, _, _ = self.generate_signals_bilateral(
-            price, reaction_hours, hold_hours,
-            momentum_threshold, stop_pct, take_profit_pct,
+            price,
+            reaction_hours,
+            hold_hours,
+            momentum_threshold,
+            stop_pct,
+            take_profit_pct,
         )
         return long_entries, long_exits
 
@@ -245,10 +243,7 @@ class TslaNewsEventStrategy(StrategyBase):
             change_pct = (reaction_price - entry_price) / entry_price * 100
 
             if abs(change_pct) < momentum_threshold:
-                logger.debug(
-                    f"跳过 {event.date} {event.title} | "
-                    f"反应 {change_pct:+.2f}% < 阈值 {momentum_threshold}%"
-                )
+                logger.debug(f"跳过 {event.date} {event.title} | 反应 {change_pct:+.2f}% < 阈值 {momentum_threshold}%")
                 continue
 
             entry_bar = reaction_end
@@ -301,15 +296,17 @@ class TslaNewsEventStrategy(StrategyBase):
                     exit_pnl = (entry_val - price.iloc[force_exit]) / entry_val * 100
 
             direction = "做多" if is_long else "做空"
-            trade_log.append({
-                "date": event.date,
-                "title": event.title,
-                "direction": direction,
-                "entry_price": entry_val,
-                "reaction": change_pct,
-                "pnl_pct": exit_pnl,
-                "exit_reason": exit_reason,
-            })
+            trade_log.append(
+                {
+                    "date": event.date,
+                    "title": event.title,
+                    "direction": direction,
+                    "entry_price": entry_val,
+                    "reaction": change_pct,
+                    "pnl_pct": exit_pnl,
+                    "exit_reason": exit_reason,
+                }
+            )
 
             logger.info(
                 f"事件交易 | {event.date} | {event.title} | "
@@ -321,10 +318,7 @@ class TslaNewsEventStrategy(StrategyBase):
 
         n_long = long_entries.sum()
         n_short = short_entries.sum()
-        logger.info(
-            f"TslaNewsEvent | 做多: {n_long} 次 | 做空: {n_short} 次 | "
-            f"合计: {n_long + n_short} 次"
-        )
+        logger.info(f"TslaNewsEvent | 做多: {n_long} 次 | 做空: {n_short} 次 | 合计: {n_long + n_short} 次")
         return long_entries, long_exits, short_entries, short_exits
 
     def get_trade_log(self) -> list[dict]:
@@ -356,9 +350,7 @@ def analyze_all_events(
         factors["title"] = event.title
         factors["expected"] = event.expected_sentiment
         factors["correct"] = (
-            factors["detected"] == event.expected_sentiment
-            if event.expected_sentiment != "unknown"
-            else None
+            factors["detected"] == event.expected_sentiment if event.expected_sentiment != "unknown" else None
         )
         results.append(factors)
 
@@ -368,10 +360,7 @@ def analyze_all_events(
     valid = df[df["valid"] & df["correct"].notna()]
     if len(valid) > 0:
         accuracy = valid["correct"].mean() * 100
-        logger.info(
-            f"利好/利空因子检测准确率: {accuracy:.1f}% "
-            f"({int(valid['correct'].sum())}/{len(valid)})"
-        )
+        logger.info(f"利好/利空因子检测准确率: {accuracy:.1f}% ({int(valid['correct'].sum())}/{len(valid)})")
 
     return df
 

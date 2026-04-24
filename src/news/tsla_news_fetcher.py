@@ -12,9 +12,8 @@
 """
 
 import json
-import re
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import feedparser
@@ -38,28 +37,99 @@ class NewsItem:
 # 关键词情绪词典
 # =========================================================================
 BULLISH_KEYWORDS = [
-    "beat", "beats", "exceed", "surpass", "surge", "soar", "rally", "jump",
-    "record", "upgrade", "buy", "outperform", "strong", "growth", "profit",
-    "delivery", "deliveries up", "fsd", "autonomous", "robotaxi launch",
-    "tariff pause", "tariff relief", "tariff exempt",
-    "approval", "approved", "breakthrough", "partnership",
-    "上涨", "突破", "利好", "超预期", "创新高", "反弹", "回升",
-    "交付增长", "自动驾驶突破", "关税暂停", "关税豁免",
+    "beat",
+    "beats",
+    "exceed",
+    "surpass",
+    "surge",
+    "soar",
+    "rally",
+    "jump",
+    "record",
+    "upgrade",
+    "buy",
+    "outperform",
+    "strong",
+    "growth",
+    "profit",
+    "delivery",
+    "deliveries up",
+    "fsd",
+    "autonomous",
+    "robotaxi launch",
+    "tariff pause",
+    "tariff relief",
+    "tariff exempt",
+    "approval",
+    "approved",
+    "breakthrough",
+    "partnership",
+    "上涨",
+    "突破",
+    "利好",
+    "超预期",
+    "创新高",
+    "反弹",
+    "回升",
+    "交付增长",
+    "自动驾驶突破",
+    "关税暂停",
+    "关税豁免",
 ]
 
 BEARISH_KEYWORDS = [
-    "miss", "misses", "decline", "drop", "fall", "crash", "plunge", "tumble",
-    "downgrade", "sell", "underperform", "weak", "loss", "recall",
-    "tariff", "tariff hike", "trade war", "investigation", "probe", "lawsuit",
-    "layoff", "cut", "slash", "boycott", "protest", "ban",
-    "delivery miss", "disappointing", "below expectations",
-    "下跌", "暴跌", "利空", "不及预期", "召回", "裁员", "抵制",
-    "关税", "调查", "诉讼", "下调",
+    "miss",
+    "misses",
+    "decline",
+    "drop",
+    "fall",
+    "crash",
+    "plunge",
+    "tumble",
+    "downgrade",
+    "sell",
+    "underperform",
+    "weak",
+    "loss",
+    "recall",
+    "tariff",
+    "tariff hike",
+    "trade war",
+    "investigation",
+    "probe",
+    "lawsuit",
+    "layoff",
+    "cut",
+    "slash",
+    "boycott",
+    "protest",
+    "ban",
+    "delivery miss",
+    "disappointing",
+    "below expectations",
+    "下跌",
+    "暴跌",
+    "利空",
+    "不及预期",
+    "召回",
+    "裁员",
+    "抵制",
+    "关税",
+    "调查",
+    "诉讼",
+    "下调",
 ]
 
 NEUTRAL_KEYWORDS = [
-    "maintain", "hold", "unchanged", "steady", "flat", "mixed",
-    "维持", "不变", "持平",
+    "maintain",
+    "hold",
+    "unchanged",
+    "steady",
+    "flat",
+    "mixed",
+    "维持",
+    "不变",
+    "持平",
 ]
 
 
@@ -129,7 +199,7 @@ def fetch_google_news_rss(
         # 解析发布时间
         published = ""
         if hasattr(entry, "published_parsed") and entry.published_parsed:
-            dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+            dt = datetime(*entry.published_parsed[:6], tzinfo=UTC)
             published = dt.isoformat()
         elif hasattr(entry, "published"):
             published = entry.published
@@ -140,15 +210,17 @@ def fetch_google_news_rss(
         # 情绪分析
         sentiment, score, matched = _analyze_sentiment(title)
 
-        items.append(NewsItem(
-            title=title,
-            published=published,
-            source=source,
-            url=link,
-            sentiment=sentiment,
-            sentiment_score=score,
-            keywords_matched=matched,
-        ))
+        items.append(
+            NewsItem(
+                title=title,
+                published=published,
+                source=source,
+                url=link,
+                sentiment=sentiment,
+                sentiment_score=score,
+                keywords_matched=matched,
+            )
+        )
 
     # 统计
     sentiments = {"bullish": 0, "bearish": 0, "neutral": 0, "unknown": 0}
@@ -186,22 +258,24 @@ def fetch_tsla_news_cn(max_items: int = 30) -> list[NewsItem]:
         title = entry.get("title", "")
         published = ""
         if hasattr(entry, "published_parsed") and entry.published_parsed:
-            dt = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+            dt = datetime(*entry.published_parsed[:6], tzinfo=UTC)
             published = dt.isoformat()
 
         source = entry.get("source", {}).get("title", "Unknown")
         link = entry.get("link", "")
 
         sentiment, score, matched = _analyze_sentiment(title)
-        items.append(NewsItem(
-            title=title,
-            published=published,
-            source=source,
-            url=link,
-            sentiment=sentiment,
-            sentiment_score=score,
-            keywords_matched=matched,
-        ))
+        items.append(
+            NewsItem(
+                title=title,
+                published=published,
+                source=source,
+                url=link,
+                sentiment=sentiment,
+                sentiment_score=score,
+                keywords_matched=matched,
+            )
+        )
 
     logger.info(f"获取 {len(items)} 条中文新闻")
     return items
@@ -220,7 +294,7 @@ def save_news_cache(items: list[NewsItem], path: str | None = None) -> Path:
     if path is None:
         out_dir = Path("data/raw/news")
         out_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
         out_path = out_dir / f"tsla_news_{timestamp}.json"
     else:
         out_path = Path(path)
@@ -292,7 +366,7 @@ if __name__ == "__main__":
         if item.keywords_matched:
             print(f"           匹配: {item.keywords_matched}")
 
-    print(f"\n=== 情绪汇总 ===")
+    print("\n=== 情绪汇总 ===")
     summary = get_sentiment_summary(en_news)
     for k, v in summary.items():
         print(f"  {k}: {v}")

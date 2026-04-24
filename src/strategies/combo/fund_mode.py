@@ -14,7 +14,6 @@
 """
 
 import pandas as pd
-import numpy as np
 from loguru import logger
 
 from src.strategies.base import StrategyBase
@@ -29,15 +28,13 @@ def classify_market_state(price: pd.Series, lookback: int = 200) -> pd.Series:
     bb_std = price.rolling(window=20).std()
     bb_mid = price.rolling(window=20).mean()
     bb_width = (2 * bb_std) / bb_mid
-    bb_width_median = bb_width.rolling(window=200).median()
+    bb_width.rolling(window=200).median()
 
     # ATR
     high = price.rolling(2).max()
     low = price.rolling(2).min()
     prev_close = price.shift(1)
-    tr = pd.concat([
-        high - low, (high - prev_close).abs(), (low - prev_close).abs()
-    ], axis=1).max(axis=1)
+    tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
     atr = tr.rolling(window=14).mean()
     atr_pct = atr / price * 100
     atr_median = atr_pct.rolling(window=200).median()
@@ -136,7 +133,6 @@ class FundModeCombo(StrategyBase):
         entry_state = ""
         in_trade = False
         peak_nav = 1.0
-        nav = 1.0
 
         for i in range(len(price)):
             if entries.iloc[i]:
@@ -161,18 +157,12 @@ class FundModeCombo(StrategyBase):
 
                 # 横盘做 T 出场
                 elif entry_state == "RANGING":
-                    if price.iloc[i] >= bb_mid.iloc[i] or rsi.iloc[i] > 55:
-                        exits.iloc[i] = True
-                        in_trade = False
-                    elif pnl < -1.5:  # 横盘止损更紧
+                    if price.iloc[i] >= bb_mid.iloc[i] or rsi.iloc[i] > 55 or pnl < -1.5:
                         exits.iloc[i] = True
                         in_trade = False
 
                 # 状态变化强制出场
-                if state.iloc[i] == "VOLATILE":
-                    exits.iloc[i] = True
-                    in_trade = False
-                elif state.iloc[i] == "TRENDING_DOWN" and entry_state != "TRENDING_DOWN":
+                if state.iloc[i] == "VOLATILE" or state.iloc[i] == "TRENDING_DOWN" and entry_state != "TRENDING_DOWN":
                     exits.iloc[i] = True
                     in_trade = False
 
@@ -192,8 +182,8 @@ class FundModeCombo(StrategyBase):
         total = len(state)
 
         logger.debug(
-            f"FundCombo | UP:{n_trend/total*100:.0f}% RANGE:{n_range/total*100:.0f}% "
-            f"DOWN:{n_down/total*100:.0f}% VOL:{n_vol/total*100:.0f}% | "
+            f"FundCombo | UP:{n_trend / total * 100:.0f}% RANGE:{n_range / total * 100:.0f}% "
+            f"DOWN:{n_down / total * 100:.0f}% VOL:{n_vol / total * 100:.0f}% | "
             f"entries:{entries.sum()} exits:{exits.sum()}"
         )
         return entries, exits
