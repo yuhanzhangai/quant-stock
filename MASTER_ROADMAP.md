@@ -73,10 +73,10 @@ short strategies:  candidate_blocked (pipeline 不支持)
 [x] v2.3 Integrity Gate
 [ ] v2.3 C7 live observation
 [x] v2.3R Phase 1-9 (analytical complete)
-[ ] v2.3R.1 compliance fix (A1-A8)
-[ ] v2.3 Closeout
+[x] v2.3R.1 compliance fix (A1-A7)
+[ ] v2.3 Closeout  ←── 当前
 
-[ ] v2.4 Hybrid Exit Candidate Validation
-[ ] v2.5 Shadow Paper
-[ ] v2.6 Promotion Decision
+[ ] v2.4 Hybrid Exit Candidate Validation (preregistered)
+[ ] v2.5 Shadow Paper (conditional: v2.4=promote_to_shadow_paper)
+[ ] v2.6 Promotion Decision (conditional: v2.5 complete)
 ```
