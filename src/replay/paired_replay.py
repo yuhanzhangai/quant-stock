@@ -6,7 +6,7 @@ import pandas as pd
 import polars as pl
 from loguru import logger
 
-from src.replay.exit_modes import EXIT_MODE_FUNCS
+from src.replay.exit_modes import EXIT_MODE_FUNCS, get_coin_exit_config
 
 
 def run_paired_replay(
@@ -56,11 +56,23 @@ def _run_single_exit_mode(
         entry_price = row["entry_price"]
         entry_id = row["entry_id"]
 
-        exit_idx, exit_price, exit_reason = exit_func(
-            price,
-            entry_idx,
-            entry_price,
-        )
+        # Pass coin-specific config for current_exit
+        coin_config = get_coin_exit_config(row["symbol"])
+        if mode_name == "current_exit":
+            exit_idx, exit_price, exit_reason = exit_func(
+                price,
+                entry_idx,
+                entry_price,
+                trail=coin_config["trail"],
+                trail_pct=coin_config["trail_pct"],
+                take_profit_pct=coin_config["take_profit_pct"],
+            )
+        else:
+            exit_idx, exit_price, exit_reason = exit_func(
+                price,
+                entry_idx,
+                entry_price,
+            )
 
         pnl_pct = (exit_price - entry_price) / entry_price * 100
 

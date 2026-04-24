@@ -8,6 +8,20 @@ All exit modes use the SAME entry — only exit logic differs.
 
 import pandas as pd
 
+# Per-coin exit config (mirrors minswing_v3_final.COIN_CONFIGS)
+COIN_EXIT_CONFIG = {
+    "ETH": {"trail": True, "trail_pct": 2.0, "take_profit_pct": 99.0},
+    "SOL": {"trail": False, "trail_pct": 2.0, "take_profit_pct": 8.0},
+    "NEAR": {"trail": True, "trail_pct": 2.0, "take_profit_pct": 99.0},
+    "ARB": {"trail": False, "trail_pct": 2.0, "take_profit_pct": 8.0},
+}
+
+
+def get_coin_exit_config(symbol: str) -> dict:
+    """Get exit config for a symbol (e.g., ETH-USDT -> ETH config)."""
+    coin = symbol.replace("-USDT", "")
+    return COIN_EXIT_CONFIG.get(coin, {"trail": True, "trail_pct": 2.0, "take_profit_pct": 8.0})
+
 
 def current_exit(
     price: pd.Series,
