@@ -1,0 +1,73 @@
+# Paper Observation Candidate Pools
+# Generated: 2026-04-24
+# Based on: Top47 MinSwing v3 backtest audit
+# Strategy: MinSwing v3 (default exit config)
+
+# Core Paper Universe — Tier A (Sharpe >= 2.0)
+# These coins have demonstrated strong edge. Monitor closely.
+core_paper_universe:
+  - ETH-USDT      # Sharpe +3.17, original production
+  - SOL-USDT      # Sharpe +2.06, original production
+  - NEAR-USDT     # Sharpe +2.61, original production
+  - CFX-USDT      # Sharpe +3.43, NEW — strongest performer
+  - PENGU-USDT    # Sharpe +2.45, NEW
+  - ENJ-USDT      # Sharpe +2.32, NEW
+  - DYDX-USDT     # Sharpe +2.21, NEW
+
+# Candidate Paper Watchlist — Tier B (0.5 <= Sharpe < 2.0)
+# Promising but not confirmed. Paper observe before any action.
+candidate_paper_watchlist:
+  - ARB-USDT      # Sharpe +1.83, original production (Tier B, not A)
+  - MASK-USDT     # Sharpe +1.77, NEW
+  - ONDO-USDT     # Sharpe +1.50, NEW
+  - ENA-USDT      # Sharpe +1.44, NEW
+  - PYTH-USDT     # Sharpe +1.24, NEW
+  - OKB-USDT      # Sharpe +1.02, NEW — low WR but high PF
+  - TRUMP-USDT    # Sharpe +1.01, NEW
+  - DOGE-USDT     # Sharpe +0.92, backfilled
+  - HYPE-USDT     # Sharpe +0.61, NEW
+
+# Observe Only — Tier C (0 <= Sharpe < 0.5)
+# Edge exists but too weak. Do not paper trade, only track signals.
+observe_only:
+  - ZEC-USDT      # Sharpe +0.42
+  - ORDI-USDT     # Sharpe +0.33
+  - AVAX-USDT     # Sharpe +0.31, backfilled
+  - STRK-USDT     # Sharpe +0.25
+  - ADA-USDT      # Sharpe +0.16, backfilled
+  - UNI-USDT      # Sharpe +0.11
+
+# Reject — Tier D (Sharpe < 0)
+# Strategy loses money. Do not paper trade.
+reject:
+  - LIT-USDT
+  - LINK-USDT
+  - CHZ-USDT
+  - SPK-USDT
+  - XLM-USDT
+  - AAVE-USDT
+  - BCH-USDT
+  - WLD-USDT
+  - TON-USDT
+  - XPL-USDT
+  - BTC-USDT
+  - PI-USDT
+  - SUI-USDT
+  - APE-USDT
+  - FIL-USDT
+  - WIF-USDT
+  - PUMP-USDT
+  - XRP-USDT
+  - PEPE-USDT
+  - TRX-USDT
+  - DOT-USDT
+  - LTC-USDT
+  - IP-USDT
+  - BNB-USDT
+  - POL-USDT
+
+notes:
+  - "New coins use default exit config (trailing 2%, SL 2%), no per-coin optimization"
+  - "ARB is Tier B (Sharpe +1.833), NOT Tier A"
+  - "BTC is Tier D — MinSwing does not work on BTC 5m"
+  - "This pool is for observation only — no strategy promotion based on backtest alone"
