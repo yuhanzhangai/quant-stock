@@ -57,6 +57,9 @@ class CCXTClient:
         if not self._ipv4_session_set:
             import aiohttp
 
+            # Close CCXT's default session to avoid leak
+            if hasattr(self._exchange, "session") and self._exchange.session:
+                await self._exchange.session.close()
             connector = aiohttp.TCPConnector(family=2)  # AF_INET = IPv4 only
             self._exchange.session = aiohttp.ClientSession(connector=connector)
             self._ipv4_session_set = True
