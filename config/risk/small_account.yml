@@ -1,0 +1,20 @@
+# Small Account Risk Configuration
+# $50 capital, 5x leverage
+# Last updated: 2026-04-23
+
+account:
+  initial_equity: 50
+  max_leverage: 5
+  max_effective_leverage: 2
+
+risk:
+  max_risk_per_trade_pct: 0.005      # 0.5% of equity per trade
+  max_daily_loss_pct: 0.03           # 3% daily loss limit
+  max_total_drawdown_pct: 0.25       # 25% max drawdown
+  max_consecutive_losses: 5          # Stop after 5 consecutive losses
+
+execution:
+  min_expected_edge_to_cost_ratio: 3.0   # Edge must be 3x costs
+  block_if_latest_bar_delay_gt_bars: 2   # Block if data delayed > 2 bars
+  block_if_spread_too_wide: true
+  cooldown_after_losses_bars: 288        # 24h cooldown after max consecutive losses
