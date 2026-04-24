@@ -42,5 +42,12 @@ SOL-USDT, SUI-USDT, ATOM-USDT
 - Walk-forward: PENDING
 - Monte Carlo: PENDING
 
+## v2.1 Review (2026-04-24)
+- 9-gate validation: 2/9 pass, 6/9 fail
+- Failure reason: validation pipeline does not support short strategies (vectorbt long-only)
+- This is a framework limitation, not a strategy quality issue
+- Decision: remain_candidate (validation_status = blocked)
+- Promotion blocked until short-strategy validation support is added
+
 ## Config
 config/strategies/short_session_filter.yml

@@ -42,6 +42,13 @@ ETH-USDT, SOL-USDT, NEAR-USDT, ARB-USDT
 - Event test: PASS
 - Factor ablation: trend MA dominant
 
+## v2.1 Review (2026-04-24)
+- Reproducibility: 3/3 runs identical (sharpe=3.265787, trades=81)
+- 9-gate validation: 6/9 pass
+- OOS gate: pf=1.51 good, but trade_count=24 < 30 (test window too short)
+- Parameter stability: 0.4 (marginal, trend_ma neighbors not all profitable)
+- Decision: confirmed_production
+
 ## Production Rules
 - Do not change params without new experiment
 - Stop after 5 consecutive losses (24h cooldown)

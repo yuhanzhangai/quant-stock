@@ -34,5 +34,13 @@ Same as MinSwing v3 (trend MA + RSI + MACD)
 - Monte Carlo: PENDING
 - Event test: PENDING
 
+## v2.1 Review (2026-04-24)
+- 9-gate validation: 7/9 pass (best among candidates)
+- OOS gate: pf=1.71, sharpe=3.63, but trade_count=24 < 30
+- Monte Carlo: 77% profit probability
+- Parameter stability: 0.6 (pass)
+- Decision: remain_candidate (needs longer OOS window)
+- Promotion blocked until 5m data extends beyond 3 months
+
 ## Config
 config/strategies/fast_exit_eth.yml

@@ -1,5 +1,5 @@
 # Strategy Registry
-# Last updated: 2026-04-23
+# Last updated: 2026-04-24
 # Status: production | candidate | research | archive
 
 production:
@@ -20,6 +20,12 @@ production:
       monte_carlo: pass
     reason: "Champion long strategy. Passed OOS, walk-forward, Monte Carlo. Trend MA(180) + RSI + MACD + TP/SL."
     owner_note: "Only allow bug fixes, no silent parameter changes."
+    review:
+      last_reviewed_version: v2.1-validation-hardening
+      last_reviewed_at: "2026-04-24"
+      v2_1_decision: confirmed_production
+      reproducibility: "3/3 runs identical (sharpe=3.265787, trades=81)"
+      gate_result: "6/9 pass (OOS trade_count short, param_stability marginal)"
 
 candidate:
   - name: fast_exit_eth
@@ -33,7 +39,14 @@ candidate:
     validation:
       oos: pending
       walk_forward: pending
-    reason: "ETH-only combo: MinSwing entry + fast MA(90) death cross exit. +34% improvement over baseline. Needs more OOS validation."
+    reason: "ETH-only combo: MinSwing entry + fast MA(90) death cross exit. +34% improvement over baseline."
+    review:
+      last_reviewed_version: v2.1-validation-hardening
+      last_reviewed_at: "2026-04-24"
+      v2_1_decision: remain_candidate
+      gate_result: "7/9 pass (OOS fail = trade_count < 30 due to short test window)"
+      promotion_allowed: false
+      promotion_blocker: "needs longer OOS window (more 5m data)"
 
   - name: short_session_filter
     file: src/strategies/short/short_session_filter.py
@@ -52,7 +65,14 @@ candidate:
     validation:
       oos: pending
       walk_forward: pending
-    reason: "Best short strategy. Excludes UTC 13-20 (US afternoon). Stop=3%. Verified by independent review."
+    reason: "Best short strategy. Excludes UTC 13-20 (US afternoon). Stop=3%."
+    review:
+      last_reviewed_version: v2.1-validation-hardening
+      last_reviewed_at: "2026-04-24"
+      v2_1_decision: remain_candidate
+      validation_status: blocked
+      blocked_reason: "validation pipeline does not support short strategies (vectorbt long-only)"
+      promotion_allowed: false
 
   - name: short_trend_follow
     file: src/strategies/short/short_trend_follow.py
@@ -68,6 +88,13 @@ candidate:
       oos: pending
       walk_forward: pending
     reason: "Trend-following short for coins where session_filter hurts performance."
+    review:
+      last_reviewed_version: v2.1-validation-hardening
+      last_reviewed_at: "2026-04-24"
+      v2_1_decision: remain_candidate_by_no_change
+      validation_status: blocked
+      blocked_reason: "current validation pipeline does not support short strategy verification"
+      promotion_allowed: false
 
 research:
   - name: minute_swing_dual
@@ -119,7 +146,7 @@ archive:
   - name: long_strategy_zoo
     path: src/strategies/long/
     count: 41
-    reason: "Historical iteration archive. 40+ strategies tested, most failed OOS validation. Do not use for production. Keep for reference only."
+    reason: "Historical iteration archive. 40+ strategies tested, most failed OOS validation."
 
   - name: short_archive
     files:
@@ -146,7 +173,9 @@ archive:
 
   - name: overfit_strategies
     note: "Ichimoku standalone (+0.89 IS / -0.37 OOS), MACD_Hist (+0.69 / -0.69), MomBreakout (+1.15 / -0.68). CONFIRMED OVERFIT. Do not reactivate."
+    review:
+      confirmed_overfit_at: v2.1-validation-hardening
+      gate_result: "1/9 pass, 6/9 fail — correctly rejected"
 
 # Tournament scripts: PAUSED
-# scripts/tournament.py, tournament_live.py, short_iterate.py, run_all_strategies.py
-# Do not resume until validation pipeline (Checkpoint 7) is complete.
+# Do not resume until short-strategy validation support is added.
