@@ -5,7 +5,6 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-import duckdb
 from loguru import logger
 
 from src.data_quality.checks import CheckResult
@@ -23,11 +22,9 @@ def save_to_db(
     end_ts: str = "",
 ) -> None:
     """保存检查结果到 research.duckdb。"""
-    if not DB_PATH.exists():
-        logger.warning(f"DB not found: {DB_PATH}")
-        return
+    from src.research.db import connect_research_db
 
-    conn = duckdb.connect(str(DB_PATH))
+    conn = connect_research_db(required=True)
     now = datetime.now(tz=UTC).isoformat()
 
     for r in results:

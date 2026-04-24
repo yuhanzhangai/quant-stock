@@ -124,10 +124,28 @@ class PaperSession:
         self.trades: list[PaperTrade] = []
         self.equity_curve: list[dict] = []
 
+        self._status = "created"
+        self._error_message = ""
         self._session_dir = SESSION_DIR / f"session_id={self.session_id}"
         self._session_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Paper session created: {self.session_id}")
+
+    def __enter__(self) -> "PaperSession":
+        """Context manager entry."""
+        self._status = "running"
+        return self
+
+    def __exit__(self, exc_type: type | None, exc_val: BaseException | None, exc_tb: object) -> bool:
+        """Context manager exit — auto finalize."""
+        if exc_type is not None:
+            self._status = "failed"
+            self._error_message = str(exc_val)
+            logger.error(f"Paper session failed: {exc_val}")
+        else:
+            self._status = "completed"
+        self.save_all()
+        return False  # don't suppress exceptions
 
     def record_signal(self, signal: PaperSignal) -> None:
         """记录信号。"""
@@ -226,19 +244,16 @@ class PaperSession:
 
     def _save_to_db(self, report: dict) -> None:
         """写入 paper_sessions 表。"""
-        if not DB_PATH.exists():
-            return
+        from src.research.db import connect_research_db
 
-        import duckdb
-
-        conn = duckdb.connect(str(DB_PATH))
+        conn = connect_research_db(required=True)
         conn.execute(
             """
             INSERT INTO paper_sessions
             (session_id, strategy_name, strategy_version, initial_equity,
              final_equity, total_signals, accepted_trades, rejected_signals,
-             net_pnl, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', current_timestamp)
+             net_pnl, status, notes, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp)
             """,
             [
                 self.session_id,
@@ -250,6 +265,8 @@ class PaperSession:
                 report["accepted_trades"],
                 report["rejected_signals"],
                 report["net_pnl"],
+                self._status,
+                self._error_message or None,
             ],
         )
         conn.close()

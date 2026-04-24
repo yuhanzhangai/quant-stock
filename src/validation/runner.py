@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import duckdb
 import pandas as pd
 from loguru import logger
 
@@ -153,10 +152,9 @@ def save_validation_report(
 
 def _save_to_db(results: list[GateResult], run_id: str) -> None:
     """写入 validation_results 表。"""
-    if not DB_PATH.exists():
-        return
+    from src.research.db import connect_research_db
 
-    conn = duckdb.connect(str(DB_PATH))
+    conn = connect_research_db(required=True)
     now = datetime.now(tz=UTC).isoformat()
 
     for r in results:

@@ -258,15 +258,16 @@ def save_equity(run_dir: Path, run_id: str, portfolio: vbt.Portfolio) -> Path:
     return path
 
 
-def save_to_db(metrics: dict) -> None:
+def save_to_db(
+    metrics: dict,
+    run_type: str = "single",
+    parent_run_id: str = "",
+    output_dir: str = "",
+) -> None:
     """写入 research.duckdb backtest_runs 表。"""
-    if not DB_PATH.exists():
-        logger.warning("research.duckdb not found, skipping DB write")
-        return
+    from src.research.db import connect_research_db
 
-    import duckdb
-
-    conn = duckdb.connect(str(DB_PATH))
+    conn = connect_research_db(required=True)
     backtest_id = f"bt_{uuid.uuid4().hex[:12]}"
 
     conn.execute(
@@ -275,8 +276,9 @@ def save_to_db(metrics: dict) -> None:
         (backtest_id, run_id, strategy_name, symbol, timeframe,
          initial_cash, net_return, sharpe, sortino, max_drawdown,
          profit_factor, win_rate, expectancy, trade_count,
-         avg_trade_return, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         avg_trade_return, run_type, parent_run_id, output_dir,
+         created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             backtest_id,
@@ -294,11 +296,49 @@ def save_to_db(metrics: dict) -> None:
             metrics["expectancy"],
             metrics["trade_count"],
             metrics.get("avg_win", 0),
+            run_type,
+            parent_run_id,
+            output_dir,
             metrics["created_at"],
         ],
     )
     conn.close()
-    logger.info(f"Backtest saved to DB: {backtest_id}")
+    logger.info(f"Backtest [{run_type}] saved to DB: {backtest_id}")
+
+
+def save_grid_candidate_to_db(
+    parent_run_id: str,
+    strategy_name: str,
+    symbol: str,
+    timeframe: str,
+    params: dict,
+    metrics: dict,
+) -> None:
+    """写入参数搜索候选行（轻量，无 artifact 目录）。"""
+    import hashlib
+
+    params_hash = hashlib.md5(str(sorted(params.items())).encode()).hexdigest()[:10]
+    save_to_db(
+        {
+            "run_id": f"{parent_run_id}__{params_hash}",
+            "strategy_name": strategy_name,
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "initial_cash": metrics.get("init_cash", 50),
+            "net_return": metrics.get("total_return", 0),
+            "sharpe": metrics.get("sharpe_ratio", 0),
+            "sortino": metrics.get("sortino_ratio", 0),
+            "max_drawdown": -metrics.get("max_drawdown_pct", 0) / 100,
+            "profit_factor": 0,
+            "win_rate": metrics.get("win_rate_pct", 0) / 100,
+            "expectancy": 0,
+            "trade_count": metrics.get("total_trades", 0),
+            "avg_win": 0,
+            "created_at": datetime.now(tz=UTC).isoformat(),
+        },
+        run_type="grid_candidate",
+        parent_run_id=parent_run_id,
+    )
 
 
 def save_all(
@@ -313,9 +353,10 @@ def save_all(
     leverage: int = 5,
     data_version: str = "",
     cost_model: str = "okx_spot",
-    write_db: bool = True,
+    run_type: str = "single",
+    parent_run_id: str = "",
 ) -> Path:
-    """一键保存所有标准化输出。"""
+    """一键保存所有标准化输出。DB 写入强制执行，不可跳过。"""
     run_dir = OUTPUT_DIR / f"run_id={run_id}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -346,9 +387,9 @@ def save_all(
     save_trades(run_dir, run_id, portfolio, symbol)
     save_equity(run_dir, run_id, portfolio)
 
-    if write_db:
-        metrics["timeframe"] = timeframe
-        save_to_db(metrics)
+    # DB write is mandatory — no escape hatch
+    metrics["timeframe"] = timeframe
+    save_to_db(metrics, run_type=run_type, parent_run_id=parent_run_id, output_dir=str(run_dir))
 
     logger.info(f"Backtest output saved to: {run_dir}")
     return run_dir

@@ -88,6 +88,13 @@ TABLES = {
             avg_trade_return DOUBLE,
             median_trade_return DOUBLE,
             max_consecutive_losses INTEGER,
+            run_type        TEXT DEFAULT 'single',
+            parent_run_id   TEXT,
+            output_dir      TEXT,
+            params_hash     TEXT,
+            data_version    TEXT,
+            code_commit     TEXT,
+            is_decision_run BOOLEAN DEFAULT true,
             created_at      TIMESTAMP DEFAULT current_timestamp
         );
     """,

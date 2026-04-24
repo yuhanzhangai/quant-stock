@@ -1,5 +1,6 @@
-"""Paper vs Backtest 对比页面。"""
+"""Paper vs Backtest 对比页面 — 从 DB 索引。"""
 
+import json
 import sys
 from pathlib import Path
 
@@ -20,19 +21,18 @@ import duckdb
 
 conn = duckdb.connect(str(DB_PATH), read_only=True)
 
-# Paper sessions
+# Paper sessions from DB
 st.subheader("Paper Trading 会话")
 sessions = conn.execute(
     "SELECT session_id, strategy_name, strategy_version, initial_equity, "
     "final_equity, net_pnl, total_signals, accepted_trades, rejected_signals, "
-    "status, created_at "
+    "status, notes, created_at "
     "FROM paper_sessions ORDER BY created_at DESC"
 ).fetchdf()
 
 if len(sessions) > 0:
     st.dataframe(sessions, use_container_width=True, hide_index=True)
 
-    # Summary
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("总会话数", len(sessions))
@@ -45,54 +45,60 @@ if len(sessions) > 0:
 else:
     st.info("暂无 Paper Trading 记录")
 
-# Comparison section
+# Comparison: select session + backtest from DB
 st.subheader("Paper vs Backtest 对比")
 
-# Check for paper session files
-session_dir = Path("data/research/paper_sessions")
-backtest_dir = Path("data/research/backtests")
+backtests = conn.execute(
+    "SELECT run_id, strategy_name, symbol, sharpe, trade_count, output_dir "
+    "FROM backtest_runs WHERE run_type IN ('single', 'grid_best', 'baseline') "
+    "ORDER BY created_at DESC LIMIT 50"
+).fetchdf()
 
-paper_sessions = sorted(session_dir.glob("session_id=*")) if session_dir.exists() else []
-backtest_runs = sorted(backtest_dir.glob("run_id=*")) if backtest_dir.exists() else []
-
-if paper_sessions and backtest_runs:
+if len(sessions) > 0 and len(backtests) > 0:
     col1, col2 = st.columns(2)
     with col1:
-        selected_paper = st.selectbox("Paper Session", [p.name for p in paper_sessions])
+        sel_session = st.selectbox("Paper Session", sessions["session_id"].tolist())
     with col2:
-        selected_bt = st.selectbox("Backtest Run", [b.name for b in backtest_runs])
+        sel_bt = st.selectbox("Backtest Run", backtests["run_id"].tolist())
 
     if st.button("对比"):
-        import json
+        # Get paper session data from DB
+        paper_row = sessions[sessions["session_id"] == sel_session].iloc[0]
 
-        paper_path = session_dir / selected_paper / "final_report.json"
-        bt_path = backtest_dir / selected_bt / "metrics.json"
+        # Get backtest data from DB
+        bt_row = backtests[backtests["run_id"] == sel_bt].iloc[0]
 
-        if paper_path.exists() and bt_path.exists():
-            with open(paper_path, encoding="utf-8") as f:
-                paper = json.load(f)
-            with open(bt_path, encoding="utf-8") as f:
-                bt = json.load(f)
+        comparison = {
+            "指标": ["交易数", "净盈亏/净收益", "信号数", "被拒信号", "状态"],
+            "Paper": [
+                str(paper_row.get("accepted_trades", 0)),
+                f"${paper_row.get('net_pnl', 0):.2f}",
+                str(paper_row.get("total_signals", 0)),
+                str(paper_row.get("rejected_signals", 0)),
+                str(paper_row.get("status", "")),
+            ],
+            "Backtest": [
+                str(bt_row.get("trade_count", 0)),
+                f"sharpe={bt_row.get('sharpe', 0):.4f}",
+                "-",
+                "-",
+                str(bt_row.get("output_dir", "")),
+            ],
+        }
+        st.table(comparison)
 
-            comparison = {
-                "指标": ["交易数", "净盈亏", "总信号", "被拒绝信号"],
-                "Paper": [
-                    paper.get("accepted_trades", 0),
-                    f"${paper.get('net_pnl', 0):.2f}",
-                    paper.get("total_signals", 0),
-                    paper.get("rejected_signals", 0),
-                ],
-                "Backtest": [
-                    bt.get("trade_count", 0),
-                    f"{bt.get('net_return', 0) * 100:.2f}%",
-                    "-",
-                    "-",
-                ],
-            }
-            st.table(comparison)
-        else:
-            st.warning("找不到报告文件")
+        # Try to load detailed artifacts if output_dir exists
+        bt_output = bt_row.get("output_dir", "")
+        if bt_output and Path(bt_output).exists():
+            metrics_path = Path(bt_output) / "metrics.json"
+            if metrics_path.exists():
+                with open(metrics_path, encoding="utf-8") as f:
+                    st.json(json.load(f))
+        elif bt_output:
+            st.warning(f"DB 有记录但 artifact 缺失: {bt_output}")
+elif len(sessions) == 0:
+    st.info("需要 Paper Trading 数据")
 else:
-    st.info("暂无可对比的数据")
+    st.info("需要 Backtest 数据")
 
 conn.close()

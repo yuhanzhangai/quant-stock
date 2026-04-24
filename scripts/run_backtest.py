@@ -15,7 +15,7 @@ from src.backtest.costs import OKX_SPOT
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import compute_metrics
 from src.backtest.reports import generate_report
-from src.backtest.standardized_output import generate_run_id, save_all
+from src.backtest.standardized_output import generate_run_id, save_all, save_grid_candidate_to_db
 from src.data_quality.checks import has_critical_failure, run_all_checks
 from src.storage.parquet_writer import ParquetWriter
 
@@ -102,25 +102,42 @@ def main() -> None:
         "long_window": [50, 100, 200],
     }
 
+    grid_run_id = generate_run_id("trend_ma", "BTC-USDT", "grid_search")
     results_df, best_params = engine.run_grid_search(price, trend_ma_signal_func, param_grid)
 
-    logger.info(f"\n最优参数: {best_params}")
-    logger.info("\n全部结果:")
+    # Write all grid candidates to DB
     for _, row in results_df.iterrows():
-        logger.info(
-            f"  short={int(row['short_window']):3d} long={int(row['long_window']):3d} | "
-            f"收益: {row['total_return_pct']:+.2f}% | "
-            f"夏普: {row['sharpe_ratio']:.3f} | "
-            f"回撤: {row['max_drawdown_pct']:.2f}% | "
-            f"交易: {int(row['total_trades'])}"
+        params_i = {k: row[k] for k in param_grid}
+        save_grid_candidate_to_db(
+            parent_run_id=grid_run_id,
+            strategy_name="trend_ma",
+            symbol="BTC-USDT",
+            timeframe="1h",
+            params=params_i,
+            metrics=row.to_dict(),
         )
 
-    # 用最优参数跑一次并生成报告
+    logger.info(f"\n最优参数: {best_params}")
+
+    # Best params: full artifact save as grid_best
     best_entries, best_exits = trend_ma_signal_func(price, **best_params)
     best_portfolio = engine.run(price, best_entries, best_exits)
     generate_report(
         best_portfolio,
         title=f"BTC-USDT TrendMA Best {best_params['short_window']}-{best_params['long_window']}",
+    )
+
+    best_run_id = generate_run_id("trend_ma", "BTC-USDT", "grid_best")
+    save_all(
+        run_id=best_run_id,
+        strategy_name="trend_ma",
+        strategy_version="1.0.0",
+        symbol="BTC-USDT",
+        timeframe="1h",
+        params=best_params,
+        portfolio=best_portfolio,
+        run_type="grid_best",
+        parent_run_id=grid_run_id,
     )
 
     logger.success("回测完成！")
