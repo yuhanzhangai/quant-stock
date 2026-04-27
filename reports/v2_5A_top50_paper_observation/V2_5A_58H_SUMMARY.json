@@ -1,0 +1,215 @@
+{
+  "observation_id": "obs_8477b07a",
+  "start_ts": "2026-04-24T22:03:26.252928+00:00",
+  "end_ts": "2026-04-27T06:34:47.929670+00:00",
+  "runtime_hours": 58,
+  "cycle_count": 7,
+  "heartbeat_count": 109,
+  "heartbeat_failed": 0,
+  "heartbeat_warning": 0,
+  "total_errors": 0,
+  "total_signals": 178,
+  "total_closed_trades": 15,
+  "total_rejections": 0,
+  "open_positions": 0,
+  "session_metrics": {
+    "core": {
+      "signals": 8,
+      "closed_trades": 8,
+      "wins": 0,
+      "losses": 8,
+      "win_rate": 0.0,
+      "total_pnl": -5.24,
+      "avg_pnl": -0.655
+    },
+    "candidate": {
+      "signals": 7,
+      "closed_trades": 7,
+      "wins": 2,
+      "losses": 5,
+      "win_rate": 28.6,
+      "total_pnl": -1.8,
+      "avg_pnl": -0.257
+    },
+    "broad": {
+      "signals": 163,
+      "closed_trades": 0,
+      "wins": 0,
+      "losses": 0,
+      "win_rate": 0,
+      "total_pnl": 0,
+      "avg_pnl": 0
+    }
+  },
+  "rejection_reasons": {},
+  "top_winners": [
+    {
+      "symbol": "ENJ-USDT",
+      "pnl": 2.9703,
+      "session": "candidate"
+    },
+    {
+      "symbol": "PENGU-USDT",
+      "pnl": 2.1468,
+      "session": "candidate"
+    }
+  ],
+  "top_losers": [
+    {
+      "symbol": "CFX-USDT",
+      "pnl": -2.8397,
+      "session": "candidate"
+    },
+    {
+      "symbol": "CFX-USDT",
+      "pnl": -1.4987,
+      "session": "candidate"
+    },
+    {
+      "symbol": "ARB-USDT",
+      "pnl": -1.3964,
+      "session": "core"
+    },
+    {
+      "symbol": "PENGU-USDT",
+      "pnl": -1.2029,
+      "session": "candidate"
+    },
+    {
+      "symbol": "DYDX-USDT",
+      "pnl": -1.1313,
+      "session": "candidate"
+    },
+    {
+      "symbol": "NEAR-USDT",
+      "pnl": -1.0638,
+      "session": "core"
+    },
+    {
+      "symbol": "ARB-USDT",
+      "pnl": -0.9982,
+      "session": "core"
+    },
+    {
+      "symbol": "NEAR-USDT",
+      "pnl": -0.6383,
+      "session": "core"
+    },
+    {
+      "symbol": "SOL-USDT",
+      "pnl": -0.4386,
+      "session": "core"
+    },
+    {
+      "symbol": "NEAR-USDT",
+      "pnl": -0.3534,
+      "session": "core"
+    },
+    {
+      "symbol": "DOGE-USDT",
+      "pnl": -0.2437,
+      "session": "candidate"
+    },
+    {
+      "symbol": "ETH-USDT",
+      "pnl": -0.2053,
+      "session": "core"
+    },
+    {
+      "symbol": "ETH-USDT",
+      "pnl": -0.1435,
+      "session": "core"
+    }
+  ],
+  "recommendations": {
+    "IP-USDT": "watch_only",
+    "MASK-USDT": "watch_only",
+    "CHZ-USDT": "watch_only",
+    "ENA-USDT": "watch_only",
+    "ARB-USDT": "core_keep",
+    "CFX-USDT": "watch_only",
+    "WLD-USDT": "watch_only",
+    "PENGU-USDT": "candidate_continue",
+    "XPL-USDT": "watch_only",
+    "ETH-USDT": "core_keep",
+    "BNB-USDT": "watch_only",
+    "NEAR-USDT": "core_keep",
+    "BTC-USDT": "watch_only",
+    "ENJ-USDT": "candidate_continue",
+    "TRX-USDT": "watch_only",
+    "ZEC-USDT": "watch_only",
+    "STRK-USDT": "watch_only",
+    "LIT-USDT": "watch_only",
+    "PYTH-USDT": "watch_only",
+    "TRUMP-USDT": "watch_only",
+    "WIF-USDT": "watch_only",
+    "DYDX-USDT": "candidate_continue",
+    "AVAX-USDT": "watch_only",
+    "FIL-USDT": "watch_only",
+    "UNI-USDT": "watch_only",
+    "ONDO-USDT": "watch_only",
+    "SUI-USDT": "watch_only",
+    "PEPE-USDT": "watch_only",
+    "SOL-USDT": "core_keep",
+    "PUMP-USDT": "watch_only",
+    "LINK-USDT": "watch_only",
+    "ORDI-USDT": "watch_only",
+    "ADA-USDT": "watch_only",
+    "DOGE-USDT": "candidate_continue",
+    "AAVE-USDT": "watch_only",
+    "XRP-USDT": "watch_only",
+    "TON-USDT": "watch_only",
+    "DOT-USDT": "watch_only",
+    "BCH-USDT": "watch_only",
+    "LTC-USDT": "watch_only",
+    "OKB-USDT": "watch_only",
+    "XLM-USDT": "watch_only",
+    "POL-USDT": "watch_only",
+    "SPK-USDT": "watch_only",
+    "HYPE-USDT": "watch_only"
+  },
+  "cycles": [
+    {
+      "id": "obs_8477b07a_cycle001",
+      "signals": 14,
+      "trades": 0,
+      "open": 1
+    },
+    {
+      "id": "obs_8477b07a_cycle002",
+      "signals": 18,
+      "trades": 4,
+      "open": 1
+    },
+    {
+      "id": "obs_8477b07a_cycle003",
+      "signals": 4,
+      "trades": 1,
+      "open": 1
+    },
+    {
+      "id": "obs_8477b07a_cycle004",
+      "signals": 21,
+      "trades": 1,
+      "open": 2
+    },
+    {
+      "id": "obs_8477b07a_cycle005",
+      "signals": 84,
+      "trades": 6,
+      "open": 2
+    },
+    {
+      "id": "obs_8477b07a_cycle006",
+      "signals": 15,
+      "trades": 2,
+      "open": 0
+    },
+    {
+      "id": "obs_8477b07a_cycle007",
+      "signals": 16,
+      "trades": 1,
+      "open": 0
+    }
+  ]
+}
