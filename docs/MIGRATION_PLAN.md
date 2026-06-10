@@ -1,4 +1,8 @@
-# MIGRATION_PLAN — QuantLab(crypto)→ quant-stock(美股 + Firstrade 全自动模拟盘)
+# MIGRATION_PLAN —【已废止存档】QuantLab(crypto)→ quant-stock 研究路线
+
+> ⚠️ **本路线已于 2026-06-10 随项目转向废止**(operator 拍板:转向博主跟单+下单留档,研究/回测层归档 `archive/`)。现行路线见 `docs/ROADMAP.md`。本文件仅作历史存证。
+
+(以下为废止前原文)
 
 > 沿用 QuantLab 的 checkpoint 纪律:**一次只做一个 · 必须有产出物 · 必须能复现 · 没过标准不进下一步 · 不只看 Sharpe。**
 > Lead 驱动并把关(强制审核制度已由 operator 于 2026-06-10 废止;commit 前自检 + Lead 合并把关)。

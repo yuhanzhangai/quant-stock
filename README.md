@@ -1,24 +1,30 @@
-# quant-stock — 美股量化研究 + Firstrade 全自动模拟盘
+# quant-stock — 博主跟单 + 下单留档(Firstrade 模拟盘)
 
-> 由 QuantLab(加密货币量化研究系统)fork 改造而来。资产改为美股,新增 Firstrade 模拟盘自动执行层。
-> **研究 + 模拟盘验证工具,绝非投资建议。模拟盘无真金。**
+> 由 QuantLab(加密货币量化研究)fork 而来;**2026-06-10 转向:不再自研策略/回测,跟 stock-picker 诚实榜 PROVEN 博主的喊单**,全自动模拟盘执行 + 每单留档 + 绩效跟踪。
+> **跟单执行 + 模拟盘验证工具,绝非投资建议。模拟盘无真金,edge 未经证明,不预设盈利。**
 
-## 两条腿
+## 流水线
 
-1. **研究脑**(复用 QuantLab 引擎):数据采集 → 因子 → 策略 → 回测(vectorbt)→ 验证管线 + 策略准入门禁 → experiment ledger
-2. **执行手**(本项目新建):Firstrade 网页模拟盘浏览器自动化(Playwright 模拟真人,不走券商 API),策略信号 → 自动下单 → 成交回采对账。PAPER_ONLY 硬钉 + kill-switch。
+```
+stock-picker 诚实榜 PROVEN 喊单(只读)
+  → 信号适配层(src/signals:水位轮询/去重/冲突过滤/原帖快照)
+  → 跟单规则引擎(入场/仓位/止损/21d 持有/翻空退出,rule_version 版本化)
+  → Firstrade 模拟盘自动下单(Playwright 模拟真人,PAPER_ONLY + kill-switch)
+  → 下单留档 ledger(append-only:每单附下单依据原帖全文快照)
+  → 对账 + 三套账绩效(诚实榜口径 / 实际成交 / 延迟归因)→ Dashboard/Telegram
+```
 
 ## 快速入口
 
 | 想了解 | 看哪里 |
 |---|---|
 | 项目宪法 / 红线 / 团队 | `CLAUDE.md` |
-| crypto→stock 改造路线(checkpoint) | `docs/MIGRATION_PLAN.md` |
-| 全仓资产分流清单(留/换/归档) | `docs/MIGRATION_MANIFEST.md` |
+| 现行路线(P1–P4) | `docs/ROADMAP.md` |
+| 下单留档 ledger 设计(+双会签) | `docs/ORDER_LEDGER_SPEC.md` |
+| stock-picker 对接口径 | `docs/INTEGRATION_NOTES.md` |
+| 对账 / 绩效口径 | `docs/RECON_DESIGN_V0.md` / `docs/FOLLOW_PERF_SPEC.md` |
 | 团队进度 | `team/PROGRESS_LOG.md` |
-| 策略状态单一事实源 | `registry/strategies.yml` |
-| 策略准入门禁政策 | `docs/STRATEGY_GATE_POLICY.md` |
-| QuantLab 时代历史文档 | `docs/legacy/` |
+| QuantLab 研究时代(策略/回测/实验) | `archive/` + `docs/legacy/`(只读存证,不复活) |
 
 ## 5 分钟启动
 
@@ -26,53 +32,38 @@
 
 ```bash
 make install     # uv sync --all-extras
-make test        # pytest(基线:全部通过;replay 组缺本地数据时 skip 属正常)
-make dashboard   # Streamlit 研究控制台
+make test        # pytest(基线:全部通过)
+make dashboard   # Streamlit 面板(跟单监控页在 P4 转正)
 ```
-
-注:`make verify`(OKX 连通性)为 crypto 遗留,C2 数据层切换后将替换为美股数据源校验。
 
 ## 项目结构
 
 ```
-├── config/            # 配置(universe / 策略 yml / risk;crypto 旧配置冻结存证)
 ├── src/
-│   ├── ingestion/     # 数据采集(C2 切 yfinance + prices.db)
-│   ├── exchange/      # [legacy] OKX 客户端,C2 退役
+│   ├── signals/       # 信号适配层(track/data 分支开发中)
+│   ├── execution/     # Firstrade agent + ledger(track/exec 分支开发中)
 │   ├── storage/       # DuckDB + Parquet
-│   ├── factors/       # 因子库(technical 通用;derivatives 为 crypto 遗留)
-│   ├── strategies/    # 策略(root + short/ + combo/ 含 frozen 基线;归档见 archive/)
-│   ├── backtest/      # 回测引擎(vectorbt)
-│   ├── validation/    # 验证管线 + 准入门禁
-│   ├── replay/        # [frozen 证据链] MinSwing v3 exit-mode replay,只读
-│   └── research/      # experiment ledger(canonical DB 入口,只归 Lead)
-├── dashboard/         # Streamlit 面板(legacy_pages/ 为停用页)
-├── scripts/           # 现役脚本(crypto 运行时已移 archive/scripts/)
-├── archive/           # 归档代码(只移动不修改,git 历史可溯源)
-├── docs/              # 现行文档 + legacy/(QuantLab 时代)
-├── registry/          # 策略注册表
-├── experiments/       # 实验台账(rejected/ 永久保留作纪律证据)
-├── team/              # 团队协作(roster / 进度 / 审计协议)
+│   ├── news/          # Google News RSS + 情绪(美股原生)
+│   ├── notify/        # Telegram
+│   └── logging_setup.py
+├── scripts/           # medic 守护 / tsay 通信 / 离线回放 / 团队重启
+├── dashboard/         # 面板(pages_draft/ 草稿;legacy_pages/ 停用研究页)
+├── docs/              # 现行设计文档 + legacy/
+├── archive/           # QuantLab 研究时代全部代码/配置/实验(git 历史可溯源)
+├── team/              # 团队协作(roster / 进度 / 通信规范)
 └── tests/             # 测试
 ```
 
 ## 技术栈
 
-| 类别 | 工具 |
-|------|------|
-| 包管理 | uv |
-| 数据存储 | DuckDB + Parquet |
-| 数据处理 | Polars / Pandas |
-| 回测 | vectorbt |
-| 可视化 | Streamlit + Plotly |
-| 数据源 | yfinance + stock-picker prices.db(C2 起;CCXT/python-okx 为 legacy,C2 移除) |
-| 执行层 | Playwright(Firstrade 模拟盘,仅 paper) |
+uv · pydantic-settings · loguru · Polars · DuckDB+Parquet(ledger append-only,读写分离)· Streamlit · Playwright(执行层)
 
 ## 红线(详见 CLAUDE.md)
 
-- 绝不写真实下单代码,执行层只对 Firstrade **模拟盘**,可一键停
-- frozen 策略基线(MinSwing v3 等加密时代验证结果)只读存证,不改不复活
-- 反过拟合纪律:可复现 + OOS + 成本/滑点/压力测试 + 门禁,不只看 Sharpe
+- 绝不写真金下单代码,执行层只对 Firstrade **模拟盘**,可一键停
+- stock-picker 库一律只读;原帖快照复制进本库留档
+- 归档不复活;跟单规则变更必须走 rule_version
+- 绩效诚实:PIT 局限/跟单延迟成本必须可见,离线回放只是 sane check
 - 密钥/登录态/数据库一律不入 git
 
 ## License
