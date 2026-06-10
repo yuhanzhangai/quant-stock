@@ -1,0 +1,16 @@
+{
+  "run_ts": "2026-06-10T23:58:30+00:00",
+  "code_commit": "ec1a010",
+  "command": "uv run python -m src.perf.s_account",
+  "snapshot_db": "/Users/amoszhang/quant-stock/data/signals/signal_snapshots.duckdb",
+  "trackrecord_db": "/Users/amoszhang/.stock-picker-mcp/trackrecord.db",
+  "horizon_days": 21,
+  "candidates": 71,
+  "watermark": "2026-06-04T03:56:18-07:00 → 2026-06-10T15:29:06-07:00",
+  "tier_csv_date_range": "2026-06-10 → 2026-06-10",
+  "review_status": "未经独立复核(强制审核制度 2026-06-10 废止)",
+  "funnel": {
+    "unmatched": 2,
+    "pending": 69
+  }
+}
