@@ -1,11 +1,7 @@
-.PHONY: install verify-okx-legacy test test-cov lint typecheck quality format dashboard clean
+.PHONY: install test test-cov lint typecheck format dashboard clean
 
 install:
 	uv sync --all-extras
-
-# C2 退役:会真连 OKX,勿误触(仅 QuantLab 遗留排障用)
-verify-okx-legacy:
-	uv run python scripts/verify_okx.py
 
 test:
 	uv run pytest -v
@@ -18,12 +14,9 @@ test-cov:
 lint:
 	uv run ruff check src/ tests/
 
-# 只查 keep 层(34 错待修);strategies/replay/exchange 为 frozen/退役层不查
+# 转向手术(2026-06-10)后只剩跟单时代保留层;archive/ 不查
 typecheck:
-	uv run pyright src/backtest src/validation src/factors src/storage src/research src/ingestion src/data_quality
-
-quality:
-	uv run python scripts/run_data_quality.py --all
+	uv run pyright src/storage src/research src/news src/notify src/logging_setup.py
 
 format:
 	uv run ruff format src/ tests/
