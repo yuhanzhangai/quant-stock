@@ -9,7 +9,26 @@
 
 **实测**(DuckDB 1.5.3,2026-06-10 复现):进程 A 持普通写连接(模拟 Exec 常驻 writer)期间,进程 B `duckdb.connect(path, read_only=True)` 失败:
 `IOException: IO Error: Could not set lock on file "...ledger.duckdb": Conflicting lock is held in ... (PID ...)`
-复现:写连接不关,另起进程 read_only connect 即可(单文件 10 行脚本,可重跑)。
+
+复现(任何人可重跑,`uv run --with duckdb python repro.py`):
+
+```python
+import duckdb, subprocess, sys, tempfile, os, textwrap
+db = os.path.join(tempfile.mkdtemp(), "ledger.duckdb")
+w = duckdb.connect(db)            # 写连接不关(模拟 Exec 常驻 writer)
+w.execute("create table t(i int)")
+child = textwrap.dedent(f"""
+    import duckdb
+    try:
+        c = duckdb.connect(r"{db}", read_only=True)
+        print("READ_ONLY_OK", c.execute("select count(*) from t").fetchone())
+    except Exception as e:
+        print("READ_ONLY_FAIL:", type(e).__name__, str(e)[:200])
+""")
+r = subprocess.run([sys.executable, "-c", child], capture_output=True, text=True)
+print(r.stdout.strip(), "| duckdb", duckdb.__version__)
+# 实测输出:READ_ONLY_FAIL: IOException ... Could not set lock ... | duckdb 1.5.3
+```
 
 即:只要 Exec writer 在线,Dash 任何直连(含 read_only)都拿不到锁;反之 Dash 若先占只读锁也会挡 writer。**结论:Dash 永不直连 `ledger.duckdb`。**
 
