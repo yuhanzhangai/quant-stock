@@ -1,5 +1,7 @@
 # Current State
 
+> ⚠️ **LEGACY 快照(2026-06-10 标注)**:本文档是 QuantLab v1.1 加密基线快照(2026-04-23),作为 frozen 存证保留,内容不再更新。quant-stock 当前状态见 `team/PROGRESS_LOG.md`;C1 收尾时将另立美股版 CURRENT_STATE。
+
 > Baseline snapshot taken at v1.1-research-baseline (2026-04-23)
 
 ## Version

@@ -1,3 +1,5 @@
+> ⚠️ **LEGACY(QuantLab crypto 时代,2026-06-10 标注)**:本文档遗留自 QuantLab。技术栈/研究纪律部分仍有效;OKX/币种/资金费细节已废弃。quant-stock 现行规划见 `CLAUDE.md` + `docs/MIGRATION_PLAN.md`。
+
 # 加密货币量化研究系统 - 项目规划 (OKX 版)
 
 ## 项目目标

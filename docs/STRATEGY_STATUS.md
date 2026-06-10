@@ -1,5 +1,7 @@
 # Strategy Status
 
+> ⚠️ **LEGACY 存证(2026-06-10 标注)**:本文档为 QuantLab crypto 时代 frozen 基线状态快照,不再更新;现行唯一事实源是 `registry/strategies.yml`。文中 `scripts/tournament*.py` 等路径已移入 `archive/scripts/`,`src/strategies/{long,meta}/` 已移入 `archive/strategies/`。C3 股票复算后另立新状态文档。
+
 > Last updated: 2026-04-23
 
 ## Quick Summary

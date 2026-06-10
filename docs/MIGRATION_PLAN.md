@@ -1,7 +1,7 @@
 # MIGRATION_PLAN — QuantLab(crypto)→ quant-stock(美股 + Firstrade 全自动模拟盘)
 
 > 沿用 QuantLab 的 checkpoint 纪律:**一次只做一个 · 必须有产出物 · 必须能复现 · 没过标准不进下一步 · 不只看 Sharpe。**
-> Lead 驱动,A1+A2(%Audit)每步把关。
+> Lead 驱动并把关(强制审核制度已由 operator 于 2026-06-10 废止;commit 前自检 + Lead 合并把关)。
 
 ## 判断:改造,不重做(operator 已拍板 2026-06-10)
 QuantLab 是高质量项目(2.5万行/49测试过/真生产策略 MinSwing v3 Sharpe+2.13/自检出3个过拟合并归档/完整验证管线+门禁)。**核心引擎资产无关**,加密耦合只在少数文件。改造省 ~80% 工作量。
@@ -18,7 +18,8 @@ QuantLab 是高质量项目(2.5万行/49测试过/真生产策略 MinSwing v3 Sh
 - `src/backtest/` 引擎/成本/标准化输出/position_sizing/metrics
 - `src/validation/` gates、`src/factors/technical.py`(动量/RSI/ATR/MACD 全通用)
 - `src/strategies/base.py` + MinSwing 框架(逻辑通用,只换数据喂入)
-- `src/research/db.py` experiment ledger、`src/data_quality/`、`src/storage/`(DuckDB+Parquet)
+- `src/research/db.py` experiment ledger、`src/storage/`(DuckDB+Parquet)
+- ~~`src/data_quality/`~~ **修正(2026-06-10 盘点发现)**:checks.py 的 missing_bars/latest_bar_delay 内置 24/7 连续交易假设,美股隔夜/周末停盘会被判大缺口直接 critical fail → **C1 须加交易日历感知模式(新参数,默认行为不变保历史复现)**,否则 C1 的 quality gate 必卡死。框架其余部分照常复用。
 - `dashboard/` Streamlit(改数据源即可)
 
 ### 🆕 新建(执行层,本项目核心增量)
@@ -28,7 +29,7 @@ QuantLab 是高质量项目(2.5万行/49测试过/真生产策略 MinSwing v3 Sh
 
 ## Checkpoints(按序,一次一个)
 - **C0 冻结基线** ✅(fork 自 QuantLab b85e77e,全历史保留)
-- **C1 标的池转股票**:universe.yaml 换美股(种子=诚实榜 PROVEN + 流动性过滤);data quality gate 跑通。
+- **C1 标的池转股票**:universe.yaml 换美股(种子=诚实榜 PROVEN + 流动性过滤);data quality gate 跑通(含给 data_quality checks 加 NYSE/Nasdaq 交易日历感知,见上方修正)。
 - **C2 数据层转股票**:yfinance/prices.db 喂 ingestion;technical 因子在股票日线/分钟线上跑通;OOS 数据切分。
 - **C3 策略在股票上复算**:MinSwing 框架喂股票数据,回测+成本+滑点;**看是否仍有 edge**(很可能要重调,股票≠加密的微观结构)。诚实:没 edge 就明说,不放水。
 - **C4 验证管线+门禁**:OOS/Monte Carlo/压力测试在股票上跑;策略准入门禁。

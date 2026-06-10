@@ -140,14 +140,14 @@ research:
     reason: "Crash dip buying. Works in specific conditions but low trade count."
 
   - name: aggressive_momentum_4h
-    file: src/strategies/long/aggressive_momentum.py
+    file: archive/strategies/long/aggressive_momentum.py  # moved 2026-06-10 repo cleanup; status unchanged
     status: research
     direction: long
     timeframe: "4h"
     reason: "Best 4h strategy (OOS +0.572). Needs separate research track for medium-term."
 
   - name: ichimoku_momentum_4h
-    file: src/strategies/long/ichimoku_momentum.py
+    file: archive/strategies/long/ichimoku_momentum.py  # moved 2026-06-10 repo cleanup; status unchanged
     status: research
     direction: long
     timeframe: "4h"
@@ -172,7 +172,7 @@ research:
 
 archive:
   - name: long_strategy_zoo
-    path: src/strategies/long/
+    path: archive/strategies/long/  # moved 2026-06-10 repo cleanup
     count: 41
     reason: "Historical iteration archive. 40+ strategies tested, most failed OOS validation."
 
@@ -191,7 +191,7 @@ archive:
     reason: "Fund mode didn't work. Long/short auto failed (signals don't overlap)."
 
   - name: meta_strategies
-    path: src/strategies/meta/
+    path: archive/strategies/meta/  # moved 2026-06-10 repo cleanup
     count: 6
     reason: "Routing/ensemble strategies. Not validated through full pipeline."
 

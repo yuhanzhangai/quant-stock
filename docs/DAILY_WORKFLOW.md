@@ -1,5 +1,7 @@
 # Daily Workflow
 
+> ⚠️ **LEGACY(QuantLab crypto 时代,2026-06-10 标注)**:本工作流为加密时代流程,`market_health.py`/`strategy_monitor.py` 等运行时脚本已移入 `archive/scripts/`(下方命令不再可执行),OKX/funding 检查项已废弃。**C2 数据层切换时重写为美股交易日版工作流**;现役通用命令只有 `run_data_quality.py`。
+
 > 单人长期维护纪律系统。
 
 ## 每日检查清单（5分钟）
@@ -7,9 +9,9 @@
 不做深度研究，只检查系统状态：
 
 ```bash
-python scripts/run_data_quality.py --all         # 数据是否有问题
-python scripts/market_health.py                    # 市场状态
-python scripts/strategy_monitor.py                 # 策略健康度
+python scripts/run_data_quality.py --all         # 数据是否有问题(现役)
+python scripts/market_health.py                    # 市场状态(已归档 archive/scripts/,失效)
+python scripts/strategy_monitor.py                 # 策略健康度(已归档 archive/scripts/,失效)
 ```
 
 - [ ] 数据是否更新（latest_bar_delay）

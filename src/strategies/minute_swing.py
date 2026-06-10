@@ -1,5 +1,10 @@
 """分钟线波段交易：大级别方向 + 小级别择时 + 杠杆止损。
 
+FROZEN DEPENDENCY (2026-06-10 标注): 本文件是 frozen 生产基线
+minswing_v3_final.py 与 combo/fast_exit.py 的信号内核(被两者 import)。
+任何逻辑/参数改动等同于改 frozen 基线 —— 禁止。只允许 bug fix/日志/兼容,
+且须过 Audit 审核。美股版策略以新文件派生,不改本文件。
+
 设计目标：
 - 5m/15m K 线级别
 - 每月 5-15 笔交易

@@ -1,3 +1,5 @@
+> ⚠️ **LEGACY(QuantLab crypto 时代,2026-06-10 标注)**:本文档为加密时代审计结论存证。频段/币种/时段结论(如 UTC 时段效应)**不可直接迁移到美股**;股票侧 edge 须在 C3 重新验证。
+
 # Strategy Guide (Audited Final)
 
 ## Short 5m — Per-Coin Routing

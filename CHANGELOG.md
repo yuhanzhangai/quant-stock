@@ -1,5 +1,12 @@
 # Changelog
 
+## repo-cleanup (2026-06-10, quant-stock)
+
+QuantLab → quant-stock fork 整理:crypto 遗留文档/脚本/归档策略移入 docs/legacy/ 与 archive/(只移动,零内容修改);README/pyproject 改 quant-stock 身份;新增 docs/MIGRATION_MANIFEST.md 全仓分流清单。
+
+---
+**以下为 QuantLab(crypto)时代条目,只读存证。**
+
 ## v2.5-oos-deferred (2026-04-24)
 
 v2.5 True OOS Shadow Paper deferred — no new OOS data available.

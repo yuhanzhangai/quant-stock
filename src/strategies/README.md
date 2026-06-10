@@ -1,5 +1,7 @@
 # Strategies
 
+> ⚠️ **LEGACY 说明(2026-06-10)**:本文件为 QuantLab crypto 时代笔记,数字与状态以 `registry/strategies.yml` 为唯一事实源(本文 'Proven' 表与 registry 有出入,如 meta/dynamic_selector 在 registry 中为 archive)。long/ 与 meta/ 已移至 `archive/strategies/`。
+
 ## Proven Strategies
 
 ### Long (5m)
@@ -26,10 +28,12 @@
 ## Folder Structure
 ```
 strategies/
-  *.py          17 core files (actively imported)
+  *.py          core files (actively imported; frozen 基线见 registry)
   short/        6 short strategies
-  long/         categorized backup of long strategies
-  meta/         ensemble, routing, selection
-  combo/        range + trend combo (WIP)
-  us_stock/     TSLA news event
+  combo/        range + trend combo
+  us_stock/     TSLA news event (cross-market experiment seed)
+
+archive/strategies/   (repo root, moved 2026-06-10)
+  long/         categorized backup of long strategies (41)
+  meta/         ensemble, routing, selection (6)
 ```

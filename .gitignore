@@ -56,3 +56,16 @@ _archive/
 *cookies*.json
 firstrade_state*.json
 playwright/.auth/
+
+# Claude Code local settings (per-user, not shared)
+.claude/settings.local.json
+
+# runtime artifacts (never track)
+*.pid
+logs/
+
+# env variants & browser auth state (execution layer red line)
+.env.*
+!.env.example
+storage_state*.json
+reports/**/*.log
