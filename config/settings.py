@@ -1,9 +1,11 @@
 """全局配置，基于 pydantic-settings 从 .env 读取。"""
 
 from pathlib import Path
-from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# 项目根目录（基于本文件位置推导，与 CWD 无关）
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -31,6 +33,15 @@ class Settings(BaseSettings):
     # 数据目录
     data_dir: Path = Path("data")
 
+    # 执行层硬钉：永远只跑模拟盘（paper），C5+ 启动断言用，严禁真实下单
+    paper_only: bool = True
+
+    # 研究台账 DB（基于项目根绝对化，避免换目录运行时静默新建空库）
+    research_ledger_path: Path = _PROJECT_ROOT / "data" / "meta" / "research.duckdb"
+
+    # stock-picker-mcp 价格库（只读信号源）
+    prices_db_path: Path = Path.home() / ".stock-picker-mcp" / "prices.db"
+
     @property
     def telegram_enabled(self) -> bool:
         return bool(self.telegram_bot_token and self.telegram_chat_id)
@@ -53,7 +64,7 @@ class Settings(BaseSettings):
 
 
 # 全局单例
-_settings: Optional[Settings] = None
+_settings: Settings | None = None
 
 
 def get_settings() -> Settings:

@@ -4,12 +4,10 @@ All formal research writes MUST use connect_research_db(required=True).
 If the DB doesn't exist, it raises immediately — no silent skips.
 """
 
-from pathlib import Path
-
 import duckdb
 from loguru import logger
 
-DB_PATH = Path("data/meta/research.duckdb")
+from config.settings import get_settings
 
 
 class ResearchDBUnavailable(RuntimeError):
@@ -26,12 +24,13 @@ def connect_research_db(required: bool = True) -> duckdb.DuckDBPyConnection | No
     Returns:
         DuckDB connection or None.
     """
-    if not DB_PATH.exists():
+    db_path = get_settings().research_ledger_path
+    if not db_path.exists():
         if required:
             raise ResearchDBUnavailable(
-                f"research.duckdb not found at {DB_PATH}. "
+                f"research.duckdb not found at {db_path}. "
                 "Run `python scripts/init_research_db.py --seed` before research runs."
             )
-        logger.warning(f"research.duckdb not found at {DB_PATH}, skipping DB operation")
+        logger.warning(f"research.duckdb not found at {db_path}, skipping DB operation")
         return None
-    return duckdb.connect(str(DB_PATH))
+    return duckdb.connect(str(db_path))

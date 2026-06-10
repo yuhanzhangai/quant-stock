@@ -19,7 +19,10 @@ import argparse
 import duckdb
 from loguru import logger
 
-DB_PATH = Path("data/meta/research.duckdb")
+from config.settings import get_settings
+
+# 基于项目根绝对化（settings 推导），仓库根下运行与旧 CWD 相对路径行为一致
+DB_PATH = get_settings().research_ledger_path
 SCHEMA_VERSION = "1.0.0"
 
 

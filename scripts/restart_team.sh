@@ -6,15 +6,24 @@
 #   ~/quant-stock/scripts/restart_team.sh claude-opus-4-9 # 指定模型 id
 #
 # 做什么:杀旧 quant 会话 → 按 roster 重建窗口/pane → 每个 pane cd 到工作目录、起 claude、
-# 发"恢复身份"init,让每个队员读 CLAUDE.md+roster+自己 handoff 满血回来。
+# 发"恢复身份"init,让每个队员读 CLAUDE.md+roster 自己条目+AUDIT_PROTOCOL+自己 handoff 满血回来。
 # 与 stock-picker 的 `stock` 会话独立,可并存。
+#
+# ★ effort 分层(operator 拍板 2026-06-10 v2:烧 token 没关系,慢才是问题——
+#   产代码的开 ultra 全力烧;交互链路上的(协调/审裁/告警)要快,降档):
+#     默认全员 high(operator 2026-06-10 v3:常驻 ultra 太烧,重活时对单个 pane 临时升 ultra)
+#     high = 除 Medic 外全部;ultra 档保留在 spawn() 可用,仅按需单点启用
+#     low   = Medic(4.0)               ← 告警循环要秒回
+#
+# ★ init 文本只给"你是谁 + 去哪读"。角色职责细节的单一事实源是 team/roster.md,
+#   不要在本脚本里复制职责描述(防漂移)。审计制度按 team/AUDIT_PROTOCOL.md(单 Agent 审核)。
 #
 # ⚠ worktree 成员(Data/Strat/Exec)首次需先建 worktree(见下方注释),否则 cd 会失败。
 set -u
 MODEL="${1:-}"
 S=quant
 ROOT="$HOME/quant-stock"
-CL="claude"; [ -n "$MODEL" ] && CL="claude --model $MODEL"
+CLBASE="claude"; [ -n "$MODEL" ] && CLBASE="claude --model $MODEL"
 
 # 防自杀:别在 quant 会话里跑
 if [ "${TMUX:-}" ] && tmux display-message -p '#S' 2>/dev/null | grep -qx "$S"; then
@@ -34,16 +43,34 @@ ensure_wt "$HOME/quant-stock-exec"  track/exec
 
 echo "→ 杀旧 $S 会话(若存在)…"; tmux kill-session -t "$S" 2>/dev/null
 
-spawn() {  # <target> <cwd> <init-text>
-  local tgt="$1" cwd="$2" init="$3"
-  tmux send-keys -t "$tgt" "cd '$cwd' && $CL" Enter
-  sleep 4
-  tmux load-buffer -b _ri - <<<"$init"
-  tmux paste-buffer -t "$tgt" -b _ri -p 2>/dev/null
-  sleep 0.4; tmux send-keys -t "$tgt" Enter
+spawn() {  # <target> <cwd> <effort:low|high|ultra> <init-text>
+  local tgt="$1" cwd="$2" effort="$3" init="$4"
+  local cmd
+  if [ "$effort" = "ultra" ]; then
+    # 必须同时给 effortLevel:xhigh——只给 ultracode:true 时若全局 effortLevel 较低,
+    # ultracode 会因"需 xhigh"条件不满足被静默忽略(2026-06-10 实测踩坑)
+    cmd="$CLBASE --settings '{\"ultracode\":true,\"effortLevel\":\"xhigh\"}'"
+  else
+    cmd="$CLBASE --settings '{\"ultracode\":false}' --effort $effort"
+  fi
+  tmux send-keys -t "$tgt" "cd '$cwd' && $cmd" Enter
+  # 等 claude 的 ❯ 输入框就绪再发 init(最多 30s)——过早 paste 会把 init 当 shell 命令执行!
+  local i
+  for i in $(seq 1 30); do
+    tmux capture-pane -p -t "$tgt" 2>/dev/null | grep -q '❯' && break
+    sleep 1
+  done
+  # 经 tsay.sh 发 init(送达校验+重试,治回车丢失);tsay 缺失时回退裸 paste
+  if [ -x "$ROOT/scripts/tsay.sh" ]; then
+    "$ROOT/scripts/tsay.sh" "$tgt" "$init" || echo "⚠ $tgt init 送达失败,请人工检查该 pane"
+  else
+    tmux load-buffer -b _ri - <<<"$init"
+    tmux paste-buffer -t "$tgt" -b _ri -p 2>/dev/null
+    sleep 0.4; tmux send-keys -t "$tgt" Enter
+  fi
 }
 
-RI='读 CLAUDE.md + team/roster.md(你的职责+铁律)+ docs/MIGRATION_PLAN.md + 你的 handoff + 记忆,满血恢复为你自己,然后向 Lead(quant:0.1)报到待命。'
+RI='读 CLAUDE.md + team/roster.md 中你的条目 + team/AUDIT_PROTOCOL.md + 你的 handoff + 记忆,满血恢复为你自己,向 Lead(quant:0.1)报到待命。'
 
 echo "→ 重建窗口/pane…"
 # 窗口0: 0.0=监工, 0.1=Lead
@@ -61,14 +88,14 @@ tmux new-window -t "$S" -n dash -c "$ROOT"
 tmux new-window -t "$S" -n medic -c "$ROOT"
 
 echo "→ 各 pane 起 claude + 恢复身份…"
-spawn "$S:0.0" "$ROOT"                  "你是【监工/Auditor(A1+A2 复核)】(quant:0.0)。$RI 把 CLAUDE.md 的 A1+A2 双 Agent 复核制度化:每个 commit/含结论回复,起两个独立子 agent 验证(可复现/无过拟合/无静默改参/无前视/事实准确),双 PASS 才放行。只审计,不碰 main。"
-spawn "$S:0.1" "$ROOT"                  "你是【Lead 总指挥】(quant:0.1)。$RI 你是唯一动 main+canonical 的人;按 MIGRATION_PLAN 一次一个 checkpoint 驱动 研究→验证→门禁→Firstrade 模拟盘;红线:无真金下单代码、不改 frozen 基线、反过拟合不放水。"
-spawn "$S:1.0" "$HOME/quant-stock-data"  "你是【数据工程 Data】(quant:1.0,track/data worktree)。$RI 美股数据采集(yfinance + 复用 ~/.stock-picker-mcp/prices.db)、universe(种子=诚实榜 PROVEN)、data quality gate。不碰 main/canonical。"
-spawn "$S:1.1" "$HOME/quant-stock-strat" "你是【策略研究 Strat】(quant:1.1,track/strat worktree)。$RI 因子+策略迭代(MinSwing 风格,但要在股票上重验 edge、别假设迁得过来,没 edge 就明说)。不碰 main。"
-spawn "$S:2.0" "$ROOT"                  "你是【回测验证 Valid】(quant:2.0)。$RI 验证管线、策略准入门禁、OOS、成本/滑点/压力测试、experiment ledger。不只看 Sharpe、必须可复现。"
-spawn "$S:2.1" "$HOME/quant-stock-exec"  "你是【Firstrade Agent Exec】(quant:2.1,track/exec worktree)。$RI 建 Firstrade 模拟盘浏览器自动化 agent(Playwright,模拟真人节奏、单账号、PAPER_ONLY 硬钉、kill-switch、可一键停)。绝不写真金下单。不碰 main。"
-spawn "$S:3.0" "$ROOT"                  "你是【面板/监控 Dash】(quant:3.0)。$RI Streamlit 研究控制台 + 模拟盘监控(盈亏/成交/agent 健康)。"
-spawn "$S:4.0" "$ROOT"                  "你是【医生 Medic】(quant:4.0)。$RI 监护 pane 健康,复苏经 operator 批准(可复用 stock-picker 的 medic.py 思路)。"
+spawn "$S:0.0" "$ROOT"                   high   "你是【机动/Review(审核制度已废止,按需接 Lead 指派)】(quant:0.0)。$RI"
+spawn "$S:0.1" "$ROOT"                   high   "你是【Lead 总指挥】(quant:0.1)。$RI"
+spawn "$S:1.0" "$HOME/quant-stock-data"  high   "你是【数据工程 Data】(quant:1.0)。$RI"
+spawn "$S:1.1" "$HOME/quant-stock-strat" high   "你是【策略研究 Strat】(quant:1.1)。$RI"
+spawn "$S:2.0" "$ROOT"                   high   "你是【回测验证 Valid】(quant:2.0)。$RI"
+spawn "$S:2.1" "$HOME/quant-stock-exec"  high    "你是【Firstrade Agent Exec】(quant:2.1)。$RI"
+spawn "$S:3.0" "$ROOT"                   high   "你是【面板/监控 Dash】(quant:3.0)。$RI"
+spawn "$S:4.0" "$ROOT"                   low    "你是【医生 Medic】(quant:4.0)。$RI"
 
 echo "✅ quant 团队重建完成。attach:  tmux attach -t $S"
 echo "   (与 stock-picker 的 'stock' 会话独立并存)"
