@@ -1,6 +1,7 @@
-# ORDER_LEDGER_SPEC — 博主跟单下单留档 Ledger(设计稿)
+# ORDER_LEDGER_SPEC — 博主跟单下单留档 Ledger(r3,准予实施)
 
-> **状态:设计稿(spec-only,不含代码)。待 %Audit 审核 + %Exec/%Dash 会签后实施;DDL 实施落 `src/execution/ledger/`(转向手术批次)。**
+> **状态:r3 定稿——%Exec/%Dash 双会签完成(`docs/ORDER_LEDGER_SPEC_DASH_SIGNOFF.md`、track/exec `docs/reviews/`),全部会签修订已吸收(Exec 4+3 / Dash 3 / 金额配置化)。DDL 实施落 `src/execution/ledger/`(P1)。**
+> r3 变更摘要:§2 读写分离(Dash 永不直连,writer 每循环导出 parquet+export_meta)· orders +`broker_order_ref`/+`expired` 终态/+更正行语义 · fills 幂等纪律 · 新增 `account_daily`/`agent_runs` 两表 · 单仓金额配置化。
 > 事实源:`docs/INTEGRATION_NOTES.md`(stock-picker 真实字段,2026-06-10 对方 Lead 核实)。
 > 本 ledger 是博主跟单系统的**核心审计件**:每一笔模拟盘订单都必须能回答——
 > **"何时、跟谁的哪条帖、依据什么规则、实际成交多少、现在状态。"**
@@ -71,8 +72,11 @@ def execution_ledger_path(self) -> Path:
 ```
 
 - `data/`、`*.duckdb`、`*.duckdb.wal` 已在 `.gitignore`(红线 5),ledger 永不入 git。
-- **单写者**:唯一写入方是 %Exec 的 ledger writer(订单执行循环)。DuckDB 同一时刻仅允许一个写连接;%Dash 监控用 `read_only=True` 只读连接(现有 `DuckDBClient` 不支持 read_only 参数,实施批次补)。
-- **append-only 的工程落法**:writer 封装只暴露 `insert_*` API,不提供 UPDATE/DELETE;每日把全表导出 parquet 备份(行数只增不减,审计可对照)。
+- **单写者 + 读写分离(r3,Dash 会签实测修订)**:唯一连接方是 %Exec 的 ledger writer。**%Dash 永不直连 ledger.duckdb**——实测 DuckDB 1.5.3 跨进程锁:writer 持普通连接时另一进程 `read_only=True` connect 即抛 `IOException: Could not set lock`(复现脚本见 Dash 会签 §1)。读取面 = parquet 导出:
+  - writer **每个执行循环收尾**把全表导出 parquet(paper 量级,全量导出,不做增量)+ 最后写 `export_meta`(导出时间戳 + 各表行数);
+  - **原子性(Exec 实施要点)**:每个 parquet 先写临时文件再原子 rename;`export_meta` 在全部表成功后**最后**原子落——Dash 以 meta 新鲜度判快照集完整一致,meta 旧 = exec 离线/HALT,降级显示"数据陈旧"而非报错;
+  - **导出与 kill-switch**:导出同记账一样不被 kill 阻断(kill 只停下单动作),HALT 后末轮快照仍落;导出失败不阻断落账(记账优先,loguru 告警)。
+- **append-only 的工程落法**:writer 封装只暴露 `insert_*` API,不提供 UPDATE/DELETE;parquet 导出行数只增不减,审计可对照。
 
 ## 3. 表设计总览
 
@@ -83,6 +87,8 @@ def execution_ledger_path(self) -> Path:
 | `fills` | 不可变追加 | `fill_id` | 一笔成交回采(含页面原始文本) |
 | `positions_daily` | 快照追加 | `(snapshot_date, ticker, snapshot_ts)` | 某日收盘某票持仓快照(对账锚点) |
 | `pdt_ledger` | 不可变追加 | `entry_id` | 一次 day-trade/资金事件或日终簿记快照(B4) |
+| `account_daily` | 快照追加(r3,Dash) | `(snapshot_date, snapshot_ts)` | 每日账户总权益/现金快照(权益曲线落点) |
+| `agent_runs` | 追加(r3,Dash) | `run_id` | 每轮执行循环心跳:起止/kill 状态/动作计数(无订单流动时的可观测性,红线 6) |
 | `ingest_watermark` | 追加 | —(按 poll_ts 取 max) | 一轮 `call_ts` 水位轮询记录 |
 | `ledger_meta` | 追加 | — | schema 版本演进记录 |
 
@@ -147,9 +153,13 @@ CREATE TABLE IF NOT EXISTS orders (
                       ),
     submitted_ts      TIMESTAMPTZ NOT NULL, -- 在 Firstrade 页面提交的时间(seq=0 落定,后续行复制)
     call_to_submit_ms BIGINT,               -- submitted_ts - signals.call_ts,毫秒(跟单延迟)
+    broker_order_ref  TEXT,                 -- r3(Exec①):Firstrade 页面订单号(可空)——同票多单并存时
+                                            -- fills↔orders 匹配的唯一可靠锚,缺它只能时间窗+qty 猜配
     status            TEXT NOT NULL CHECK (status IN (
-                          'submitted', 'partial', 'filled', 'cancelled', 'rejected'
-                      )),
+                          'submitted', 'partial', 'filled', 'cancelled', 'rejected', 'expired'
+                      )),                    -- r3(Exec③):expired=日内限价单收盘未成交,真实终态
+    corrects_seq      INTEGER,              -- r3(Exec④):NULL=正常事件;非 NULL=更正行,引用本订单
+                                            -- 被更正的 seq(终态封锁豁免,见 §5.2/5.3;note 必填缘由)
     rule_version      TEXT NOT NULL,        -- 下单时规则引擎版本
     kill_switch_engaged BOOLEAN NOT NULL DEFAULT FALSE,  -- 本事件发生时 kill-switch 状态快照
     exit_reason       TEXT CHECK (exit_reason IS NULL OR exit_reason IN (
@@ -167,13 +177,16 @@ CREATE TABLE IF NOT EXISTS orders (
 ```text
 submitted ──→ partial ──→ filled      (终态)
     │            │
-    │            └──────→ cancelled   (终态:余量撤单)
+    │            ├──────→ cancelled   (终态:余量撤单)
+    │            └──────→ expired     (终态:余量收盘失效,r3)
     ├──────────────────→ filled       (终态:一次全成)
     ├──────────────────→ cancelled    (终态:成交前撤,含 kill-switch 触发)
-    └──────────────────→ rejected     (终态:Firstrade 拒单)
+    ├──────────────────→ rejected     (终态:Firstrade 拒单)
+    └──────────────────→ expired      (终态:日内限价单收盘未成交,r3)
 ```
 
-合法迁移仅上图所列;writer 在追加前校验"当前最新 status → 新 status"在白名单内,非法迁移拒写并告警(不静默落账)。
+合法迁移仅上图所列;writer 在追加前校验"当前最新 status → 新 status"在白名单内,非法迁移拒写并告警(不静默落账)。**唯一豁免:更正行(`corrects_seq` 非空)可在终态后追加**(误记终态的出口,§5.3),writer 校验白名单时将 correction 迁移单列处理。
+单仓金额(等额 $X/单)**不写死在代码**:来自 rule_version 配置(r3;数额待 C5/P2 首登核验账户实际资金后定,与 Strat spec 同源)。
 
 ### 4.3 fills — 成交回采(不可变追加)
 
@@ -190,6 +203,8 @@ CREATE TABLE IF NOT EXISTS fills (
     note          TEXT
 );
 ```
+
+**幂等纪律(r3,Exec②——回采是轮询型,必须防同笔成交重复插行)**:writer 插入前按自然键 `(order_id, fill_ts, qty, price)` 对 `v_fills_effective` 查重,已存在则跳过(debug 日志);否则同笔成交反复插行,对账永久不平。
 
 ### 4.4 positions_daily — 每日收盘持仓快照(对账锚点)
 
@@ -236,6 +251,35 @@ CREATE TABLE IF NOT EXISTS pdt_ledger (
 - **滚动窗口**:"滚动 5 交易日"按 NYSE 交易日历在**应用侧**计算(SQL 内无日历),写入时把结果快照进 `day_trades_5d`;审计可用原始 `day_trade` 事件行重算核对快照(两套账互验)。
 - **settled-cash**:卖出回笼资金 `settle_date = trade_date + 1 交易日`(T+1,现行美股结算),到期落 `cash_settled` 事件;`settled_cash` 快照随每个事件更新。
 - **闸门(引擎层,阈值随 rule_version 配置,ledger 只记账不裁决)**:下单前读最新快照,要求 `day_trades_5d < 3` 且 `settled_cash ≥ 预估订单金额`,否则 skip(原因码 `pdt_limit_reached` / `insufficient_settled_cash`)。模拟盘无真金,但**按真实约束演练**,否则模拟结果对真实迁移无参考价值。
+
+### 4.5b account_daily 与 agent_runs(r3 新增,Dash 会签:监控刚需)
+
+```sql
+-- 账户总权益曲线落点(此前无处可放)
+CREATE TABLE IF NOT EXISTS account_daily (
+    snapshot_date  DATE NOT NULL,            -- 美东交易日
+    snapshot_ts    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    total_equity   DECIMAL(18, 2) NOT NULL,  -- Firstrade 账户页总权益
+    cash           DECIMAL(18, 2),           -- 现金(页面值)
+    buying_power   DECIMAL(18, 2),           -- 购买力(页面值,可空)
+    raw_text       TEXT,                     -- 账户页原始文本快照
+    PRIMARY KEY (snapshot_date, snapshot_ts)
+);
+
+-- 每轮执行循环心跳(无订单流动时 kill-switch/agent 死活的唯一可观测点,红线 6)
+CREATE TABLE IF NOT EXISTS agent_runs (
+    run_id          TEXT PRIMARY KEY,        -- 'run_' + ULID
+    started_ts      TIMESTAMPTZ NOT NULL,
+    finished_ts     TIMESTAMPTZ,             -- 循环结束落定(崩溃则为 NULL,本身即证据)
+    kill_switch     BOOLEAN NOT NULL,        -- 本轮开始时 kill-switch 状态
+    signals_seen    INTEGER NOT NULL DEFAULT 0,
+    orders_placed   INTEGER NOT NULL DEFAULT 0,
+    fills_scraped   INTEGER NOT NULL DEFAULT 0,
+    export_ok       BOOLEAN,                 -- 本轮 parquet 导出是否成功(失败不阻断记账,§2)
+    error           TEXT,                    -- 本轮异常摘要(无则 NULL)
+    note            TEXT
+);
+```
 
 ### 4.6 辅助表 — 水位与 schema 版本
 
@@ -323,13 +367,13 @@ QUALIFY row_number() OVER (ORDER BY event_ts DESC, entry_id DESC) = 1;
 
 原因码是**封闭集**,新增必须升 `rule_version` 并更新本表(spec 与代码同步改)。
 
-### 5.2 `orders.status` 迁移白名单
+### 5.2 `orders.status` 迁移白名单(r3)
 
-`submitted→partial`、`submitted→filled`、`submitted→cancelled`、`submitted→rejected`、`partial→filled`、`partial→cancelled`。终态(`filled`/`cancelled`/`rejected`)后不得再追加状态行。
+`submitted→partial`、`submitted→filled`、`submitted→cancelled`、`submitted→rejected`、`submitted→expired`、`partial→filled`、`partial→cancelled`、`partial→expired`。终态(`filled`/`cancelled`/`rejected`/`expired`)后不得追加**状态推进行**;**唯一豁免 = 更正行**(`corrects_seq` 非空,见 §5.3)。
 
 ### 5.3 修正机制(append-only 下怎么改错)
 
-- **orders**:任何更正=追加新事件行(`seq+1`)+ `note` 写明缘由;不改旧行。
+- **orders(r3,Exec④)**:非终态更正=追加新事件行(`seq+1`)+ `note` 缘由;**误记终态后的更正**=追加 `corrects_seq=<被更正行 seq>` 的更正行(豁免终态封锁;status 写更正后的正确值,`note` 必填缘由),`v_orders_current` 取最新行即自动以更正为准;原错误行永久留存可审。不改旧行。
 - **fills**:回采错误(OCR/解析错)时,追加一行 `voids_fill_id=<错误行 fill_id>` 的作废行(其余字段复制原行,`note` 写明),再追加正确的新 fill。`v_fills_effective` 自动剔除作废对;原始错误行永久留存可审。
 - **positions_daily**:重抓=同日新 `snapshot_ts` 行,`v_positions_eod` 取最新;旧快照留存。
 - **signals**:不可变。tier 判定错误属上游 CSV/口径问题,由 `tier_csv_date` 溯源;后续动作(撤单/平仓)在 orders 层留痕。
@@ -373,9 +417,9 @@ LEFT JOIN v_order_filled f USING (order_id)
 WHERE o.order_id = 'ord_01JEXAMPLE';
 ```
 
-## 9. 实施与会签清单(本 spec 之外的事,不在本批次做)
+## 9. 实施与会签清单
 
-- [ ] **%Audit 审本 spec**(A1+A2 纪律):字段口径 vs INTEGRATION_NOTES、append-only 完备性、B4 规则。
-- [ ] **%Exec 会签**:回采字段(`fills.raw_text`/`positions_daily.raw_text`)与 Playwright 实际可抓内容对齐;状态机覆盖 Firstrade 真实订单状态。
-- [ ] **%Dash 会签**:监控所需视图够用(`v_orders_current`/`v_positions_eod`/`v_pdt_latest`);`tweet_blocked=TRUE` 的原帖文本在面板上不对外展示。
-- [ ] 实施批次(转向手术):DDL 落 `src/execution/ledger/schema.sql` + writer 封装(insert-only API)+ `config/settings.py` 加 `execution_ledger_path` + `DuckDBClient` 支持 `read_only` + pytest(状态机白名单/作废对/水位幂等)。
+- [x] ~~%Audit 审~~(审核制度 2026-06-10 废止)
+- [x] **%Exec 会签**(track/exec `docs/reviews/ORDER_LEDGER_SPEC_exec_signoff.md`):4 条修订 + 3 实施要点全采纳进 r3;2 条诚实声明在案(金额/选择器待 P2 首登核验)。
+- [x] **%Dash 会签**(`docs/ORDER_LEDGER_SPEC_DASH_SIGNOFF.md`):锁实测 → §2 读写分离 + 两新表 + recon 结构化(结构化字段落 Valid 的 recon_runs/findings 实施时对齐)。
+- [ ] **P1 实施批次(Exec)**:DDL 落 `src/execution/ledger/schema.sql` + writer 封装(insert-only API + 状态机白名单含 correction 分支 + fills 幂等查重 + 每循环 parquet 原子导出)+ `config/settings.py` 加 `execution_ledger_path` + pytest(状态机/作废对/幂等/水位/导出原子性)。

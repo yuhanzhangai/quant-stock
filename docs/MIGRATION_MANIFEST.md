@@ -90,3 +90,5 @@
 | 5 | paper_session 框架复用 or 新建 | Exec,C5-C7 |
 | 6 | 4h 赛道(aggressive_momentum/ichimoku,OOS ROBUST)在美股是否立项 | Strat,C3 |
 | 7 | README.md(src/strategies/ 内)提到 meta/dynamic_selector 为 proven 与 registry 矛盾 | Audit 核查 |
+
+> 注(2026-06-10):`dashboard/legacy_pages/` 为第二归档位(Streamlit 页面文件,保持原仓内位置便于将来单页复活);其余归档统一在 `archive/`。
