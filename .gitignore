@@ -50,3 +50,9 @@ reports/*.html
 
 # 基线备份
 _archive/
+
+# execution layer secrets (Firstrade login state / cookies / playwright auth)
+.auth/
+*cookies*.json
+firstrade_state*.json
+playwright/.auth/
