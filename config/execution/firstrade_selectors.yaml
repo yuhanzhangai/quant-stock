@@ -1,0 +1,83 @@
+# Firstrade 页面选择器注册表
+#
+# ⚠️ 全部 verified: false —— 这些是**占位猜测**,未经实盘核验。
+# 核验流程:operator 跑 `uv run python scripts/exec_login.py` 人工登录后,
+# 逐页用浏览器 DevTools 确认真实选择器,改 css 并标 verified: true。
+# reader/trader 对未核验选择器一律拒跑(SelectorRegistry.require)。
+
+selectors:
+  # —— 登录/会话 ——
+  login_username:
+    css: "input#username"
+    verified: false
+    note: "登录页用户名输入框(占位)"
+  login_password:
+    css: "input#password"
+    verified: false
+    note: "登录页密码输入框(占位;session.type_human 对凭据类字段名硬拒,首登只人工)"
+  logged_in_marker:
+    css: "a[href*='logout']"
+    verified: false
+    note: "已登录标志,用于判断登录态是否还有效(占位)"
+
+  # —— 模拟盘环境标志(C6 下单前必须确认存在) ——
+  paper_account_marker:
+    css: ".paper-account-banner"
+    verified: false
+    note: "模拟盘环境标志(占位)。trader 在每次下单前 require 它:找不到=拒单"
+
+  # —— 账户/持仓(C5 读) ——
+  positions_table:
+    css: "table#positions"
+    verified: false
+    note: "持仓表(占位)"
+  account_cash:
+    css: "[data-field='cash']"
+    verified: false
+    note: "现金余额(占位)"
+  account_buying_power:
+    css: "[data-field='buying-power']"
+    verified: false
+    note: "购买力(占位)"
+
+  # —— 下单表单(C6 写) ——
+  order_symbol_input:
+    css: "input#order-symbol"
+    verified: false
+    note: "下单 ticker 输入框(占位)"
+  order_qty_input:
+    css: "input#order-qty"
+    verified: false
+    note: "数量输入框(占位)"
+  order_side_buy:
+    css: "label[for='side-buy']"
+    verified: false
+    note: "买入选项(占位)"
+  order_side_sell:
+    css: "label[for='side-sell']"
+    verified: false
+    note: "卖出选项(占位)"
+  order_type_limit:
+    css: "label[for='type-limit']"
+    verified: false
+    note: "限价单选项(占位)"
+  order_type_market:
+    css: "label[for='type-market']"
+    verified: false
+    note: "市价单选项(占位)"
+  order_limit_price_input:
+    css: "input#order-limit-price"
+    verified: false
+    note: "限价价格输入框(占位)"
+  order_preview_button:
+    css: "button#order-preview"
+    verified: false
+    note: "订单预览按钮(占位)"
+  order_submit_button:
+    css: "button#order-submit"
+    verified: false
+    note: "最终提交按钮(占位)。dry_run 模式绝不点它"
+  order_confirmation_text:
+    css: ".order-confirmation"
+    verified: false
+    note: "提交后的确认文案,进审计日志(占位)"

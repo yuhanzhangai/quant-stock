@@ -1,4 +1,4 @@
-.PHONY: install test test-cov lint typecheck format dashboard clean
+.PHONY: install test test-cov lint typecheck format dashboard clean exec-kill exec-resume exec-login
 
 install:
 	uv sync --all-extras
@@ -28,3 +28,14 @@ dashboard:
 clean:
 	rm -rf __pycache__ .pytest_cache .ruff_cache
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+
+# ── 执行层(Firstrade 模拟盘)安全操作 ──
+exec-kill:  # 一键停:触发 kill-switch,agent 在下一个动作前必停
+	bash scripts/exec_kill.sh
+
+exec-resume:  # 解除 kill-switch(仅人工;agent 永不自动解除)
+	rm -f $(CURDIR)/data/execution/KILL
+	@echo "kill-switch released"
+
+exec-login:  # 首次人工登录 Firstrade 留存登录态(凭据只人工输入)
+	uv run python scripts/exec_login.py

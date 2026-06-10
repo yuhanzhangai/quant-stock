@@ -28,6 +28,10 @@ dev = [
     "ruff>=0.4",
     "pyright>=1.1",
 ]
+# 执行层(Firstrade 模拟盘浏览器自动化)单独成组:研究环境可不装
+exec = [
+    "playwright>=1.40",
+]
 
 [tool.ruff]
 line-length = 120
