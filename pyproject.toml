@@ -5,15 +5,9 @@ description = "US stock quant research + Firstrade full-auto paper trading (fork
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    # --- legacy crypto deps: src/exchange 退役(C2)时随之移除 ---
-    "ccxt>=4.0",
-    "python-okx>=0.3",
-    # --- US stock data layer (C1/C2) ---
     "yfinance>=0.2",
     "exchange-calendars>=4.5",
     "aiohttp>=3.9",
-    "aiolimiter>=1.1",
-    "tenacity>=8.2",
     "polars>=1.0",
     "pandas>=2.1",
     "duckdb>=1.0",
@@ -24,9 +18,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "streamlit>=1.30",
     "plotly>=5.18",
-    "mplfinance>=0.12",
-    "vectorbt>=0.26",
-    "rich>=13.0",
+    "feedparser>=6.0.12",
 ]
 
 [project.optional-dependencies]
