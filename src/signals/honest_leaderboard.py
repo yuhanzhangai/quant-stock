@@ -19,7 +19,7 @@ _FLOAT_COLS = ("hit_rate", "wilson_lo", "wilson_hi", "bull_hit", "bear_hit", "av
 _BOOL_COLS = ("cross_regime",)
 
 
-def _csv_date(path: Path) -> date | None:
+def csv_date(path: Path) -> date | None:
     """从文件名 leaderboard_honest_<YYYY-MM-DD>.csv 提取日期;不合法返回 None。"""
     try:
         return date.fromisoformat(path.stem.removeprefix(_CSV_PREFIX))
@@ -34,10 +34,10 @@ def discover_latest_csv(export_dirs: Sequence[Path] = LEADERBOARD_EXPORT_DIRS) -
         if not export_dir.is_dir():
             continue
         for path in sorted(export_dir.glob(f"{_CSV_PREFIX}*.csv")):
-            csv_date = _csv_date(path)
+            file_date = csv_date(path)
             # 只在日期严格更大时替换:同日时先扫到的(靠前目录)保留
-            if csv_date is not None and (best is None or csv_date > best[0]):
-                best = (csv_date, path)
+            if file_date is not None and (best is None or file_date > best[0]):
+                best = (file_date, path)
     if best is None:
         raise FileNotFoundError(f"no {_CSV_PREFIX}<YYYY-MM-DD>.csv found in {[str(d) for d in export_dirs]}")
     logger.debug("discovered latest honest leaderboard CSV: {}", best[1])

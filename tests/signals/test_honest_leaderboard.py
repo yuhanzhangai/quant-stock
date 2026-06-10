@@ -6,7 +6,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from src.signals.honest_leaderboard import _csv_date, discover_latest_csv, load_leaderboard, proven, proven_handles
+from src.signals.honest_leaderboard import csv_date, discover_latest_csv, load_leaderboard, proven, proven_handles
 from src.signals.paths import LEADERBOARD_EXPORT_DIRS
 
 _HEADER = (
@@ -76,9 +76,9 @@ def test_discover_latest_across_dirs(tmp_path: Path) -> None:
 @_skip_no_real
 def test_real_discover_recent() -> None:
     path = discover_latest_csv()
-    csv_date = _csv_date(path)
+    found = csv_date(path)
     # 相对容差而非硬编码日期:导出停更几天不该把单元测试搞红(新鲜度告警归监控/对账)
-    assert csv_date is not None and (date.today() - csv_date).days <= 7
+    assert found is not None and (date.today() - found).days <= 7
 
 
 @_skip_no_real
