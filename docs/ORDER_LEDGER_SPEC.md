@@ -267,6 +267,10 @@ CREATE TABLE IF NOT EXISTS account_daily (
 );
 
 -- 每轮执行循环心跳(无订单流动时 kill-switch/agent 死活的唯一可观测点,红线 6)
+-- ⚠ r3.1 显式例外(Lead 裁决,Exec 实施申报):本表是【运维心跳表】非资金审计表,
+-- 允许全库唯一的窄口径 UPDATE——仅限对"未收尾行"(finished_ts IS NULL)定向回填
+-- finished_ts/计数/export_ok/error。资金链路(signals/orders/fills/positions_daily/
+-- pdt_ledger/account_daily)严格零 UPDATE 不受影响。崩溃语义保持:回填永远到不了 = NULL 即证据。
 CREATE TABLE IF NOT EXISTS agent_runs (
     run_id          TEXT PRIMARY KEY,        -- 'run_' + ULID
     started_ts      TIMESTAMPTZ NOT NULL,
