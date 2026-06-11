@@ -12,11 +12,11 @@
 - 对账设计 + 三套账绩效口径 + 离线回放 sane check(Valid)
 - 执行层安全底座(Exec,track/exec):PAPER_ONLY 硬钉 / kill-switch / 真人节奏 / 选择器未核验拒跑
 
-## P1 实施闭环(纸上→代码)
-- [ ] ORDER_LEDGER_SPEC **r3 定稿**(Lead 出稿,Exec/Dash 复核)→ `src/execution/ledger/` DDL+写入层实施(Exec)
-- [ ] 最小信号管线(Data):PROVEN@21d × bullish 水位轮询 → 去重/冲突过滤 → signals 表候选;双类股 issuer 归并 v0.1(Strat 补丁)
-- [ ] 规则引擎(Strat spec → 代码):signal → followed/skipped 决策 + PDT/结算软约束
-- [ ] 合分支:track/data + track/strat + track/exec 依次并 main
+## P1 实施闭环(纸上→代码)✅(2026-06-11 关门:端到端演练四问 PASS + 独立对账验收 9/9 PASS)
+- [x] ORDER_LEDGER_SPEC **r3 定稿**(Lead 出稿,Exec/Dash 复核)→ `src/execution/ledger/` DDL+写入层实施(Exec)
+- [x] 最小信号管线(Data):PROVEN@21d × bullish 水位轮询 → 去重/冲突过滤 → signals 表候选;双类股 issuer 归并 v0.1(Strat 补丁)
+- [x] 规则引擎(Strat spec → 代码):signal → followed/skipped 决策 + PDT/结算软约束
+- [x] 合分支:track/data + track/strat + track/exec 依次并 main
 - **通过标准**:模拟信号端到端跑通(假 fill),ledger 五问可答,测试覆盖写入幂等/append-only
 
 ## P2 Firstrade 模拟盘接通(读)
