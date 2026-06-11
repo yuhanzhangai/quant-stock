@@ -19,20 +19,28 @@
 - [x] 合分支:track/data + track/strat + track/exec 依次并 main
 - **通过标准**:模拟信号端到端跑通(假 fill),ledger 五问可答,测试覆盖写入幂等/append-only
 
-## P2 Firstrade 模拟盘接通(读)
-- [ ] **operator 人工首登**(`make exec-login`)留登录态 + 核验全部选择器(paper_account_marker 最关键)
-- [ ] 读层稳定:持仓/账户/行情回采 + agent_runs 心跳
-- **通过标准**:连续 3 个交易日只读轮询无封禁/无选择器漂移
+> ⚠️ **重大方向修正(2026-06-11,Data 调研 docs/FIRSTRADE_API_RESEARCH.md 实证)**:
+> **Firstrade 根本没有 paper trading / 模拟盘产品**——项目原名"Firstrade 模拟盘"基于错误假设。
+> firstrade 非官方库每个下单接口都打**真实账户**(真金)。浏览器路线登录卡 2192。
+> operator 拍板:**先走本地模拟盘(按真实市场价模拟成交,零真金、零券商),验证 edge;**
+> **真钱 $300 路线已 operator 授权但停泊**——edge 跑出来再上(接库基础设施已备齐)。
 
-## P3 跟单闭环(写,全自动模拟盘)
-- [ ] 下单执行(dry_run→真点击,PAPER_ONLY 断言)+ fills 回采对账 + 每循环 parquet 导出
-- [ ] 退出引擎:止损/21d 到期/翻空触发
-- **通过标准**:首批 ≥5 笔真实喊单跟单全链留档,Valid 对账 9 项不变量全过
+## P2 本地模拟盘前向测试(取代原 Firstrade 接通)
+- [ ] **PaperBroker**(`src/execution/paper_broker.py`):消费规则引擎 followed 决策 → 按**真实市场价**(Data 价源:yfinance/prices.db,信号时点价)模拟成交 + 可配滑点 → 写 orders/fills/positions_daily(复用现有 ledger writer,演练已验全链)
+- [ ] 退出引擎前向运行:21d 到期 / 止损 / 翻空,按真实日收盘价每日评估(演练时因无价格路径未覆盖,本地前向跑可覆盖)
+- [ ] 定时前向运行(每交易日)+ 每轮 parquet 导出 → Dash 自动脱 MOCK
+- **通过标准**:连续 ≥2 周真实喊单本地跟单,全链留档,Valid 对账 9 项不变量 + S账/E账(本地成交即 E账)/S−E 归因全过
+
+## P3 真钱实盘(已授权,停泊;edge 验证后启用)
+- [ ] 仅当 P2 跑出可信 edge 后启用;接 firstrade 库打真实账户
+- [ ] **硬护栏**:账户号白名单 fail-closed(只打指定账户)+ 总额硬顶 $300 + 单笔 $100/最多 3 仓(operator 2026-06-11 定)+ kill-switch + **第一笔人工盯单确认**
+- **通过标准**:首笔人工确认成功 + 小额观察数笔 + operator 明确放开全自动
 
 ## P4 监控与常态运行
-- [ ] Dash 两页转正(模拟盘监控/订单留档查看,读 parquet)+ 日报(Telegram)
-- [ ] Medic 守护全功能(auto-Enter 修复后重启用)+ 绩效周报(S账 vs E账,延迟分桶)
-- **通过标准**:operator 每天只看 dashboard/Telegram 即可掌握全部状态;连续 2 周无人工干预运行
+- [ ] Dash 两页(已上线 MOCK,P2 真数据自动切)+ 日报(Telegram)
+- [ ] Medic 守护全功能 + 绩效周报(S账 vs E账,延迟分桶)
+- **通过标准**:operator 每天只看 dashboard/Telegram 即可掌握全部状态;连续 2 周稳定运行
 
-## 红线(不变)
-PAPER_ONLY,真金交易未经 operator 逐项授权一律禁止 · stock-picker 库只读 · 密钥/登录态不入库 · 单账号人类节奏出错先停 · 归档不复活 · 绩效报告诚实(PIT/延迟成本必须可见)
+## 红线(修正)
+- 真金交易未经 operator 逐项授权一律禁止;**P3 真钱已授权但停泊**(总额硬顶 $300、单笔 $100、白名单 fail-closed、首单盯单),**edge 验证前不启用**
+- 本地模拟盘默认无真金 · stock-picker 库只读 · 密钥/登录态不入库 · 出错先停 · 归档不复活 · 绩效报告诚实(PIT/延迟成本必须可见)
