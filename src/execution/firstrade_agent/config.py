@@ -34,6 +34,17 @@ class ExecSettings(BaseSettings):
     auth_state_file: Path = PROJECT_ROOT / ".auth/firstrade_state.json"  # 登录态(gitignored)
     default_timeout_ms: int = 30_000
 
+    # 反自动化检测(红线 6:模拟真人有封号灰区)。Playwright 默认带 --enable-automation,
+    # 会置 navigator.webdriver=true + 显示"自动化软件控制"横幅 —— Firstrade 风控据此拒登
+    # (operator 同账号在自家 Chrome 能登)。下面三道一起降指纹,**不碰凭据纪律**:
+    #   1. persistent context:复用真实磁盘 profile(.auth/chrome_profile,gitignored),
+    #      像一台日常用的浏览器而非每次全新无痕环境;留空则回退 storage_state 模式;
+    #   2. 去掉 --enable-automation + 加 --disable-blink-features=AutomationControlled;
+    #   3. init script 兜底抹掉 navigator.webdriver。
+    user_data_dir: Path | None = PROJECT_ROOT / ".auth/chrome_profile"
+    stealth: bool = True  # 关掉自动化指纹标志;排障时可 EXEC_STEALTH=0 对照
+    user_agent: str | None = None  # 留空 = 用 channel=chrome 自带的真实 UA(已是真 Chrome)
+
     # Firstrade 入口(只放公开 URL;具体页面路径在选择器 YAML 里随核验一起维护)
     base_url: str = "https://www.firstrade.com"
     login_url: str = "https://invest.firstrade.com/cgi-bin/login"
