@@ -1,6 +1,7 @@
 # 跟单决策规则 Spec v0(MVP)— PROVEN 博主 bullish 跟单
 
-> 作者:Strat(quant:1.1)· 2026-06-10 · r2(r1=3 视角×25 agent 对抗自审修复 14 项含 1 blocker;r2=Lead 三项裁决落入)· 状态:**r2 定稿候选,未经独立复核**(operator 2026-06-10 废止强制审核制度,按 CLAUDE.md 质量纪律自检后 commit;曾按旧制送审 %Audit,未开审即废止)· 上线仍阻塞于 §6 确认项
+> 作者:Strat(quant:1.1)· 2026-06-10 · r2 + **v0.1 补丁(§7-§8,Lead 指派:issuer 归并 + 引擎实现契约)** · 状态:**未经独立复核**(operator 2026-06-10 废止强制审核制度,按 CLAUDE.md 质量纪律自检后 commit;曾按旧制送审 %Audit,未开审即废止)· 上线仍阻塞于 §6 确认项
+> **rule_version 现行 = `v0.1`**(§1-§5 规则 + §7 issuer 归并;规则变更必须升 rule_version,严禁静默改参——红线 3)
 > 数据依据:INTEGRATION_NOTES.md + 对 `trackrecord.db` / `leaderboard_honest_2026-06-10.csv` 的只读实测(附录)。
 > 范围:只定**决策规则**;浏览器执行细节归 Exec,回放/验证归 Valid。纯模拟盘,无真金。
 
@@ -55,6 +56,46 @@
 - [ ] Exec:模拟盘初始资金;收盘前执行窗口峰值 ~5 单可行性;停牌/退市场景的人工兜底流程
 - [ ] Valid:用 call_outcomes 做规则离线回放(**入场必须按 T_entry 收盘建模**,剔除回填长尾;Lead 已派)。⚠️ 回放报告须显式声明 **point-in-time 局限**:用今日 PROVEN 名单回放历史含幸存者偏差,结论只用于"跟这 3 人是否 sane"的判断,**不是 edge 证明**
 - v1 候选(MVP 不做):止损后冷却(需先实测旋转门频率)、其他 handle bearish 触发退出、tier 掉档强制退出、conviction/confidence 门槛
+
+## 7. v0.1 补丁:issuer 归并(双类股,Lead 2026-06-10 批准)
+
+**动因**:Valid 离线回放发现 GOOG(6 笔)与 GOOGL(4 笔)被当两票,绕过一票一仓——同一发行人双重敞口,违背"一公司一仓"意图。
+
+**规则**:引入 `issuer_key` 静态映射(**封闭集,随 rule_version 版本化**,扩充须升版;未列入映射的 ticker `issuer_key = ticker`)。下列判定键全部由 ticker 改为 issuer_key,**下单/归因仍用具体 ticker**:
+- §1.1 去重 → 同 `handle×issuer_key×direction`
+- §1.2 一票一仓 → **一发行人一仓**(同发行人已持仓/有未完结挂单 → skip)
+- §1.3 多空冲突 → 同 issuer_key(对 GOOGL 的 bearish 同样冲突掉 GOOG 的 bullish)
+- §1.5 同票合并 → 同发行人合并(优先级规则不变)
+
+**v0.1 初始映射**(美股常见双/多类股,同组取字典序最小 ticker 为 issuer_key):
+`GOOG/GOOGL` · `FOX/FOXA` · `NWS/NWSA` · `UA/UAA` · `BRK.A/BRK.B` · `LEN/LEN.B` · `LBRDA/LBRDK` · `LSXMA/LSXMB/LSXMK` · `CWEN/CWEN.A` · `HEI/HEI.A`。代码落点 `src/rules/engine.py: ISSUER_GROUPS`(spec 与代码同步改)。
+
+## 8. 引擎实现契约(v0.1,代码落点 `src/rules/`)
+
+**输入**:`signal_candidates` 未决行(Data 管线产出)+ 决策时点 + 组合状态(持仓/未完结入场挂单,含归因 handle)+ B4 簿记快照(`day_trades_5d`/`settled_cash`,对齐 ORDER_LEDGER_SPEC §4.5)+ 决策时价格 + 诚实榜 wilson_lo + 近 7d PROVEN bearish(冲突直查)+ kill-switch 状态。
+**输出**:每行 `signal_id` + **`decision` / `decision_reason` / `rule_version`** 三列(对齐 ORDER_LEDGER_SPEC §4.1 signals 引擎列)。**未到 T_entry 的候选不出行(pending),留待下轮**——decision 是终态,append-only 语义下不可改写,不到窗口不裁决。
+
+**门序与原因码**(每候选按序首中即止;`*` 标记 = v0.1 新增码,**提请 Lead 并入 ORDER_LEDGER_SPEC r3 §5.1 封闭集**):
+| 序 | 门 | decision_reason |
+|---|---|---|
+| 1 | direction ≠ bullish(前向兼容退出触发收录,无窗口语义) | `exit_trigger` |
+| 2 | 窗口:决策日(ET)< T_entry → **pending 不出行**(decision 是终态,窗口未到不裁决,kill-switch 等瞬态不提前定罪);> T_entry+1 → stale | `signal_stale` |
+| 3 | kill-switch 触发态 | `kill_switch_on`(只收录不下单) |
+| 3.5 | operator 拉黑 handle/ticker | `manual_block` |
+| 4 | 批内去重(同 handle×issuer×direction 留 call_ts 最新) | `duplicate_signal` * |
+| 5 | 7d 内任一 PROVEN 对同 issuer 有 bearish | `direction_conflict` * |
+| 6 | 无价格 / 现价 < $3 | `ticker_not_tradable` |
+| 7 | 整数股约束:shares=⌊每单金额/价⌋<1 或敞口<80% 目标 | `risk_cap_exceeded`(zero_share/granularity,细节落日志) |
+| 8 | 同发行人合并落选(优先级 §1.5) | `merge_lost` * |
+| 9 | 同发行人已持仓/挂单 | `position_already_open`(v0.1 语义=issuer 级) |
+| 10 | 归因 handle 并发 ≥ 5 | `handle_cap_exceeded` * |
+| 11 | 总槽 N=10 用尽(含本批已放行) | `risk_cap_exceeded` |
+| 12 | B4:day_trades_5d ≥ 3 | `pdt_limit_reached` |
+| 13 | B4:剩余 settled_cash < 预估订单金额(批内顺序扣减) | `insufficient_settled_cash` |
+| ✓ | 全过 | `all_gates_passed` → followed |
+
+**B4 软约束语义**(对齐 ORDER_LEDGER_SPEC §4.5):引擎只读最新簿记快照做闸门、skip 落原因码,不记账不裁决 ledger;阈值(<3 次、T+1 结算)随 rule_version 配置。模拟盘无真金,但按真实约束演练。
+**决策持久化**:P1 阶段引擎决策幂等落本仓 `rule_decisions` 表(signal_id 主键、insert-only);Exec ledger(signals 表)落地后由其 writer 消费合入,本表保留为引擎侧审计留档。
 
 ## 附录:数据实测(2026-06-10,trackrecord.db 只读 + 当日 CSV,均可复现)
 - 21d tier 分布:PROVEN 5 / TRACKING 49 / INSUFFICIENT 85 / PROVEN_BAD 4 / PROVEN_BAD_1REGIME 6
