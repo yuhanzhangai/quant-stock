@@ -157,6 +157,24 @@ def test_a5_correction_row_exempt(ledger):
     assert not found
 
 
+def test_a5_correction_resets_terminal_lock(ledger):
+    """P1 演练剧本 B:误记终态 → 更正回非终态 → 正常迁移到真终态,全程合法(v0 误报回归钉)。"""
+    _order(ledger, "ord_b", 0, "submitted")
+    _order(ledger, "ord_b", 1, "filled")  # 误记终态
+    _order(ledger, "ord_b", 2, "submitted", corrects=1)  # 更正回非终态:锁重置
+    _order(ledger, "ord_b", 3, "expired")  # 正常迁移,不应报
+    assert not [f for f in run_checks(ledger, now=_now_after_exit()).findings
+                if f.check_id == "A5" and f.order_id == "ord_b"]
+    # 反例:更正为终态值后,再来非更正行仍须报
+    _order(ledger, "ord_b2", 0, "filled")
+    _fill(ledger, "fil_b2", "ord_b2")
+    _order(ledger, "ord_b2", 1, "expired", corrects=0)  # 更正后仍是终态
+    _order(ledger, "ord_b2", 2, "cancelled")  # 终态后非更正行 → 违规
+    found = [f for f in run_checks(ledger, now=_now_after_exit()).findings
+             if f.check_id == "A5" and f.order_id == "ord_b2"]
+    assert found and "seq=1" in found[0].message
+
+
 def test_a6_relation_chain_violations(ledger):
     _order(ledger, "ord_skip", 0, "submitted", sid="sig_t2_BBB", ticker="BBB")  # buy on skipped
     _order(ledger, "ord_noexit", 0, "submitted", side="sell")  # sell 无 exit_reason

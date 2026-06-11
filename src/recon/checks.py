@@ -135,7 +135,12 @@ def check_a4_stale_submitted(con: duckdb.DuckDBPyConnection, cfg: ReconConfig, n
 
 
 def check_a5_event_stream(con: duckdb.DuckDBPyConnection, cfg: ReconConfig, now: datetime) -> list[Finding]:
-    """A5(HALT):seq 从 0 连续无缺口;终态后无后续行(唯一豁免:corrects_seq 非空的更正行,r3 §5.2)。"""
+    """A5(HALT):seq 从 0 连续无缺口;终态后无后续行(豁免:corrects_seq 非空的更正行,r3 §5.2)。
+
+    更正行**重置**终态锁(P1 演练剧本 B 抓出的 v0 误报):误记终态被更正回非终态后,
+    后续正常迁移合法——writer 白名单按"最新状态"校验(r3 §5.2),对账同口径;
+    更正为终态值则终态锁从更正行重新生效。
+    """
     rows = con.execute(
         "SELECT order_id, list(seq ORDER BY seq), list(status ORDER BY seq), list(corrects_seq ORDER BY seq) "
         "FROM orders GROUP BY order_id").fetchall()
@@ -146,11 +151,14 @@ def check_a5_event_stream(con: duckdb.DuckDBPyConnection, cfg: ReconConfig, now:
                                     expected=f"0..{len(seqs) - 1} 连续", actual=str(seqs)))
         terminal_at: int | None = None
         for seq, status, corr in zip(seqs, statuses, corrects, strict=True):
-            if terminal_at is not None and corr is None:
+            if corr is not None:  # 更正行:以更正后的值重置当前状态(终态锁随之重置)
+                terminal_at = seq if status in _TERMINAL else None
+                continue
+            if terminal_at is not None:
                 findings.append(Finding("A5", "halt",
                                         f"终态(seq={terminal_at})后出现非更正行 seq={seq}({status})", order_id=oid))
                 break
-            if terminal_at is None and status in _TERMINAL:
+            if status in _TERMINAL:
                 terminal_at = seq
     return findings
 
