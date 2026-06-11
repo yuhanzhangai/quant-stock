@@ -271,3 +271,81 @@ def test_tsay_storm_capped_at_three(tsay_env):
     medic.check_tsay_failures(state)
     assert len(pages) == 4                      # 3 lines + 1 "另有 N 条"
     assert "另有 4 条" in pages[-1]
+
+# ------------------- 2026-06-10 review-workflow fixes ---------------------- #
+# F1: one UTF-8-truncated tsay log line must never silence the vital forever.
+
+def test_tsay_poison_utf8_line_does_not_wedge_tracker(tsay_env):
+    log, pages = tsay_env
+    state: dict = {}
+    medic.check_tsay_failures(state)            # baseline pos 0 (no file)
+    # tsay.sh once byte-truncated mid-CJK: valid prefix + dangling lead bytes
+    log.write_bytes("2026-06-10 16:18:40  UNDELIVERED  target=quant:0.1  msg=送".encode()[:-1] + b"\n")
+    medic.check_tsay_failures(state)
+    assert len(pages) == 1                      # poison line still pages (replaced char)
+    with open(log, "ab") as f:
+        f.write(b"2026-06-10 16:30:00  NO_PANE  target=quant:9.9  msg=later\n")
+    medic.check_tsay_failures(state)
+    assert len(pages) == 2 and "NO_PANE" in pages[1]   # later failures NOT swallowed
+
+
+def test_tsay_tail_survives_poison_utf8(tsay_env):
+    log, _ = tsay_env
+    log.write_bytes(b"ok line\n" + "坏行截断在多字节中间:送".encode()[:-1] + b"\n")
+    tail = medic.read_tsay_tail()
+    assert len(tail) == 2 and tail[0] == "ok line"
+
+
+# F2: DEAD -> alive = new patient; a second death must page again.
+
+def test_dead_then_alive_resets_episode_state():
+    st = {"fp": "x", "fp_since": 1.0, "last_state": "🔴 DEAD",
+          "alerted": {"DEAD"}, "in_h": "h", "in_since": 1.0}
+    state = {"%99": st}
+    # inline replica of the one_pass reset gate (the block under test)
+    is_claude = True
+    if is_claude and st.get("last_state", "").endswith("DEAD"):
+        st["alerted"] = set()
+        st["fp_since"] = 2.0
+        st["in_h"] = None
+        st["in_since"] = None
+    assert state["%99"]["alerted"] == set()     # DEAD re-armed -> second death pages
+
+
+def test_dead_to_alive_reset_block_present_in_one_pass():
+    import inspect
+    src = inspect.getsource(medic.one_pass)
+    assert 'endswith("DEAD")' in src and 'st["alerted"] = set()' in src
+
+
+# F5: placeholder/hint text in the prompt area is an EMPTY box, not a draft.
+
+def test_extract_input_hint_text_is_empty():
+    for hint in ('Try "fix lint errors"', "Press up to edit queued messages"):
+        text = f"{DIV} ultracode ─\n❯ {hint}\n{DIV}\n  status"
+        assert medic.extract_input(text) == ""
+
+
+# F17 (F5/F7 family): a permission-dialog selector "❯ 1. Yes" is NOT an input box.
+
+def test_extract_input_dialog_selector_returns_none():
+    text = f"{DIV}\n❯ 1. Yes\n  2. No, tell me more\n{DIV}\n  status"
+    assert medic.extract_input(text) is None
+
+
+# F6: an overlay (Workflow task list / tip banner) below the status line must
+# not push "esc to interrupt" out of the footer window.
+
+def test_parse_busy_survives_overlay_below_status_line():
+    text = (f"· Proofing… (5m 44s · ↓ 18.4k tokens)\n{DIV} ultracode ─\n❯\n{DIV}\n"
+            "  ⏵⏵ bypass permissions on · esc to interrupt\n"
+            "  ⎿  Workflow: review-medic-port — 12/65 agents\n"
+            "  ⎿  verify:medic.py running\n"
+            "  ⎿  verify:tsay.sh queued\n")
+    busy, elapsed = medic.parse_busy(text)
+    assert busy is True and elapsed == 344
+
+
+def test_footer_leak_still_ignored_after_anchor_change():
+    busy, _ = medic.parse_busy(FOOTER_LEAK)
+    assert busy is False

@@ -89,7 +89,9 @@ STUCK_SEC = 180              # idle + input box text unchanged this long => STUC
                              # (Lead/operator 2026-06-10: 空闲超 3 分钟即判滞留)
 AUTO_ENTER_COOLDOWN = 3600   # auto-Enter remediation: at most once per pane per hour
 FORENSIC_LOCS = ("quant:0.0",)          # forensic pane(s): alert-only, NEVER keyed
-FORENSIC_ROLE_KEYS = ("Audit", "监工")  # belt-and-suspenders if windows ever renumber
+FORENSIC_ROLE_KEYS = ("Audit", "监工", "机动", "Review")  # belt-and-suspenders if windows
+                             # ever renumber (0.0 renamed 机动/Review 2026-06-10; the
+                             # never-keyed invariant on that pane stays until operator lifts it)
 CLAUDE_CMDS = ("claude", "claude.exe", "node")
 # The Medic's OWN pane is exempt from WEDGED: its legitimate long working turns
 # show the interrupt hint with a stable visible fingerprint, which the
@@ -106,6 +108,12 @@ _ANYTIME_RE = re.compile(r"\((?:(\d+)m)?\s*(?:(\d+)s)?\b")     # fallback "(38s"
 _BGSHELL_RE = re.compile(r"·\s*\d+\s*shell")                   # status line "· 1 shell" = bg work in flight
 _DIVIDER_RE = re.compile(r"─{30,}")                            # TUI input-box top/bottom rule
 _PROMPT_CHARS = ("❯", ">")                                     # input prompt glyph variants
+# empty-box placeholder/hint text the TUI renders inside the prompt area — NOT a
+# user draft (e.g. '❯ Try "fix lint errors"', "Press up to edit queued messages")
+_HINT_RE = re.compile(r'^(Try "|Press up to edit|\? for shortcuts|/ for commands)')
+# permission-dialog option selector rendered with the same glyph ("❯ 1. Yes") —
+# a dialog is open, the region is NOT an input box
+_DIALOG_RE = re.compile(r"^\d+\.\s")
 
 
 def sh(cmd: list[str], timeout: float = 8.0) -> str:
@@ -222,11 +230,17 @@ def capture(pane: str) -> str:
 
 
 def _footer(text: str) -> str:
-    """Last few non-empty lines = the TUI status bar region. Panes capture each
-    OTHER's screens to coordinate, so status strings ("esc to interrupt", "N shell")
-    leak into THIS pane's scrollback; only the real footer reflects this pane's own
-    state."""
+    """The TUI status bar region = everything from the LAST horizontal rule down.
+    Panes capture each OTHER's screens to coordinate, so status strings ("esc to
+    interrupt", "N shell") leak into THIS pane's scrollback; only the real footer
+    reflects this pane's own state. A fixed last-N-lines window breaks when an
+    overlay (Workflow task list, tip banner) renders BELOW the status line and
+    pushes it out of the window — the input box's bottom rule is a stable anchor:
+    the genuine status area is whatever follows the final rule on screen."""
     lines = [l for l in text.splitlines() if l.strip()]
+    for i in range(len(lines) - 1, -1, -1):
+        if _DIVIDER_RE.search(lines[i]):
+            return "\n".join(lines[i:])
     return "\n".join(lines[-3:])
 
 
@@ -275,7 +289,12 @@ def extract_input(text: str) -> str | None:
     first = region[0].lstrip()
     if not first.startswith(_PROMPT_CHARS):
         return None
-    parts = [first[1:].strip()]
+    head = first[1:].strip()
+    if _DIALOG_RE.match(head):
+        return None     # "❯ 1. Yes" = permission dialog selector, not an input box
+    if _HINT_RE.match(head):
+        return ""       # placeholder/hint text = known-empty box, never a draft
+    parts = [head]
     parts += [ln.strip() for ln in region[1:]]
     return " ".join(p for p in parts if p).strip()
 
@@ -431,7 +450,9 @@ def auto_enter_eligible(loc: str, role: str, inp: str,
 def read_tsay_tail(n: int = 5) -> list[str]:
     """Last n lines of the tsay failure log for the health.md dashboard ([] -safe)."""
     try:
-        with open(TSAY_FAIL_LOG, encoding="utf-8") as f:
+        # errors="replace": tsay.sh appends operator-typed Chinese; one invalid
+        # byte must degrade to U+FFFD, never blank the whole dashboard section
+        with open(TSAY_FAIL_LOG, encoding="utf-8", errors="replace") as f:
             return [ln.strip() for ln in f.read().splitlines() if ln.strip()][-n:]
     except Exception:
         return []
@@ -460,10 +481,16 @@ def check_tsay_failures(state: dict) -> None:
     if size == pos:
         return
     try:
-        with open(TSAY_FAIL_LOG, encoding="utf-8") as f:
+        # errors="replace": a UTF-8-truncated line (tsay.sh once cut bytes mid-CJK)
+        # must NOT raise — a strict decode here used to bail before tsay_pos
+        # advanced, permanently re-reading the poison bytes and silencing every
+        # later failure. Advance the position even if the read itself dies, so
+        # one bad region can never wedge the tracker.
+        with open(TSAY_FAIL_LOG, encoding="utf-8", errors="replace") as f:
             f.seek(pos)
             new = [ln.strip() for ln in f.read().splitlines() if ln.strip()]
     except Exception:
+        state["tsay_pos"] = size
         return
     state["tsay_pos"] = size
     for ln in new[:3]:
@@ -512,6 +539,17 @@ def one_pass(state: dict) -> list[dict]:
         fp = fingerprint(text) if is_claude else ""
 
         st = state.setdefault(p["pane"], {"fp": fp, "fp_since": t, "last_state": ""})
+        # DEAD -> alive = a NEW patient (restored from the stock-picker original;
+        # the port dropped it): clear the episode state, else "DEAD" stays armed
+        # in st["alerted"] — and with medic_map.tsv still carrying the old
+        # sessionId the 🟢+ctx<WARN re-arm path may never fire, so a SECOND death
+        # of a resuscitated pane would page nothing. Restart loops are exactly
+        # when repeat deaths happen.
+        if is_claude and st.get("last_state", "").endswith("DEAD"):
+            st["alerted"] = set()
+            st["fp_since"] = t
+            st["in_h"] = None
+            st["in_since"] = None
         if fp != st["fp"]:
             st["fp"] = fp
             st["fp_since"] = t

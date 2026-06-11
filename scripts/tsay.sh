@@ -19,14 +19,31 @@ MSG="$*"
 # 固定指向主树 team/(worktree 副本也写同一处),可用 QUANT_TEAM_DIR 覆盖。
 TSAY_FAIL_LOG="${QUANT_TEAM_DIR:-$HOME/quant-stock/team}/tsay_failures.log"
 fail_log() {  # $1=原因码
-  printf '%s  %s  target=%s  msg=%.80s\n' \
-    "$(date '+%Y-%m-%d %H:%M:%S')" "$1" "$TARGET" "$MSG" >> "$TSAY_FAIL_LOG" 2>/dev/null || true
+  # 截断必须按【字符】不按字节(%.80s 是字节精度,中文 3 字节/字,切半个字 =
+  # 非法 UTF-8 进日志,曾把 medic 守护的 tsay 体征整个打瞎);换行也压平,保持一行一条
+  local head=${MSG//$'\n'/ }
+  head=${head:0:80}
+  printf '%s  %s  target=%s  msg=%s\n' \
+    "$(date '+%Y-%m-%d %H:%M:%S')" "$1" "$TARGET" "$head" >> "$TSAY_FAIL_LOG" 2>/dev/null || true
 }
 
 # 目标 pane 必须存在,否则明确报错(capture-pane 对坏 session/window/pane 都会失败,
 # display-message 会静默回退到当前 pane,不可用作存在性检查)
 if ! tmux capture-pane -p -t "$TARGET" >/dev/null 2>&1; then
   echo "tsay: ✋ 目标 pane 不存在: $TARGET" >&2; fail_log NO_PANE; exit 1
+fi
+
+# 权限对话框探测:选项行渲染同款 ❯ 提示符("❯ 1. Yes"),盲发 Enter 会替对方
+# 按掉对话框选项(=未授权替 agent 做决定)。检测到对话框一律不贴不按,转人工。
+# 判据收紧(2026-06-10 首发即误报:消息正文引用"❯ 1. Yes"字样被全屏 grep 命中):
+# 选择器必须在【行首】且只看屏幕【底部 15 行】——对话框渲染在底部,行首是其特征;
+# 消息/滚屏里引用的同款字样在行中或上方,不再误伤。
+dialog_open() {
+  tmux capture-pane -p -t "$TARGET" 2>/dev/null | tail -n 15 | grep -qE '^[[:space:]]*❯ [0-9]+\. '
+}
+if dialog_open; then
+  echo "tsay: ✋ $TARGET 有权限对话框打开,拒绝注入(恐替对方选选项),请人工处理" >&2
+  fail_log DIALOG_OPEN; exit 1
 fi
 
 # stdin → buffer → 括号粘贴(-p),绕开 send-keys 的引号/特殊字符地狱
@@ -77,6 +94,10 @@ for attempt in 1 2 3 4; do
     echo "tsay: 第 ${attempt} 次校验 $TARGET 框已空但消息未进对话(静默丢失),重贴…" >&2
     repaste
   else
+    if dialog_open; then
+      echo "tsay: ✋ $TARGET 中途弹出权限对话框,停止补 Enter(恐替对方选选项),请人工处理" >&2
+      fail_log DIALOG_OPEN; exit 1
+    fi
     echo "tsay: 第 ${attempt} 次校验 $TARGET 输入框未清空,补发 Enter…" >&2
     tmux send-keys -t "$TARGET" Enter
   fi
