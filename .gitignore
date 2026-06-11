@@ -1,5 +1,5 @@
-# 数据文件
-data/
+# 数据文件(锚定仓库根:只忽略顶层 data/,不误伤 src/data、tests/data 等源码包)
+/data/
 *.duckdb
 *.duckdb.wal
 *.sqlite
