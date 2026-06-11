@@ -1,4 +1,4 @@
-"""Streamlit 主入口 - 加密货币量化研究面板。"""
+"""Streamlit 主入口 - quant-stock 博主跟单面板。"""
 
 import sys
 from pathlib import Path
@@ -9,23 +9,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import streamlit as st
 
 st.set_page_config(
-    page_title="Crypto Research",
+    page_title="quant-stock 跟单面板",
     page_icon="📊",
     layout="wide",
 )
 
-st.title("Crypto Research - 量化研究面板")
+st.title("quant-stock — 博主跟单 · 模拟盘")
 
 st.markdown("""
 ### 功能导航
 
 使用左侧导航栏切换页面：
 
-- **市场总览** - 当日涨跌排行、成交额排名
-- **因子表现** - 因子时序图与统计
-- **回测查看** - 回测结果展示
+- **模拟盘监控** - 持仓 / 权益 / 今日成交 / agent 健康 / kill-switch 状态
+- **订单留档** - 每笔订单可点开查看下单依据(博主原帖全文快照)
 
 ---
 
-*数据源: OKX V5 API(crypto 遗留,C2 切美股数据源)| 仅供研究分析，不构成投资建议*
+*信号源: stock-picker 诚实榜 PROVEN 喊单(只读)| Firstrade 模拟盘 PAPER_ONLY | 仅供研究分析，不构成投资建议*
 """)
