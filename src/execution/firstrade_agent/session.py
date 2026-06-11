@@ -190,6 +190,23 @@ class FirstradeSession:
             out.append([str(cells.nth(j).inner_text()).strip() for j in range(cells.count())])
         return out
 
+    def probe_css(self, css: str) -> dict[str, Any]:
+        """核验专用只读探针:统计任意 css 命中数 + 首个命中元素摘要(P2 选择器核验)。
+
+        故意不走 registry.require —— 本方法存在的意义就是核验尚未 verified 的
+        选择器;只读 DOM(count/outerHTML),绝不点击/输入,kill 可停,留审计。"""
+        self.kill.check()
+        loc = self._require_page().locator(css)
+        count = int(loc.count())
+        sample = str(loc.first.evaluate("el => el.outerHTML"))[:200] if count else ""
+        self.audit.record("probe_css", css=css, count=count)
+        return {"css": css, "count": count, "sample": sample}
+
+    def current_url(self) -> str:
+        """只读:当前页面 URL(核验记录用;query/fragment 不落审计同 goto 约定)。"""
+        self.kill.check()
+        return str(self._require_page().url)
+
     def ensure_logged_in(self) -> bool:
         """检查登录态是否仍有效(依赖已核验的 logged_in_marker 选择器)。"""
         self.kill.check()

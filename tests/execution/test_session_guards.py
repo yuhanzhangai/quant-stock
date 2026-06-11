@@ -56,6 +56,8 @@ class TestKillBeforePageAccess:
             lambda: session.ensure_logged_in(),
             lambda: session.save_auth_state(),
             lambda: session.launch(),
+            lambda: session.probe_css("#anything"),
+            lambda: session.current_url(),
         ):
             with pytest.raises(ExecutionHalted):
                 call()
