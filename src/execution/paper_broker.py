@@ -5,10 +5,10 @@
 positions_daily(演练已验全链,这次 fill 用真价)→ 退出引擎按真实日收盘前向评估
 (21d 到期 / 止损 / 翻空)。
 
-价源走 Protocol(可注入假价测试、不锁死实现)。默认适配器读 stock-picker prices.db
-的 price_cache(ticker,date,close)——**只读**(红线:stock-picker 侧绝不写)。
-日级 close 是唯一可得粒度(prices.db 无 OHLCV),撮合价口径=信号入场交易日收盘,
-与 S 账 T+1 close 口径同源,可比。
+价源走 Protocol(可注入假价测试、不锁死实现)。**生产用 DataPriceSource**(包 Data 权威
+价源 src.data.price_source,读序 我方缓存→prices.db→yfinance raw 兜底,fail-closed);
+PricesDbClose 仅离线/测试。日级 close 是唯一粒度,撮合价口径=信号入场交易日收盘,
+与 S 账 T+1 close 口径同源可比。无价不开仓/不强平(诚实),入场可顺延 ≤N 日记 drift。
 
 诚实边界:
 - 成交价=日收盘,非盘中真实成交价(无 tick 数据);滑点是建模假设不是实测。
@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Protocol
@@ -51,7 +51,11 @@ class PriceSource(Protocol):
 
 
 class PricesDbClose:
-    """stock-picker prices.db 的 price_cache 只读适配器(close-only,日级)。"""
+    """stock-picker prices.db 的 price_cache 只读适配器(close-only,日级)。
+
+    注:仅离线/测试用。**生产前向走 DataPriceSource**(Data 权威价源,带 yfinance 兜底 +
+    adjusted 标 + fail-closed);直读 price_cache 没有兜底、且是后向复权价(历史回放会时代错位)。
+    """
 
     def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
@@ -71,6 +75,35 @@ class PricesDbClose:
         return Decimal(str(row[0])).quantize(_CENT, rounding=ROUND_HALF_UP)
 
 
+class DataPriceSource:
+    """适配 Data 权威价源(src.data.price_source.PriceSource)→ PaperBroker 的 PriceSource 协议。
+
+    close_on 抛 PriceUnavailable → None(fail-closed 边界在此收口:建仓映射 skip、
+    持仓 mark/退出由 broker 沿用上一 mark 标 stale,绝不造价)。源读序=我方缓存→prices.db→
+    yfinance raw,这是前向"prices.db 晚一天也不阻塞"的安全网。
+    """
+
+    def __init__(self, inner: object | None = None) -> None:
+        if inner is None:
+            from src.data.price_source import PriceSource
+
+            inner = PriceSource()
+        self._inner = inner
+
+    def close_on(self, ticker: str, d: date) -> Decimal | None:
+        from src.data.price_source import PriceUnavailable
+
+        try:
+            pp = self._inner.close_on(ticker, d)
+        except PriceUnavailable:
+            return None
+        return Decimal(str(pp.price)).quantize(_CENT, rounding=ROUND_HALF_UP)
+
+    def warm(self, tickers: list[str], d: date) -> dict[str, int]:
+        """前向 runner 每日预热:批量确保覆盖,缺的 yfinance 拉一次。返回 {covered,fetched,missing}。"""
+        return self._inner.warm_daily_close(tickers, d)
+
+
 @dataclass(frozen=True)
 class PaperBrokerConfig:
     """撮合参数。任何改动按红线 3 升 rule_version(严禁静默改参)。"""
@@ -79,6 +112,7 @@ class PaperBrokerConfig:
     slippage_bps: float = 0.0  # 单边滑点(基点);起步 0,买价上浮/卖价下压
     hold_days: int = 21  # 持有满 N 个交易日到期退出(对标 call_outcomes 21d)
     stop_loss_pct: float | None = None  # 收盘跌破 entry*(1-pct) 止损;None=不启用(不臆造阈值)
+    entry_carry_forward_days: int = 1  # 入场日无价时最多顺延 N 个交易日(记 drift);超出 skip(no_price)
 
 
 @dataclass(frozen=True)
@@ -138,19 +172,36 @@ class PaperBroker:
         """对一条 followed 决策按入场交易日收盘建仓。
 
         入场日 = 规则引擎 entry_window(call_ts) 的 T_entry(call 日后首个交易日),
-        撮合价 = 该日收盘 + 买方滑点。无价(停牌/缺数据)则不开仓返回 None(诚实,不假装)。
+        撮合价 = 该日收盘 + 买方滑点。T_entry 当天无价(瞬时数据缺口)则**顺延至下一有价
+        交易日,最多 entry_carry_forward_days 个**,note 记 drift(成交比信号贵/偏,交 Valid
+        看延迟成本)。顺延窗口内仍无价(退市/次新/无数据真尾部)→ 不开仓返回 None(诚实,不假装)。
         """
-        t_entry = entry_date or entry_window(call_ts)[0]
-        raw = self.px.close_on(ticker, t_entry)
-        if raw is None:
-            logger.info("paper enter 跳过 {}({}):入场日 {} 无收盘价", signal_id, ticker, t_entry)
+        # 幂等:同一 signal 已建过仓(任意 buy 单)则跳过——每日 runner 对同一天重跑不重复建仓
+        if self.w.conn.execute(
+            "SELECT count(*) FROM orders WHERE signal_id = ? AND side = 'buy'", [signal_id]
+        ).fetchone()[0]:
+            logger.debug("paper enter 幂等跳过 {}:已有建仓单", signal_id)
             return None
+        t_entry = entry_date or entry_window(call_ts)[0]
+        priced = self._next_priced_session(ticker, t_entry, self.cfg.entry_carry_forward_days)
+        if priced is None:
+            logger.info(
+                "paper enter 跳过 {}({}):{} 起 {} 个交易日内无收盘价(no_price)",
+                signal_id,
+                ticker,
+                t_entry,
+                self.cfg.entry_carry_forward_days + 1,
+            )
+            return None
+        actual_date, raw = priced
+        drift = self._sessions_between(t_entry, actual_date)  # 0=当日成交,>0=顺延天数
         fill_price = self._fill_price(raw, "buy")
         qty = Decimal(int(Decimal(str(self.cfg.per_order_usd)) / fill_price))
         if qty < 1:
             logger.info("paper enter 跳过 {}:单价 {} 超单仓预算,整股=0", signal_id, fill_price)
             return None
-        submitted = now or _close_ts(t_entry)
+        submitted = now or _close_ts(actual_date)
+        drift_note = "" if drift == 0 else f", carry_forward={drift}d(信号入场 {t_entry})"
         oid = self.w.open_order(
             signal_id=signal_id,
             ticker=ticker,
@@ -160,7 +211,7 @@ class PaperBroker:
             submitted_ts=submitted,
             call_to_submit_ms=int((submitted - call_ts).total_seconds() * 1000),
             rule_version=rule_version,
-            note=f"paper enter @ {t_entry} close(raw={raw}, slip={self.cfg.slippage_bps}bps)",
+            note=f"paper enter @ {actual_date} close(raw={raw}, slip={self.cfg.slippage_bps}bps{drift_note})",
         )
         self.w.append_order_event(order_id=oid, status="filled", broker_order_ref=f"paper-{oid[-8:]}")
         self.w.insert_fill(
@@ -168,10 +219,20 @@ class PaperBroker:
             fill_ts=submitted,
             qty=qty,
             price=fill_price,
-            raw_text=f"PAPER FILL buy {qty} {ticker} @ {fill_price} ({t_entry} close {raw})",
+            raw_text=f"PAPER FILL buy {qty} {ticker} @ {fill_price} ({actual_date} close {raw}{drift_note})",
         )
-        logger.info("paper enter {} {} qty={} @ {}", signal_id, ticker, qty, fill_price)
+        logger.info("paper enter {} {} qty={} @ {}(drift={}d)", signal_id, ticker, qty, fill_price, drift)
         return oid
+
+    def _next_priced_session(self, ticker: str, start: date, max_fwd: int) -> tuple[date, Decimal] | None:
+        """从 start 起最多向后 max_fwd 个交易日,返回首个有收盘价的 (交易日, 价)。"""
+        sched = _xnys().sessions_in_range(start.isoformat(), (start + timedelta(days=max_fwd * 3 + 7)).isoformat())
+        sessions = [s.date() for s in sched if s.date() >= start][: max_fwd + 1]
+        for d in sessions:
+            px = self.px.close_on(ticker, d)
+            if px is not None:
+                return d, px
+        return None
 
     # ── 持仓重建(从 ledger,单一真相)──────────────────────────────────
 
