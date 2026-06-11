@@ -69,3 +69,8 @@ logs/
 !.env.example
 storage_state*.json
 reports/**/*.log
+
+# medic runtime artifacts (写盘留证,不入库)
+team/health.md
+team/health_alerts.log
+team/tsay_failures.log
