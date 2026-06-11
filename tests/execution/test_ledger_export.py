@@ -1,6 +1,8 @@
-"""parquet 导出测试:全表落盘/原子性(无 tmp 残留)/meta 最后落且行数一致/失败不抛只告警。"""
+"""parquet 导出测试:全表落盘/原子性(无 tmp 残留)/meta 最后落且行数一致/失败不抛只告警。
 
-import json
+export_meta 契约(dashboard/ledger_reader.py):export_meta.parquet,列 (export_ts, table_name, row_count)。
+"""
+
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
@@ -43,6 +45,16 @@ def writer(tmp_path):
     w.close()
 
 
+def read_meta(out) -> dict[str, dict]:
+    """meta parquet → {table_name: {export_ts, row_count}}(独立只读连接,Dash 路径)。"""
+    ro = duckdb.connect()
+    rows = ro.execute(
+        f"SELECT export_ts, table_name, row_count FROM read_parquet('{out / EXPORT_META_NAME}')"
+    ).fetchall()
+    ro.close()
+    return {t: {"export_ts": ts, "row_count": n} for ts, t, n in rows}
+
+
 def test_export_all_tables_with_meta(writer, tmp_path):
     out = tmp_path / "export"
     assert export_ledger(writer.conn, out) is True
@@ -50,10 +62,12 @@ def test_export_all_tables_with_meta(writer, tmp_path):
         assert (out / f"{table}.parquet").exists(), table
     # 原子性:无临时文件残留
     assert list(out.glob(".*tmp")) == []
-    meta = json.loads((out / EXPORT_META_NAME).read_text(encoding="utf-8"))
-    assert meta["row_counts"]["signals"] == 1
-    assert meta["row_counts"]["orders"] == 1
-    assert meta["exported_at"]
+    meta = read_meta(out)
+    # 契约列序与内容:每表一行,同一 export_ts
+    assert set(meta) == set(LEDGER_TABLES)
+    assert meta["signals"]["row_count"] == 1
+    assert meta["orders"]["row_count"] == 1
+    assert len({v["export_ts"] for v in meta.values()}) == 1
     # 快照可被独立进程式只读(Dash 路径):新连接直接读 parquet
     ro = duckdb.connect()
     n = ro.execute(f"SELECT count(*) FROM read_parquet('{out / 'orders.parquet'}')").fetchone()[0]
@@ -64,19 +78,39 @@ def test_export_all_tables_with_meta(writer, tmp_path):
 def test_export_meta_written_last_reflects_snapshot(writer, tmp_path):
     out = tmp_path / "export"
     export_ledger(writer.conn, out)
-    first = json.loads((out / EXPORT_META_NAME).read_text(encoding="utf-8"))
+    first = read_meta(out)
     writer.append_order_event(
         order_id=writer.conn.execute("SELECT order_id FROM orders LIMIT 1").fetchone()[0],
         status="filled",
     )
     export_ledger(writer.conn, out)
-    second = json.loads((out / EXPORT_META_NAME).read_text(encoding="utf-8"))
+    second = read_meta(out)
     # 行数只增不减(append-only,审计可对照)
-    assert second["row_counts"]["orders"] == first["row_counts"]["orders"] + 1
-    assert second["exported_at"] >= first["exported_at"]
+    assert second["orders"]["row_count"] == first["orders"]["row_count"] + 1
+    assert second["orders"]["export_ts"] >= first["orders"]["export_ts"]
 
 
 def test_export_failure_returns_false_never_raises(writer, tmp_path):
     blocked = tmp_path / "not_a_dir"
     blocked.write_text("占位文件,mkdir 必失败")
     assert export_ledger(writer.conn, blocked) is False  # 只告警,不向上抛(记账优先)
+
+
+def test_export_meta_readable_by_dash_reader_contract(writer, tmp_path):
+    """契约端到端:用 main 上 Dash reader 的判稳逻辑等价检查(meta 存在 + 列可读)。"""
+    out = tmp_path / "export"
+    export_ledger(writer.conn, out)
+    # Dash export_available() 等价:meta 文件存在即快照集完整
+    assert (out / EXPORT_META_NAME).exists()
+    # Dash 取最新 export_ts 判 STALE 的查询可跑
+    ro = duckdb.connect()
+    ts = ro.execute(f"SELECT max(export_ts) FROM read_parquet('{out / EXPORT_META_NAME}')").fetchone()[0]
+    ro.close()
+    assert ts is not None
+
+
+def test_no_json_meta_left(writer, tmp_path):
+    """防回归:旧 JSON meta 不再产出(契约是 parquet)。"""
+    out = tmp_path / "export"
+    export_ledger(writer.conn, out)
+    assert not (out / "export_meta.json").exists()
