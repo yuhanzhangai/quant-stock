@@ -44,6 +44,25 @@ class TestKillFilePath:
         assert "kill_file" not in ExecSettings.model_fields
 
 
+class TestAntiDetectionDefaults:
+    """反检测(红线 6 封号灰区)默认值与 stealth 标志的回归钉。"""
+
+    def test_stealth_on_and_real_chrome_by_default(self):
+        from src.execution.firstrade_agent.config import ExecSettings
+
+        s = ExecSettings()
+        assert s.stealth is True
+        assert s.browser_channel == "chrome"  # 真 Chrome 内核,非裸 chromium
+        assert s.user_data_dir is not None  # 默认持久化 profile(像日常浏览器)
+
+    def test_stealth_args_drop_automation_flag(self):
+        from src.execution.firstrade_agent.session import FirstradeSession as S
+
+        assert "--enable-automation" in S._STEALTH_IGNORE_DEFAULT
+        assert any("AutomationControlled" in a for a in S._STEALTH_ARGS)
+        assert "webdriver" in S._STEALTH_INIT_JS
+
+
 class TestKillSwitch:
     def test_not_engaged_check_passes(self, tmp_path):
         ks = KillSwitch(tmp_path / "KILL")

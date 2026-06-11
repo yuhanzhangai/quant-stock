@@ -49,23 +49,57 @@ class FirstradeSession:
 
     # ── 生命周期 ──────────────────────────────────────────────
 
+    # 反检测:去掉 Playwright 默认会注入的自动化标志,并补一条压制旗标。
+    # navigator.webdriver、--enable-automation 横幅都是 Firstrade 风控的识别点。
+    _STEALTH_ARGS = ("--disable-blink-features=AutomationControlled",)
+    _STEALTH_IGNORE_DEFAULT = ("--enable-automation",)
+    # init script 兜底:即便上面漏网,也把 webdriver 抹成 undefined(只读 spoof,不碰凭据)
+    _STEALTH_INIT_JS = "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
+
     def launch(self) -> None:
         self.kill.check()
         # 延迟导入:仅真正启动浏览器时才需要 playwright
         from playwright.sync_api import sync_playwright
 
+        s = self.settings
+        args = list(self._STEALTH_ARGS) if s.stealth else []
+        ignore_default = list(self._STEALTH_IGNORE_DEFAULT) if s.stealth else []
+        ctx_kwargs: dict[str, Any] = {}
+        if s.user_agent:
+            ctx_kwargs["user_agent"] = s.user_agent
+
         pw = sync_playwright().start()
         browser = None
+        persistent = s.user_data_dir is not None
         try:
-            browser = pw.chromium.launch(
-                headless=self.settings.headless,
-                channel=self.settings.browser_channel,
-            )
-            auth_file = self.settings.auth_state_file
-            storage_state = str(auth_file) if auth_file.exists() else None
-            context = browser.new_context(storage_state=storage_state)
-            context.set_default_timeout(self.settings.default_timeout_ms)
-            page = context.new_page()
+            if persistent:
+                # 持久化真实 profile:像一台日常浏览器,cookies/指纹跨次稳定(最强反检测)。
+                # 此模式下 context 自带磁盘登录态,不再叠加 storage_state(profile 即登录态)。
+                s.user_data_dir.mkdir(parents=True, exist_ok=True)
+                context = pw.chromium.launch_persistent_context(
+                    str(s.user_data_dir),
+                    headless=s.headless,
+                    channel=s.browser_channel,
+                    args=args,
+                    ignore_default_args=ignore_default,
+                    **ctx_kwargs,
+                )
+                auth_reused = any(s.user_data_dir.iterdir())
+            else:
+                browser = pw.chromium.launch(
+                    headless=s.headless,
+                    channel=s.browser_channel,
+                    args=args,
+                    ignore_default_args=ignore_default,
+                )
+                auth_file = s.auth_state_file
+                storage_state = str(auth_file) if auth_file.exists() else None
+                context = browser.new_context(storage_state=storage_state, **ctx_kwargs)
+                auth_reused = storage_state is not None
+            if s.stealth:
+                context.add_init_script(self._STEALTH_INIT_JS)
+            context.set_default_timeout(s.default_timeout_ms)
+            page = context.pages[0] if context.pages else context.new_page()
         except Exception:
             # 启动半途失败:把已起的进程收干净再上抛,不留孤儿 driver/browser
             if browser is not None:
@@ -81,8 +115,10 @@ class FirstradeSession:
         self._pw, self._browser, self._context, self._page = pw, browser, context, page
         self.audit.record(
             "session_launch",
-            headless=self.settings.headless,
-            auth_state_reused=storage_state is not None,
+            headless=s.headless,
+            persistent=persistent,
+            stealth=s.stealth,
+            auth_state_reused=auth_reused,
             kill_file=str(self.kill.kill_file),  # 把实际监视的 kill 路径留痕,防路径分叉
         )
 
