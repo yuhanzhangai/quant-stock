@@ -133,13 +133,33 @@ def load_s_rows(tweet_tickers: list[tuple[str, str]],
     return out
 
 
+# 拆股侦测阈值(PRICE_SOURCE_SPEC §3/§4b 缓解 (b),MVP 归 Valid):PaperBroker 撮合 = T_entry 收盘+bps 级
+# 滑点,fill 与 price_cache 当日收盘本应几乎相等;后向复权回填会把历史收盘整倍数缩放(2:1 起),
+# 偏离超阈 = 该笔出入场/缓存价不同基准,混锚收益全部列异常,不静默进聚合。
+SPLIT_SUSPECT_THRESHOLD = 0.15
+
+
 def enrich(trades: pl.DataFrame, prices: dict[tuple[str, str], float],
            s_rows: dict[tuple[str, str], dict]) -> pl.DataFrame:
-    """逐笔补 E 账收益/基准/MTM + S−E 四分量归因(spec §2.3)。纯函数,便于合成数据测试。"""
+    """逐笔补 E 账收益/基准/MTM + S−E 四分量归因(spec §2.3)。纯函数,便于合成数据测试。
+
+    复权口径(PRICE_SOURCE_SPEC §4b):price_cache 为后向复权价,**同源比值**(SPY 基准、window_diff、
+    early_exit_diff)跨拆股仍正确;**fill 价 × 缓存价混锚**(actual_return 跨拆股、entry_diff_bps、MTM)
+    在持仓期跨拆股时失真 → split_suspect 侦测,中招笔收益置 NULL 列异常(拆股日列异常,不静默抹平)。
+    """
     rows = []
     for t in trades.iter_rows(named=True):
         ticker, entry_d, exit_d = t["ticker"], t["entry_date"], t["exit_date"]
         closed = exit_d is not None
+        px_entry_cache = _px(prices, ticker, entry_d)
+        split_suspect = (px_entry_cache is not None
+                         and abs(t["entry_avg_fill"] / px_entry_cache - 1) > SPLIT_SUSPECT_THRESHOLD)
+        if split_suspect:
+            rows.append(t | {"closed": closed, "split_suspect": True, "actual_return": None,
+                             "spy_return": None, "actual_abnormal": None, "unrealized_return": None,
+                             "mtm_asof": None, "s_abnormal": None, "entry_diff_bps": None,
+                             "window_diff": None, "early_exit_diff": None, "cost": None, "se_gap": None})
+            continue
         actual_return = (t["exit_avg_fill"] / t["entry_avg_fill"] - 1) if closed else None
         spy_ret = _ret(prices, "SPY", entry_d, exit_d) if closed else None
         actual_abnormal = (actual_return - spy_ret) if (actual_return is not None and spy_ret is not None) else None
@@ -163,9 +183,10 @@ def enrich(trades: pl.DataFrame, prices: dict[tuple[str, str], float],
                     if (px_exit and px_h21 and px_entry) else None
             if actual_abnormal is not None:
                 se_gap = s["s_abnormal"] - actual_abnormal
-        rows.append(t | {"closed": closed, "actual_return": actual_return, "spy_return": spy_ret,
-                         "actual_abnormal": actual_abnormal, "unrealized_return": unrealized,
-                         "mtm_asof": last, "s_abnormal": s["s_abnormal"] if s else None,
+        rows.append(t | {"closed": closed, "split_suspect": False, "actual_return": actual_return,
+                         "spy_return": spy_ret, "actual_abnormal": actual_abnormal,
+                         "unrealized_return": unrealized, "mtm_asof": last,
+                         "s_abnormal": s["s_abnormal"] if s else None,
                          "entry_diff_bps": entry_diff_bps, "window_diff": window_diff,
                          "early_exit_diff": early_exit_diff, "cost": 0.0 if closed else None,
                          "se_gap": se_gap})
@@ -179,8 +200,10 @@ def _fmt(v: object, pct: bool = True) -> str:
 
 
 def render_report(df: pl.DataFrame, meta: dict[str, object]) -> str:
-    closed = df.filter(pl.col("closed"))
-    opened = df.filter(~pl.col("closed"))
+    suspects = df.filter(pl.col("split_suspect"))
+    clean = df.filter(~pl.col("split_suspect"))
+    closed = clean.filter(pl.col("closed"))
+    opened = clean.filter(~pl.col("closed"))
     lines = [
         "# FOLLOW_PERF — E 账快照(execution / 本地 PaperBroker 成交)",
         "",
@@ -188,7 +211,8 @@ def render_report(df: pl.DataFrame, meta: dict[str, object]) -> str:
         f"· 复现:`{meta['command']}`",
         "> **未经独立复核**(强制审核制度 2026-06-10 废止,按新质量纪律自检后发布)",
         "",
-        f"## 概览:{df.height} 笔跟单 = 已平仓 {closed.height} + 未平仓 {opened.height}(两类不混算)",
+        f"## 概览:{df.height} 笔跟单 = 已平仓 {closed.height} + 未平仓 {opened.height}"
+        f"(两类不混算)+ 复权嫌疑 {suspects.height}(列异常,不进聚合)",
         "",
     ]
     if closed.height:
@@ -242,12 +266,21 @@ def render_report(df: pl.DataFrame, meta: dict[str, object]) -> str:
         lines += [f"| {r['ticker']} | {r['entry_date']} | {r['entry_avg_fill']} "
                   f"| {_fmt(r['unrealized_return'])} | {r['mtm_asof'] or '—'} |"
                   for r in opened.iter_rows(named=True)]
+    if suspects.height:
+        lines += ["", "## ⚠ 复权嫌疑笔(fill 价与 price_cache 当日收盘偏离超 "
+                  f"{SPLIT_SUSPECT_THRESHOLD:.0%}:持仓期跨拆股/历史回填混锚,收益已置空,"
+                  "需按 raw 价单独重算,PRICE_SOURCE_SPEC §4b)", "",
+                  "| signal | ticker | entry_date | entry_avg_fill |", "|---|---|---|---|"]
+        lines += [f"| {r['signal_id']} | {r['ticker']} | {r['entry_date']} | {r['entry_avg_fill']} |"
+                  for r in suspects.iter_rows(named=True)]
     lines += [
         "",
         "## 已知局限",
         "",
         "- E 账成交价来自**本地 PaperBroker 模拟**(真实市场价+配置滑点),非券商真实成交;"
         "P3 真钱后两套 E 账并行对比。",
+        "- price_cache 为**后向复权**价:同源比值(基准/window/early_exit)跨拆股正确;"
+        "fill×缓存混锚由 split_suspect 侦测列异常(本期见概览),绝对股数/金额口径一律不采用。",
         "- 模拟成交价 vs SPY 收盘锚的日内基准误差,v0 接受并文档化(spec §2.1)。",
         "- 归因恒等式不强求闭合(混锚);S−E gap 的解释覆盖率见归因表。",
         "- mark-to-market 用 price_cache 最新收盘,as-of 随上游价源新鲜度。",
@@ -274,6 +307,7 @@ def run(ledger_path: Path, out_root: Path = REPORTS_ROOT, prices_db: Path = PRIC
         "ledger": str(ledger_path), "prices_db": str(prices_db), "trackrecord_db": str(trackrecord_db),
         "trades": df.height, "closed": int(df.get_column("closed").sum()),
         "attributed": int(df.get_column("se_gap").is_not_null().sum()),
+        "split_suspects": int(df.get_column("split_suspect").sum()),
         "review_status": "未经独立复核(强制审核制度 2026-06-10 废止)",
     }
     out_dir = assert_writable_path(out_root / run_ts.strftime("%Y-%m-%d"))

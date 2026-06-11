@@ -49,6 +49,9 @@ _PRICES = [
     ("BBB", "2026-01-05", 50.0), ("BBB", "2026-01-15", 46.0), ("BBB", "2026-02-04", 55.0),
     # CCC:未平仓,最新收盘 120
     ("CCC", "2026-06-01", 100.0), ("CCC", "2026-06-10", 120.0),
+    # DDD:复权嫌疑(NVDA 式 10:1)——fill 按当时真价 1149,缓存被后向复权回填成 114.9
+    ("DDD", "2026-01-05", 114.9), ("DDD", "2026-01-15", 120.0),
+    ("SPY", "2026-06-01", 700.0),
 ]
 
 
@@ -58,7 +61,7 @@ def dbs(tmp_path: Path) -> tuple[Path, Path, Path]:
     con = duckdb.connect(str(ledger))
     con.execute(_DDL)
     for sid, tid, tk in [("sig_t1_AAA", "t1", "AAA"), ("sig_t2_BBB", "t2", "BBB"),
-                         ("sig_t3_CCC", "t3", "CCC")]:
+                         ("sig_t3_CCC", "t3", "CCC"), ("sig_t4_DDD", "t4", "DDD")]:
         con.execute("INSERT INTO signals VALUES (?,?,?,?,?,?)",
                     [sid, tid, tk, "shay", _T2_ENTRY, _T2_ENTRY])
     legs = [  # (oid, sid, tk, side, qty, fill_ts, avg, call_to_submit_ms, exit_reason)
@@ -67,6 +70,9 @@ def dbs(tmp_path: Path) -> tuple[Path, Path, Path]:
         ("ord_2b", "sig_t2_BBB", "BBB", "buy", 20, _T2_ENTRY, 50.0, 90_000_000, None),  # 25h → 1–3d 桶
         ("ord_2s", "sig_t2_BBB", "BBB", "sell", 20, _T2_EXIT, 46.0, None, "stop_loss"),
         ("ord_3b", "sig_t3_CCC", "CCC", "buy", 5, _T3_ENTRY, 100.0, 3_600_000, None),
+        # 复权嫌疑:历史回填按拆股前真价成交,price_cache 同日收盘已是复权价(差 10 倍)
+        ("ord_4b", "sig_t4_DDD", "DDD", "buy", 4, _T2_ENTRY, 1149.0, 3_600_000, None),
+        ("ord_4s", "sig_t4_DDD", "DDD", "sell", 4, _T2_EXIT, 120.0, None, "hold_21d"),
     ]
     for oid, sid, tk, side, qty, ts, avg, ms, reason in legs:
         con.execute("INSERT INTO orders VALUES (?,0,?,?,?,?,?,?,?, 'filled')",
@@ -135,6 +141,16 @@ def test_open_trade_mtm_isolated(dbs):
     assert t3["actual_return"] is None and t3["se_gap"] is None
     assert t3["unrealized_return"] == pytest.approx(0.20)
     assert t3["mtm_asof"] == "2026-06-10"
+
+
+def test_split_suspect_flagged_and_nulled(dbs):
+    """PRICE_SOURCE_SPEC §4b 缓解 (b):fill×缓存混锚的笔列异常,收益置空不进聚合;干净笔不受影响。"""
+    df = _enriched(dbs)
+    t4 = df.filter(pl.col("signal_id") == "sig_t4_DDD").row(0, named=True)
+    assert t4["split_suspect"] is True
+    assert t4["actual_return"] is None and t4["actual_abnormal"] is None and t4["se_gap"] is None
+    t1 = df.filter(pl.col("signal_id") == "sig_t1_AAA").row(0, named=True)
+    assert t1["split_suspect"] is False and t1["actual_return"] == pytest.approx(0.10)
 
 
 def test_run_writes_artifacts(dbs, tmp_path: Path):
