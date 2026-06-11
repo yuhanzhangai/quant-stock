@@ -1,7 +1,7 @@
 [project]
 name = "quant-stock"
 version = "0.1.0"
-description = "US stock quant research + Firstrade full-auto paper trading (forked from QuantLab crypto research)"
+description = "Blogger call-following pipeline: signal adapter + rule engine + local paper trading + order ledger (forked from QuantLab)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -37,7 +37,7 @@ exec = [
 line-length = 120
 target-version = "py311"
 # 归档层只读存证,不修码不检查(历史 lint 错随归档冻结)
-extend-exclude = ["archive", "dashboard/legacy_pages"]
+extend-exclude = ["archive"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B", "SIM"]

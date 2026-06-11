@@ -47,9 +47,9 @@ make dashboard   # Streamlit 面板(跟单监控页在 P4 转正)
 │   ├── notify/        # Telegram
 │   └── logging_setup.py
 ├── scripts/           # medic 守护 / tsay 通信 / 离线回放 / 团队重启
-├── dashboard/         # 面板(pages_draft/ 草稿;legacy_pages/ 停用研究页)
+├── dashboard/         # 面板(pages/ 现役两页;reader/mock 数据层)
 ├── docs/              # 现行设计文档 + legacy/
-├── archive/           # QuantLab 研究时代全部代码/配置/实验(git 历史可溯源)
+├── archive/           # QuantLab 研究时代代码/配置/实验 + 停用研究页(git 历史可溯源)
 ├── team/              # 团队协作(roster / 进度 / 通信规范)
 └── tests/             # 测试
 ```

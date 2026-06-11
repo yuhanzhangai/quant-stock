@@ -19,10 +19,10 @@ class ParquetWriter:
         """构建分区文件路径。
 
         Args:
-            data_type: 数据类型，如 "ohlcv", "funding"
-            market_type: 市场类型，如 "spot", "swap"
-            symbol: 交易对，如 "BTC-USDT"
-            timeframe: 时间周期，如 "1h"
+            data_type: 数据类型，如 "ohlcv"
+            market_type: 市场类型，如 "spot"
+            symbol: 标的，如 "AAPL"
+            timeframe: 时间周期，如 "1d"
             year: 年份
 
         Returns:
@@ -65,25 +65,6 @@ class ParquetWriter:
 
         logger.info(f"OHLCV 写入完成 | {symbol} {timeframe} | 输入: {len(df)} 行 | 实际写入: {total_written} 行")
         return total_written
-
-    def write_funding(self, df: pl.DataFrame, symbol: str) -> int:
-        """写入资金费率数据到 Parquet。
-
-        Args:
-            df: 包含 funding_time, funding_rate 等列的 DataFrame
-            symbol: 合约 ID
-
-        Returns:
-            实际写入的行数
-        """
-        if df.is_empty():
-            return 0
-
-        path = self._base_dir / "funding" / f"{symbol}.parquet"
-        written = self._append_and_dedup(path, df, dedup_col="funding_time")
-
-        logger.info(f"Funding 写入完成 | {symbol} | 写入: {written} 行")
-        return written
 
     def _append_and_dedup(self, path: Path, new_df: pl.DataFrame, dedup_col: str) -> int:
         """追加数据并去重。

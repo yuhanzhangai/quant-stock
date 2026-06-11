@@ -16,7 +16,7 @@ lint:
 
 # 转向手术(2026-06-10)后只剩跟单时代保留层;archive/ 不查
 typecheck:
-	uv run pyright src/storage src/research src/news src/notify src/logging_setup.py
+	uv run pyright src/storage src/news src/notify src/logging_setup.py
 
 format:
 	uv run ruff format src/ tests/

@@ -43,18 +43,6 @@ class DuckDBClient:
         except duckdb.IOException:
             logger.debug("OHLCV Parquet 文件尚未创建，跳过视图注册")
 
-        # Funding 视图
-        funding_pattern = str(self._parquet_dir / "funding" / "*.parquet")
-        try:
-            self._conn.execute(
-                "CREATE OR REPLACE VIEW funding AS "
-                f"SELECT * FROM read_parquet('{funding_pattern}', "
-                "union_by_name=true, filename=true)"
-            )
-            logger.debug("注册视图: funding")
-        except duckdb.IOException:
-            logger.debug("Funding Parquet 文件尚未创建，跳过视图注册")
-
     def execute(self, sql: str, params: list[Any] | None = None) -> None:
         """执行 SQL 语句。
 

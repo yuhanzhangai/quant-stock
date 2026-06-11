@@ -48,8 +48,8 @@ class StateTracker:
         """获取最后采集的时间戳。
 
         Args:
-            source: 数据源，如 "ohlcv", "funding"
-            symbol: 交易对
+            source: 数据源，如 "ohlcv"
+            symbol: 标的
             timeframe: 时间周期
 
         Returns:

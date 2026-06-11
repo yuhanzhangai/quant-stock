@@ -4,9 +4,6 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# 项目根目录（基于本文件位置推导，与 CWD 无关）
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
 
 class Settings(BaseSettings):
     """全局配置入口，直接从 .env 读取所有变量。"""
@@ -16,12 +13,6 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
-
-    # OKX API
-    okx_api_key: str = ""
-    okx_api_secret: str = ""
-    okx_passphrase: str = ""
-    okx_use_simulated: bool = False
 
     # Telegram
     telegram_bot_token: str = ""
@@ -35,9 +26,6 @@ class Settings(BaseSettings):
 
     # 执行层硬钉：永远只跑模拟盘（paper），C5+ 启动断言用，严禁真实下单
     paper_only: bool = True
-
-    # 研究台账 DB（基于项目根绝对化，避免换目录运行时静默新建空库）
-    research_ledger_path: Path = _PROJECT_ROOT / "data" / "meta" / "research.duckdb"
 
     # stock-picker-mcp 价格库（只读信号源）
     prices_db_path: Path = Path.home() / ".stock-picker-mcp" / "prices.db"

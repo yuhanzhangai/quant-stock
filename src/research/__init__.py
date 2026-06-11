@@ -1,1 +1,0 @@
-"""Research infrastructure module."""

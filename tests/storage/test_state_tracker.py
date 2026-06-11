@@ -35,9 +35,9 @@ class TestStateTracker:
     def test_different_sources(self, tracker: StateTracker) -> None:
         """不同 source 应互不影响。"""
         tracker.update_last_timestamp("ohlcv", "BTC-USDT", "1h", 100)
-        tracker.update_last_timestamp("funding", "BTC-USDT", "1h", 200)
+        tracker.update_last_timestamp("signals", "BTC-USDT", "1h", 200)
         assert tracker.get_last_timestamp("ohlcv", "BTC-USDT", "1h") == 100
-        assert tracker.get_last_timestamp("funding", "BTC-USDT", "1h") == 200
+        assert tracker.get_last_timestamp("signals", "BTC-USDT", "1h") == 200
 
     def test_universe_crud(self, tracker: StateTracker) -> None:
         """标的池增删改查。"""
