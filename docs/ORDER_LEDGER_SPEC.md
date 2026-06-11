@@ -368,6 +368,10 @@ QUALIFY row_number() OVER (ORDER BY event_ts DESC, entry_id DESC) = 1;
 | skipped | `risk_cap_exceeded` | 组合层风控(单票/总敞口上限) |
 | skipped | `exit_trigger` | 反向喊单,仅作退出触发收录(§6),本身不开新仓 |
 | skipped | `manual_block` | operator 手工拉黑(handle/ticker) |
+| skipped | `duplicate_signal` | r3.2(规则引擎 v0.1):同 handle×ticker×direction 窗口内重复,取最新弃旧 |
+| skipped | `direction_conflict` | r3.2:窗口内 PROVEN 多空对立,整票跳过 |
+| skipped | `merge_lost` | r3.2:同日同票多 handle 择优合并中落选(wilson_lo→conviction→confidence) |
+| skipped | `handle_cap_exceeded` | r3.2:单 handle 并发仓位达上限(默认 5,随 rule_version) |
 
 原因码是**封闭集**,新增必须升 `rule_version` 并更新本表(spec 与代码同步改)。
 
