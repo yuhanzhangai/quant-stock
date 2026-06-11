@@ -72,6 +72,11 @@ class FirstradeSession:
         browser = None
         persistent = s.user_data_dir is not None
         try:
+            # chromium_sandbox=True:Playwright 默认在未显式开 sandbox 时 push --no-sandbox
+            # (chromiumSwitches:chromiumSandbox!==true → 注入),它既是自动化指纹信号、又触发
+            # Chrome 顶部"不受支持的命令行标记"警告条。macOS 本地有头真 sandbox 工作正常,
+            # 开它=根本不注入 --no-sandbox(比事后 ignore 干净)。stealth 关时回退 Playwright 默认。
+            chromium_sandbox = s.stealth
             if persistent:
                 # 持久化真实 profile:像一台日常浏览器,cookies/指纹跨次稳定(最强反检测)。
                 # 此模式下 context 自带磁盘登录态,不再叠加 storage_state(profile 即登录态)。
@@ -82,6 +87,7 @@ class FirstradeSession:
                     channel=s.browser_channel,
                     args=args,
                     ignore_default_args=ignore_default,
+                    chromium_sandbox=chromium_sandbox,
                     **ctx_kwargs,
                 )
                 auth_reused = any(s.user_data_dir.iterdir())
@@ -91,6 +97,7 @@ class FirstradeSession:
                     channel=s.browser_channel,
                     args=args,
                     ignore_default_args=ignore_default,
+                    chromium_sandbox=chromium_sandbox,
                 )
                 auth_file = s.auth_state_file
                 storage_state = str(auth_file) if auth_file.exists() else None
