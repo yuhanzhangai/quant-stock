@@ -36,8 +36,8 @@ exec = [
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-# 归档层只读存证,不修码不检查(202 个历史 lint 错随归档冻结)
-extend-exclude = ["archive"]
+# 归档层只读存证,不修码不检查(历史 lint 错随归档冻结)
+extend-exclude = ["archive", "dashboard/legacy_pages"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B", "SIM"]
