@@ -87,6 +87,27 @@ def test_enter_skips_when_no_price(writer):
     assert writer.conn.execute("SELECT count(*) FROM orders").fetchone()[0] == 0
 
 
+def test_enter_carry_forward_one_day_with_drift_note(writer):
+    sid = seed_signal(writer)
+    # T_entry=06-02 无价,06-03 有价 → 顺延 1 日成交,note 记 carry_forward
+    px = FakePrices({("NVDA", "2026-06-03"): 100.0})
+    b = PaperBroker(writer, px, PaperBrokerConfig(per_order_usd=5000, entry_carry_forward_days=1))
+    oid = b.enter(signal_id=sid, handle="@cap", ticker="NVDA", call_ts=CALL_TS, rule_version="v0.1")
+    assert oid is not None
+    lot = b.open_lots()[0]
+    assert lot.entry_date == date(2026, 6, 3)  # 顺延后的真实成交日
+    raw = writer.conn.execute("SELECT raw_text FROM fills WHERE order_id = ?", [oid]).fetchone()[0]
+    assert "carry_forward=1d" in raw
+
+
+def test_enter_skips_when_beyond_carry_forward_window(writer):
+    sid = seed_signal(writer)
+    # T_entry=06-02、06-03 都无价,只有 06-04 有 → 超出 N=1 顺延窗口 → skip
+    px = FakePrices({("NVDA", "2026-06-04"): 100.0})
+    b = PaperBroker(writer, px, PaperBrokerConfig(per_order_usd=5000, entry_carry_forward_days=1))
+    assert b.enter(signal_id=sid, handle="@cap", ticker="NVDA", call_ts=CALL_TS, rule_version="v0.1") is None
+
+
 def test_enter_skips_when_price_exceeds_budget(writer):
     sid = seed_signal(writer)
     px = FakePrices({("NVDA", "2026-06-02"): 6000.0})  # 单价 > 单仓预算
@@ -95,6 +116,17 @@ def test_enter_skips_when_price_exceeds_budget(writer):
 
 
 # ── 持仓重建 ─────────────────────────────────────────────────────────────
+
+
+def test_enter_idempotent_per_signal(writer):
+    sid = seed_signal(writer)
+    px = FakePrices({("NVDA", "2026-06-02"): 100.0})
+    b = PaperBroker(writer, px, PaperBrokerConfig(per_order_usd=5000))
+    oid = b.enter(signal_id=sid, handle="@cap", ticker="NVDA", call_ts=CALL_TS, rule_version="v0.1")
+    assert oid is not None
+    # 同一 signal 重跑(每日 runner 重跑同一天)→ 不重复建仓
+    assert b.enter(signal_id=sid, handle="@cap", ticker="NVDA", call_ts=CALL_TS, rule_version="v0.1") is None
+    assert writer.conn.execute("SELECT count(DISTINCT order_id) FROM orders WHERE side='buy'").fetchone()[0] == 1
 
 
 def test_open_lots_reconstructed_from_ledger(writer):
