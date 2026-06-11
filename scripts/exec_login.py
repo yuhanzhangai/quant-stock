@@ -30,12 +30,15 @@ def main() -> int:
 
     session = FirstradeSession(settings=settings)
     try:
+        # launch 内置 profile 占用检测:若养熟用的真 Chrome 没退干净,这里会明确报错
         session.launch()
+        # 专用 profile 已养熟(make exec-warm-profile 手动登过)时,接管即带登录态;
+        # 若未养熟/登录态过期,operator 在此窗口补登一次(含 2FA)。
         session.goto(settings.login_url)
-        logger.info("浏览器已打开登录页。请人工完成登录(含 2FA),进入模拟盘账户页。")
-        input("登录完成后,回到这里按回车保存登录态(Ctrl-C 放弃)… ")
+        logger.info("已接管专用 profile。若已显示登录态可直接回车;否则请人工补登(含 2FA)。")
+        input("确认进入模拟盘账户页后,回到这里按回车(Ctrl-C 放弃)… ")
         session.save_auth_state()
-        logger.success("登录态已保存到 {}(gitignored,绝不提交)", settings.auth_state_file)
+        logger.success("登录态已确认/保存(profile={},gitignored,绝不提交)", settings.chrome_profile_dir)
         logger.info(
             "下一步:用 DevTools 核验 {} 里的选择器,确认一个标一个 verified: true",
             settings.selectors_file,

@@ -53,7 +53,7 @@ class TestAntiDetectionDefaults:
         s = ExecSettings()
         assert s.stealth is True
         assert s.browser_channel == "chrome"  # 真 Chrome 内核,非裸 chromium
-        assert s.user_data_dir is not None  # 默认持久化 profile(像日常浏览器)
+        assert s.chrome_profile_dir is not None  # 默认专用持久化 profile(养熟的信任环境)
 
     def test_stealth_args_drop_automation_flag(self):
         from src.execution.firstrade_agent.session import FirstradeSession as S
@@ -61,6 +61,61 @@ class TestAntiDetectionDefaults:
         assert "--enable-automation" in S._STEALTH_IGNORE_DEFAULT
         assert any("AutomationControlled" in a for a in S._STEALTH_ARGS)
         assert "webdriver" in S._STEALTH_INIT_JS
+
+
+class TestProfileLockDetection:
+    """专用 Chrome profile 占用检测(防 Playwright 抢登录态)。"""
+
+    def _make_lock(self, profile_dir, pid):
+        import os
+
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        os.symlink(f"somehost-{pid}", profile_dir / "SingletonLock")
+
+    def test_no_lock_is_free(self, tmp_path):
+        from src.execution.firstrade_agent.session import FirstradeSession as S
+
+        assert S._profile_lock_holder(tmp_path) is None
+
+    def test_live_pid_reported_as_occupied(self, tmp_path):
+        import os
+
+        from src.execution.firstrade_agent.session import FirstradeSession as S
+
+        self._make_lock(tmp_path, os.getpid())  # 自己的 pid 一定活着
+        assert S._profile_lock_holder(tmp_path) == os.getpid()
+
+    def test_stale_lock_dead_pid_is_free(self, tmp_path):
+        from src.execution.firstrade_agent.session import FirstradeSession as S
+
+        # pid 99999999 几乎不可能存在 → 陈旧锁,放行
+        self._make_lock(tmp_path, 99_999_999)
+        assert S._profile_lock_holder(tmp_path) is None
+
+    def test_launch_halts_when_profile_occupied(self, tmp_path):
+        import os
+
+        from src.execution.audit_log import AuditLog
+        from src.execution.firstrade_agent.config import ExecSettings
+        from src.execution.firstrade_agent.session import FirstradeSession
+        from src.execution.human import HumanPacer
+        from src.execution.safety import ExecutionHalted, KillSwitch
+
+        profile = tmp_path / "prof"
+        self._make_lock(profile, os.getpid())
+        settings = ExecSettings(
+            chrome_profile_dir=profile,
+            audit_log_file=tmp_path / "audit.jsonl",
+            auth_state_file=tmp_path / "auth.json",
+        )
+        sess = FirstradeSession(
+            settings=settings,
+            killswitch=KillSwitch(tmp_path / "KILL"),
+            pacer=HumanPacer(seed=1, sleep_fn=lambda _: None),
+            audit=AuditLog(settings.audit_log_file),
+        )
+        with pytest.raises(ExecutionHalted, match="占用"):
+            sess.launch()
 
 
 class TestKillSwitch:

@@ -34,15 +34,16 @@ class ExecSettings(BaseSettings):
     auth_state_file: Path = PROJECT_ROOT / ".auth/firstrade_state.json"  # 登录态(gitignored)
     default_timeout_ms: int = 30_000
 
-    # 反自动化检测(红线 6:模拟真人有封号灰区)。Playwright 默认带 --enable-automation,
-    # 会置 navigator.webdriver=true + 显示"自动化软件控制"横幅 —— Firstrade 风控据此拒登
-    # (operator 同账号在自家 Chrome 能登)。下面三道一起降指纹,**不碰凭据纪律**:
-    #   1. persistent context:复用真实磁盘 profile(.auth/chrome_profile,gitignored),
-    #      像一台日常用的浏览器而非每次全新无痕环境;留空则回退 storage_state 模式;
-    #   2. 去掉 --enable-automation + 加 --disable-blink-features=AutomationControlled;
-    #   3. init script 兜底抹掉 navigator.webdriver。
-    user_data_dir: Path | None = PROJECT_ROOT / ".auth/chrome_profile"
-    stealth: bool = True  # 关掉自动化指纹标志;排障时可 EXEC_STEALTH=0 对照
+    # 反自动化检测(红线 6:模拟真人有封号灰区)。Playwright 默认带 --enable-automation /
+    # --no-sandbox,会置 navigator.webdriver=true + 自动化横幅 + 警告条 —— Firstrade 风控据此
+    # 拒登。更强一层:全新空 profile 也会被拦,只有**养熟的信任 profile**能过(operator 实测)。
+    # 故路线 = 专用隔离 profile,operator 先用真实 Chrome 在该目录手动登一次养熟,Playwright 再接管。
+    #
+    # EXEC_CHROME_PROFILE_DIR 指向专用 profile 目录(**绝不指 operator 主 profile**——
+    # 那会把其全部登录暴露给无人值守自动化,P3 风险红线)。默认 .auth/chrome_profile(gitignored)。
+    # 留空(EXEC_CHROME_PROFILE_DIR="")则回退一次性 storage_state 模式(不推荐,易被风控拦)。
+    chrome_profile_dir: Path | None = PROJECT_ROOT / ".auth/chrome_profile"
+    stealth: bool = True  # 关掉自动化指纹标志(enable-automation/no-sandbox/webdriver);EXEC_STEALTH=0 对照
     user_agent: str | None = None  # 留空 = 用 channel=chrome 自带的真实 UA(已是真 Chrome)
 
     # Firstrade 入口(只放公开 URL;具体页面路径在选择器 YAML 里随核验一起维护)
