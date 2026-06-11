@@ -4,7 +4,8 @@ fills 幂等查重(§4.3),单写者 = 执行循环。
 纪律:
 - 本封装不暴露 UPDATE/DELETE。唯一例外是 ``finish_agent_run``:agent_runs 是心跳表
   (非审计链路),spec §4.5b 要求"崩溃则 finished_ts 为 NULL,本身即证据",在
-  run_id 单行主键下只能由一次定向回填实现——已向 Lead 报备,r4 裁决前维持现状。
+  run_id 单行主键下只能由一次定向回填实现——spec r3.1 已将其定为显式例外
+  (仅限未收尾行;资金六表零 UPDATE 不变)。
 - 非法状态迁移拒写并告警,不静默落账(§4.2)。
 - kill-switch 不阻断记账(会签约定):本模块任何方法都不查 kill 状态。
 """
