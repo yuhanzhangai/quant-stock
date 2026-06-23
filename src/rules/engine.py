@@ -27,9 +27,16 @@ RULE_VERSION = "v0.1"
 
 # spec §7:双类股 issuer 归并映射(封闭集,扩充必须升 rule_version;spec 与代码同步改)
 _ISSUER_GROUPS_RAW: tuple[tuple[str, ...], ...] = (
-    ("GOOG", "GOOGL"), ("FOX", "FOXA"), ("NWS", "NWSA"), ("UA", "UAA"),
-    ("BRK.A", "BRK.B"), ("LEN", "LEN.B"), ("LBRDA", "LBRDK"),
-    ("LSXMA", "LSXMB", "LSXMK"), ("CWEN", "CWEN.A"), ("HEI", "HEI.A"),
+    ("GOOG", "GOOGL"),
+    ("FOX", "FOXA"),
+    ("NWS", "NWSA"),
+    ("UA", "UAA"),
+    ("BRK.A", "BRK.B"),
+    ("LEN", "LEN.B"),
+    ("LBRDA", "LBRDK"),
+    ("LSXMA", "LSXMB", "LSXMK"),
+    ("CWEN", "CWEN.A"),
+    ("HEI", "HEI.A"),
 )
 ISSUER_GROUPS: dict[str, str] = {t: min(g) for g in _ISSUER_GROUPS_RAW for t in g}
 
@@ -39,10 +46,14 @@ _CONVICTION_RANK = {"high": 3, "medium": 2, "low": 1}
 # decide() 实际消费的候选列(signal_candidates 的子集;缺列直接 KeyError fail loud)
 REQUIRED_COLS = ("signal_id", "handle", "ticker", "direction", "call_ts", "conviction", "confidence")
 
-OUT_SCHEMA = pl.Schema({
-    "signal_id": pl.String, "decision": pl.String,
-    "decision_reason": pl.String, "rule_version": pl.String,
-})
+OUT_SCHEMA = pl.Schema(
+    {
+        "signal_id": pl.String,
+        "decision": pl.String,
+        "decision_reason": pl.String,
+        "rule_version": pl.String,
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -50,12 +61,12 @@ class RuleParams:
     """spec §2/§8 参数;任何改动必须升 rule_version(红线 3,严禁静默改参)。"""
 
     rule_version: str = RULE_VERSION
-    max_positions: int = 10          # 总槽 N
-    handle_cap: int = 5              # 单 handle 并发上限(Lead 批准,2-4 周复议)
-    per_order_usd: float = 5_000.0   # 每单目标金额($100k 模拟盘假设的 5%,待 Exec 确认)
+    max_positions: int = 10  # 总槽 N
+    handle_cap: int = 5  # 单 handle 并发上限(Lead 批准,2-4 周复议)
+    per_order_usd: float = 5_000.0  # 每单目标金额($100k 模拟盘假设的 5%,待 Exec 确认)
     min_price: float = 3.0
     min_exposure_ratio: float = 0.8  # 实际敞口 ≥ 目标金额 80%(granularity 闸)
-    pdt_day_trade_limit: int = 3     # B4:day_trades_5d ≥ 3 即停新开(留 1 次余量)
+    pdt_day_trade_limit: int = 3  # B4:day_trades_5d ≥ 3 即停新开(留 1 次余量)
 
 
 @dataclass(frozen=True)
@@ -208,8 +219,13 @@ def decide(
         shares = math.floor(params.per_order_usd / price)
         exposure = shares * price
         if shares < 1 or exposure < params.min_exposure_ratio * params.per_order_usd:
-            logger.debug("sizing skip {}: price={} shares={} exposure={:.2f}(zero_share/granularity)",
-                         sid, price, shares, exposure)
+            logger.debug(
+                "sizing skip {}: price={} shares={} exposure={:.2f}(zero_share/granularity)",
+                sid,
+                price,
+                shares,
+                exposure,
+            )
             emit(sid, "skipped", "risk_cap_exceeded")
             continue
         sized.append({**r, "_est_cost": exposure})
@@ -253,6 +269,13 @@ def decide(
             remaining_cash -= r["_est_cost"]
             followed += 1
 
-    logger.info("decide@{}: 候选 {} / pending {} / 出决策 {} / followed {}(rule_version={})",
-                decision_date, candidates.height, pending, len(out), followed, params.rule_version)
+    logger.info(
+        "decide@{}: 候选 {} / pending {} / 出决策 {} / followed {}(rule_version={})",
+        decision_date,
+        candidates.height,
+        pending,
+        len(out),
+        followed,
+        params.rule_version,
+    )
     return pl.DataFrame(out, schema=OUT_SCHEMA, orient="row")

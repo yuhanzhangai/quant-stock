@@ -85,7 +85,8 @@ def load_joined(snapshot_db: Path = DEFAULT_SNAPSHOT_DB, trackrecord_db: Path = 
     finally:
         con.close()
     return joined.with_columns(
-        pl.col("ingest_lag_s").map_elements(lag_bucket, return_dtype=pl.String).alias("ingest_lag_bucket"))
+        pl.col("ingest_lag_s").map_elements(lag_bucket, return_dtype=pl.String).alias("ingest_lag_bucket")
+    )
 
 
 def _rates(group: pl.DataFrame) -> dict[str, object]:
@@ -93,8 +94,14 @@ def _rates(group: pl.DataFrame) -> dict[str, object]:
     evaluated = group.filter(pl.col("outcome_status") == "evaluated")
     graded = evaluated.filter(pl.col("is_hit").is_not_null())
     hits = int(graded.get_column("is_hit").sum() or 0)
-    out: dict[str, object] = {"n": evaluated.height, "graded_n": graded.height,
-                              "hit_rate": None, "wilson_lo": None, "abn_mean": None, "abn_median": None}
+    out: dict[str, object] = {
+        "n": evaluated.height,
+        "graded_n": graded.height,
+        "hit_rate": None,
+        "wilson_lo": None,
+        "abn_mean": None,
+        "abn_median": None,
+    }
     if graded.height >= MIN_GRADED:
         out["hit_rate"] = hits / graded.height
         out["wilson_lo"] = wilson_lower(hits, graded.height)
@@ -117,8 +124,13 @@ def summarize(joined: pl.DataFrame) -> dict[str, object]:
         pl.col("poll_lag_s").quantile(0.5).alias("poll_p50"),
         pl.col("poll_lag_s").quantile(0.9).alias("poll_p90"),
     ).row(0, named=True)
-    return {"funnel": funnel, "overall": _rates(joined), "by_handle_tier": by_handle,
-            "by_lag_bucket": by_bucket, "lag_quantiles": lag}
+    return {
+        "funnel": funnel,
+        "overall": _rates(joined),
+        "by_handle_tier": by_handle,
+        "by_lag_bucket": by_bucket,
+        "lag_quantiles": lag,
+    }
 
 
 def _fmt_rate(v: object) -> str:
@@ -169,8 +181,10 @@ def render_report(summary: dict[str, object], meta: dict[str, object]) -> str:
     ]
     for key, r in summary["by_handle_tier"].items():  # type: ignore[union-attr]
         handle, tier = key.split("|", 1)
-        lines.append(f"| {handle} | {tier} | {r['n']} | {r['graded_n']} | {_fmt_rate(r['hit_rate'])} "
-                     f"| {_fmt_rate(r['wilson_lo'])} | {_fmt_abn(r['abn_mean'])} |")
+        lines.append(
+            f"| {handle} | {tier} | {r['n']} | {r['graded_n']} | {_fmt_rate(r['hit_rate'])} "
+            f"| {_fmt_rate(r['wilson_lo'])} | {_fmt_abn(r['abn_mean'])} |"
+        )
     lines += [
         "",
         "## ingest_lag 分桶(spec §3.2 桶;v0 仅 ingest 段,wall/actionable 待 E 账)",
@@ -179,8 +193,9 @@ def render_report(summary: dict[str, object], meta: dict[str, object]) -> str:
         "|---|---|---|---|---|",
     ]
     for bucket, r in summary["by_lag_bucket"].items():  # type: ignore[union-attr]
-        lines.append(f"| {bucket} | {r['n']} | {r['graded_n']} "
-                     f"| {_fmt_rate(r['hit_rate'])} | {_fmt_abn(r['abn_mean'])} |")
+        lines.append(
+            f"| {bucket} | {r['n']} | {r['graded_n']} | {_fmt_rate(r['hit_rate'])} | {_fmt_abn(r['abn_mean'])} |"
+        )
     lines += [
         "",
         "## 延迟两段拆解(p50 / p90)",
@@ -205,24 +220,35 @@ def render_report(summary: dict[str, object], meta: dict[str, object]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def run(out_root: Path = REPORTS_ROOT, snapshot_db: Path = DEFAULT_SNAPSHOT_DB,
-        trackrecord_db: Path = TRACKRECORD_DB) -> Path:
+def run(
+    out_root: Path = REPORTS_ROOT, snapshot_db: Path = DEFAULT_SNAPSHOT_DB, trackrecord_db: Path = TRACKRECORD_DB
+) -> Path:
     """跑一期 S 账快照,返回产物目录。纯读两库;产物目录按 run_date(UTC)分期。"""
     run_ts = datetime.now(UTC)
     joined = load_joined(snapshot_db, trackrecord_db)
     if joined.is_empty():
         raise RuntimeError(f"signal_candidates 为空:先跑 `uv run python -m src.signals.pipeline`(库:{snapshot_db})")
     summary = summarize(joined)
-    code_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True,
-                                 cwd=Path(__file__).parent, check=False).stdout.strip() or "unknown"
+    code_commit = (
+        subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent,
+            check=False,
+        ).stdout.strip()
+        or "unknown"
+    )
     wm = joined.select(pl.col("call_ts").min().alias("lo"), pl.col("call_ts").max().alias("hi")).row(0)
     tcd = joined.select(pl.col("tier_csv_date").min().alias("lo"), pl.col("tier_csv_date").max().alias("hi")).row(0)
     meta: dict[str, object] = {
         "run_ts": run_ts.isoformat(timespec="seconds"),
         "code_commit": code_commit,
         "command": "uv run python -m src.perf.s_account",
-        "snapshot_db": str(snapshot_db), "trackrecord_db": str(trackrecord_db),
-        "horizon_days": HORIZON_DAYS, "candidates": joined.height,
+        "snapshot_db": str(snapshot_db),
+        "trackrecord_db": str(trackrecord_db),
+        "horizon_days": HORIZON_DAYS,
+        "candidates": joined.height,
         "watermark": f"{wm[0].isoformat()} → {wm[1].isoformat()}",
         "tier_csv_date_range": f"{tcd[0].isoformat()} → {tcd[1].isoformat()}",
         "review_status": "未经独立复核(强制审核制度 2026-06-10 废止)",
@@ -232,7 +258,8 @@ def run(out_root: Path = REPORTS_ROOT, snapshot_db: Path = DEFAULT_SNAPSHOT_DB,
     joined.write_parquet(out_dir / "follow_perf.parquet")
     (out_dir / "FOLLOW_PERF_REPORT.md").write_text(render_report(summary, meta), encoding="utf-8")
     (out_dir / "run_meta.json").write_text(
-        json.dumps(meta | {"funnel": summary["funnel"]}, ensure_ascii=False, indent=2), encoding="utf-8")
+        json.dumps(meta | {"funnel": summary["funnel"]}, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     logger.info("S 账快照完成: {} 信号 / 漏斗 {} / 产物 {}", joined.height, summary["funnel"], out_dir)
     return out_dir
 

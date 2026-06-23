@@ -70,8 +70,14 @@ def _default_daily_fn(ticker: str, start: date, end: date) -> dict[date, float]:
     try:
         import yfinance as yf
 
-        df = yf.download(ticker, start=start.isoformat(), end=(end + timedelta(days=1)).isoformat(),
-                         interval="1d", auto_adjust=False, progress=False)
+        df = yf.download(
+            ticker,
+            start=start.isoformat(),
+            end=(end + timedelta(days=1)).isoformat(),
+            interval="1d",
+            auto_adjust=False,
+            progress=False,
+        )
         if df is None or df.empty:
             return {}
         close = df["Close"]
@@ -130,8 +136,16 @@ class PriceSource:
                 f"{ticker}: 最新价 as_of={as_of.isoformat()} 距请求 ts={ts.isoformat()} "
                 f"偏 {drift_min:.0f}min > {max_staleness_min}min(拒返陈旧价)"
             )
-        return PricePoint(ticker=ticker, price=price, as_of=as_of, requested=ts,
-                          kind="intraday", source="yfinance", adjusted=False, is_stale=False)
+        return PricePoint(
+            ticker=ticker,
+            price=price,
+            as_of=as_of,
+            requested=ts,
+            kind="intraday",
+            source="yfinance",
+            adjusted=False,
+            is_stale=False,
+        )
 
     def close_on(self, ticker: str, d: date) -> PricePoint:
         """日收盘价。读序:我方缓存(raw)→ prices.db(adjusted)→ yfinance raw(+写回缓存);均无 → PriceUnavailable。
@@ -142,17 +156,41 @@ class PriceSource:
         ts = datetime(d.year, d.month, d.day, tzinfo=UTC)
         cached = self._cache_get(ticker, d)
         if cached is not None:
-            return PricePoint(ticker=ticker, price=cached, as_of=ts, requested=d,
-                              kind="daily_close", source="yfinance", adjusted=False, is_stale=False)
+            return PricePoint(
+                ticker=ticker,
+                price=cached,
+                as_of=ts,
+                requested=d,
+                kind="daily_close",
+                source="yfinance",
+                adjusted=False,
+                is_stale=False,
+            )
         db_close = self._prices_db_close(ticker, d)
         if db_close is not None:
-            return PricePoint(ticker=ticker, price=db_close, as_of=ts, requested=d,
-                              kind="daily_close", source="prices_db", adjusted=True, is_stale=False)
+            return PricePoint(
+                ticker=ticker,
+                price=db_close,
+                as_of=ts,
+                requested=d,
+                kind="daily_close",
+                source="prices_db",
+                adjusted=True,
+                is_stale=False,
+            )
         yf_close = self._daily_fn(ticker, d, d).get(d)
         if yf_close is not None and yf_close > 0:
             self._cache_put([(ticker, d, float(yf_close))])
-            return PricePoint(ticker=ticker, price=float(yf_close), as_of=ts, requested=d,
-                              kind="daily_close", source="yfinance", adjusted=False, is_stale=False)
+            return PricePoint(
+                ticker=ticker,
+                price=float(yf_close),
+                as_of=ts,
+                requested=d,
+                kind="daily_close",
+                source="yfinance",
+                adjusted=False,
+                is_stale=False,
+            )
         raise PriceUnavailable(f"{ticker}: {d} 无日收盘价(我方缓存/prices.db/yfinance 均缺)")
 
     def warm_daily_close(self, tickers: Sequence[str], d: date) -> dict[str, int]:
@@ -210,8 +248,7 @@ class PriceSource:
             return None
         con = duckdb.connect(str(self._cache_db), read_only=True)
         try:
-            row = con.execute("SELECT close FROM daily_close WHERE ticker = ? AND date = ?",
-                              [ticker, d]).fetchone()
+            row = con.execute("SELECT close FROM daily_close WHERE ticker = ? AND date = ?", [ticker, d]).fetchone()
         except duckdb.CatalogException:
             return None
         finally:
@@ -233,6 +270,7 @@ class PriceSource:
                 "PRIMARY KEY (ticker, date))"
             )
             con.executemany(
-                "INSERT INTO daily_close (ticker, date, close) VALUES (?, ?, ?) ON CONFLICT DO NOTHING", rows)
+                "INSERT INTO daily_close (ticker, date, close) VALUES (?, ?, ?) ON CONFLICT DO NOTHING", rows
+            )
         finally:
             con.close()

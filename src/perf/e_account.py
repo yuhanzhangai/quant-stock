@@ -54,10 +54,16 @@ def load_prices(tickers: list[str], prices_db: Path = PRICES_DB) -> dict[tuple[s
     try:
         out: dict[tuple[str, str], float] = {}
         for i in range(0, len(tickers), 500):
-            chunk = tickers[i:i + 500]
+            chunk = tickers[i : i + 500]
             ph = ", ".join("?" * len(chunk))
-            out.update({(t, d): c for t, d, c in con.execute(
-                f"SELECT ticker, date, close FROM price_cache WHERE ticker IN ({ph})", chunk)})
+            out.update(
+                {
+                    (t, d): c
+                    for t, d, c in con.execute(
+                        f"SELECT ticker, date, close FROM price_cache WHERE ticker IN ({ph})", chunk
+                    )
+                }
+            )
     finally:
         con.close()
     return out
@@ -89,19 +95,19 @@ def load_trades(ledger_path: Path) -> pl.DataFrame:
         pl.col("exit_reason").first(),
         pl.len().alias("n_exit_orders"),
     )
-    return (buys.rename({"avg_fill_price": "entry_avg_fill", "filled_qty": "entry_qty",
-                         "first_fill_ts": "entry_fill_ts"})
-            .drop("exit_reason")
-            .join(sells, on="signal_id", how="left")
-            .with_columns(
-                # DECIMAL → Float64:后续与 float 价格混算,Decimal 与 float 运算在 Python 侧会 TypeError
-                pl.col("entry_avg_fill", "exit_avg_fill", "entry_qty", "exit_qty").cast(pl.Float64),
-                pl.col("entry_fill_ts").map_elements(_et_date, return_dtype=pl.Date).alias("entry_date"),
-                pl.col("exit_fill_ts").map_elements(_et_date, return_dtype=pl.Date).alias("exit_date"),
-                (pl.col("call_to_submit_ms") / 1000).alias("wall_latency_s"),
-            )
-            .with_columns(pl.col("wall_latency_s").map_elements(lag_bucket, return_dtype=pl.String)
-                          .alias("wall_bucket")))
+    return (
+        buys.rename({"avg_fill_price": "entry_avg_fill", "filled_qty": "entry_qty", "first_fill_ts": "entry_fill_ts"})
+        .drop("exit_reason")
+        .join(sells, on="signal_id", how="left")
+        .with_columns(
+            # DECIMAL → Float64:后续与 float 价格混算,Decimal 与 float 运算在 Python 侧会 TypeError
+            pl.col("entry_avg_fill", "exit_avg_fill", "entry_qty", "exit_qty").cast(pl.Float64),
+            pl.col("entry_fill_ts").map_elements(_et_date, return_dtype=pl.Date).alias("entry_date"),
+            pl.col("exit_fill_ts").map_elements(_et_date, return_dtype=pl.Date).alias("exit_date"),
+            (pl.col("call_to_submit_ms") / 1000).alias("wall_latency_s"),
+        )
+        .with_columns(pl.col("wall_latency_s").map_elements(lag_bucket, return_dtype=pl.String).alias("wall_bucket"))
+    )
 
 
 def _px(prices: dict[tuple[str, str], float], ticker: str, d: date | None) -> float | None:
@@ -113,8 +119,9 @@ def _ret(prices: dict[tuple[str, str], float], ticker: str, d0: date | None, d1:
     return (p1 / p0 - 1) if (p0 and p1) else None
 
 
-def load_s_rows(tweet_tickers: list[tuple[str, str]],
-                trackrecord_db: Path = TRACKRECORD_DB) -> dict[tuple[str, str], dict]:
+def load_s_rows(
+    tweet_tickers: list[tuple[str, str]], trackrecord_db: Path = TRACKRECORD_DB
+) -> dict[tuple[str, str], dict]:
     """call_outcomes 21d evaluated 行(S 账侧),键 (tweet_id, ticker)。"""
     con = connect_readonly(trackrecord_db)
     try:
@@ -123,11 +130,16 @@ def load_s_rows(tweet_tickers: list[tuple[str, str]],
             row = con.execute(
                 "SELECT entry_date, entry_close, exit_date, exit_close, abnormal_return, status "
                 "FROM call_outcomes WHERE tweet_id = ? AND ticker = ? AND horizon_days = ?",
-                (tid, tk, HORIZON_DAYS)).fetchone()
+                (tid, tk, HORIZON_DAYS),
+            ).fetchone()
             if row and row[5] == "evaluated":
-                out[(tid, tk)] = {"s_entry_date": date.fromisoformat(row[0]), "s_entry_close": row[1],
-                                  "s_exit_date": date.fromisoformat(row[2]), "s_exit_close": row[3],
-                                  "s_abnormal": row[4]}
+                out[(tid, tk)] = {
+                    "s_entry_date": date.fromisoformat(row[0]),
+                    "s_entry_close": row[1],
+                    "s_exit_date": date.fromisoformat(row[2]),
+                    "s_exit_close": row[3],
+                    "s_abnormal": row[4],
+                }
     finally:
         con.close()
     return out
@@ -139,8 +151,9 @@ def load_s_rows(tweet_tickers: list[tuple[str, str]],
 SPLIT_SUSPECT_THRESHOLD = 0.15
 
 
-def enrich(trades: pl.DataFrame, prices: dict[tuple[str, str], float],
-           s_rows: dict[tuple[str, str], dict]) -> pl.DataFrame:
+def enrich(
+    trades: pl.DataFrame, prices: dict[tuple[str, str], float], s_rows: dict[tuple[str, str], dict]
+) -> pl.DataFrame:
     """逐笔补 E 账收益/基准/MTM + S−E 四分量归因(spec §2.3)。纯函数,便于合成数据测试。
 
     复权口径(PRICE_SOURCE_SPEC §4b):price_cache 为后向复权价,**同源比值**(SPY 基准、window_diff、
@@ -152,20 +165,36 @@ def enrich(trades: pl.DataFrame, prices: dict[tuple[str, str], float],
         ticker, entry_d, exit_d = t["ticker"], t["entry_date"], t["exit_date"]
         closed = exit_d is not None
         px_entry_cache = _px(prices, ticker, entry_d)
-        split_suspect = (px_entry_cache is not None
-                         and abs(t["entry_avg_fill"] / px_entry_cache - 1) > SPLIT_SUSPECT_THRESHOLD)
+        split_suspect = (
+            px_entry_cache is not None and abs(t["entry_avg_fill"] / px_entry_cache - 1) > SPLIT_SUSPECT_THRESHOLD
+        )
         if split_suspect:
-            rows.append(t | {"closed": closed, "split_suspect": True, "actual_return": None,
-                             "spy_return": None, "actual_abnormal": None, "unrealized_return": None,
-                             "mtm_asof": None, "s_abnormal": None, "entry_diff_bps": None,
-                             "window_diff": None, "early_exit_diff": None, "cost": None, "se_gap": None})
+            rows.append(
+                t
+                | {
+                    "closed": closed,
+                    "split_suspect": True,
+                    "actual_return": None,
+                    "spy_return": None,
+                    "actual_abnormal": None,
+                    "unrealized_return": None,
+                    "mtm_asof": None,
+                    "s_abnormal": None,
+                    "entry_diff_bps": None,
+                    "window_diff": None,
+                    "early_exit_diff": None,
+                    "cost": None,
+                    "se_gap": None,
+                }
+            )
             continue
         actual_return = (t["exit_avg_fill"] / t["entry_avg_fill"] - 1) if closed else None
         spy_ret = _ret(prices, "SPY", entry_d, exit_d) if closed else None
         actual_abnormal = (actual_return - spy_ret) if (actual_return is not None and spy_ret is not None) else None
         last = max((d for (tk, d) in prices if tk == ticker), default=None) if not closed else None
-        unrealized = (_px(prices, ticker, date.fromisoformat(last)) / t["entry_avg_fill"] - 1) \
-            if (not closed and last) else None
+        unrealized = (
+            (_px(prices, ticker, date.fromisoformat(last)) / t["entry_avg_fill"] - 1) if (not closed and last) else None
+        )
         s = s_rows.get((t["tweet_id"], ticker))
         entry_diff_bps = window_diff = early_exit_diff = se_gap = None
         if closed and s:
@@ -177,19 +206,32 @@ def enrich(trades: pl.DataFrame, prices: dict[tuple[str, str], float],
                 early_exit_diff = 0.0
             else:
                 h21 = hold21_session(entry_d)
-                px_exit, px_h21, px_entry = (_px(prices, ticker, exit_d), _px(prices, ticker, h21),
-                                             _px(prices, ticker, entry_d))
-                early_exit_diff = ((px_exit - px_h21) / px_entry) \
-                    if (px_exit and px_h21 and px_entry) else None
+                px_exit, px_h21, px_entry = (
+                    _px(prices, ticker, exit_d),
+                    _px(prices, ticker, h21),
+                    _px(prices, ticker, entry_d),
+                )
+                early_exit_diff = ((px_exit - px_h21) / px_entry) if (px_exit and px_h21 and px_entry) else None
             if actual_abnormal is not None:
                 se_gap = s["s_abnormal"] - actual_abnormal
-        rows.append(t | {"closed": closed, "split_suspect": False, "actual_return": actual_return,
-                         "spy_return": spy_ret, "actual_abnormal": actual_abnormal,
-                         "unrealized_return": unrealized, "mtm_asof": last,
-                         "s_abnormal": s["s_abnormal"] if s else None,
-                         "entry_diff_bps": entry_diff_bps, "window_diff": window_diff,
-                         "early_exit_diff": early_exit_diff, "cost": 0.0 if closed else None,
-                         "se_gap": se_gap})
+        rows.append(
+            t
+            | {
+                "closed": closed,
+                "split_suspect": False,
+                "actual_return": actual_return,
+                "spy_return": spy_ret,
+                "actual_abnormal": actual_abnormal,
+                "unrealized_return": unrealized,
+                "mtm_asof": last,
+                "s_abnormal": s["s_abnormal"] if s else None,
+                "entry_diff_bps": entry_diff_bps,
+                "window_diff": window_diff,
+                "early_exit_diff": early_exit_diff,
+                "cost": 0.0 if closed else None,
+                "se_gap": se_gap,
+            }
+        )
     return pl.DataFrame(rows)
 
 
@@ -216,10 +258,12 @@ def render_report(df: pl.DataFrame, meta: dict[str, object]) -> str:
         "",
     ]
     if closed.height:
-        agg = closed.select(pl.col("actual_return").mean().alias("r_mean"),
-                            pl.col("actual_return").median().alias("r_med"),
-                            pl.col("actual_abnormal").mean().alias("a_mean"),
-                            pl.col("actual_abnormal").median().alias("a_med")).row(0, named=True)
+        agg = closed.select(
+            pl.col("actual_return").mean().alias("r_mean"),
+            pl.col("actual_return").median().alias("r_med"),
+            pl.col("actual_abnormal").mean().alias("a_mean"),
+            pl.col("actual_abnormal").median().alias("a_med"),
+        ).row(0, named=True)
         lines += [
             "## 已平仓(E 账)",
             "",
@@ -234,23 +278,24 @@ def render_report(df: pl.DataFrame, meta: dict[str, object]) -> str:
             "|---|---|---|---|",
         ]
         for (reason,), g in closed.group_by(["exit_reason"], maintain_order=True):
-            lines.append(f"| {reason} | {g.height} | {_fmt(g['actual_return'].mean())} "
-                         f"| {_fmt(g['actual_abnormal'].mean())} |")
+            lines.append(
+                f"| {reason} | {g.height} | {_fmt(g['actual_return'].mean())} | {_fmt(g['actual_abnormal'].mean())} |"
+            )
         attr = closed.filter(pl.col("s_abnormal").is_not_null())
         lines += [
             "",
-            f"### S−E 归因(spec §2.3;S 账 evaluated 覆盖 {attr.height}/{closed.height} 笔,"
-            "未熟/无价不归因)",
+            f"### S−E 归因(spec §2.3;S 账 evaluated 覆盖 {attr.height}/{closed.height} 笔,未熟/无价不归因)",
             "",
-            "| signal | ticker | exit_reason | S abn | E abn | S−E | entry_diff_bps | window_diff "
-            "| early_exit_diff |",
+            "| signal | ticker | exit_reason | S abn | E abn | S−E | entry_diff_bps | window_diff | early_exit_diff |",
             "|---|---|---|---|---|---|---|---|---|",
         ]
         for r in attr.iter_rows(named=True):
-            lines.append(f"| {r['signal_id'][:20]}… | {r['ticker']} | {r['exit_reason']} "
-                         f"| {_fmt(r['s_abnormal'])} | {_fmt(r['actual_abnormal'])} | {_fmt(r['se_gap'])} "
-                         f"| {_fmt(r['entry_diff_bps'], pct=False)} | {_fmt(r['window_diff'])} "
-                         f"| {_fmt(r['early_exit_diff'])} |")
+            lines.append(
+                f"| {r['signal_id'][:20]}… | {r['ticker']} | {r['exit_reason']} "
+                f"| {_fmt(r['s_abnormal'])} | {_fmt(r['actual_abnormal'])} | {_fmt(r['se_gap'])} "
+                f"| {_fmt(r['entry_diff_bps'], pct=False)} | {_fmt(r['window_diff'])} "
+                f"| {_fmt(r['early_exit_diff'])} |"
+            )
         lines += [
             "",
             "## wall_latency 分桶(call_ts→submitted_ts,spec §3.2;actionable_latency 待 v1)",
@@ -261,24 +306,37 @@ def render_report(df: pl.DataFrame, meta: dict[str, object]) -> str:
         for (b,), g in closed.group_by(["wall_bucket"], maintain_order=True):
             lines.append(f"| {b} | {g.height} | {_fmt(g['actual_abnormal'].mean())} |")
     if opened.height:
-        lines += ["", "## 未平仓(mark-to-market,单列)", "",
-                  "| ticker | entry_date | entry_avg_fill | unrealized | as-of |", "|---|---|---|---|---|"]
-        lines += [f"| {r['ticker']} | {r['entry_date']} | {r['entry_avg_fill']} "
-                  f"| {_fmt(r['unrealized_return'])} | {r['mtm_asof'] or '—'} |"
-                  for r in opened.iter_rows(named=True)]
+        lines += [
+            "",
+            "## 未平仓(mark-to-market,单列)",
+            "",
+            "| ticker | entry_date | entry_avg_fill | unrealized | as-of |",
+            "|---|---|---|---|---|",
+        ]
+        lines += [
+            f"| {r['ticker']} | {r['entry_date']} | {r['entry_avg_fill']} "
+            f"| {_fmt(r['unrealized_return'])} | {r['mtm_asof'] or '—'} |"
+            for r in opened.iter_rows(named=True)
+        ]
     if suspects.height:
-        lines += ["", "## ⚠ 复权嫌疑笔(fill 价与 price_cache 当日收盘偏离超 "
-                  f"{SPLIT_SUSPECT_THRESHOLD:.0%}:持仓期跨拆股/历史回填混锚,收益已置空,"
-                  "需按 raw 价单独重算,PRICE_SOURCE_SPEC §4b)", "",
-                  "| signal | ticker | entry_date | entry_avg_fill |", "|---|---|---|---|"]
-        lines += [f"| {r['signal_id']} | {r['ticker']} | {r['entry_date']} | {r['entry_avg_fill']} |"
-                  for r in suspects.iter_rows(named=True)]
+        lines += [
+            "",
+            "## ⚠ 复权嫌疑笔(fill 价与 price_cache 当日收盘偏离超 "
+            f"{SPLIT_SUSPECT_THRESHOLD:.0%}:持仓期跨拆股/历史回填混锚,收益已置空,"
+            "需按 raw 价单独重算,PRICE_SOURCE_SPEC §4b)",
+            "",
+            "| signal | ticker | entry_date | entry_avg_fill |",
+            "|---|---|---|---|",
+        ]
+        lines += [
+            f"| {r['signal_id']} | {r['ticker']} | {r['entry_date']} | {r['entry_avg_fill']} |"
+            for r in suspects.iter_rows(named=True)
+        ]
     lines += [
         "",
         "## 已知局限",
         "",
-        "- E 账成交价来自**本地 PaperBroker 模拟**(真实市场价+配置滑点),非券商真实成交;"
-        "P3 真钱后两套 E 账并行对比。",
+        "- E 账成交价来自**本地 PaperBroker 模拟**(真实市场价+配置滑点),非券商真实成交;P3 真钱后两套 E 账并行对比。",
         "- price_cache 为**后向复权**价:同源比值(基准/window/early_exit)跨拆股正确;"
         "fill×缓存混锚由 split_suspect 侦测列异常(本期见概览),绝对股数/金额口径一律不采用。",
         "- 模拟成交价 vs SPY 收盘锚的日内基准误差,v0 接受并文档化(spec §2.1)。",
@@ -289,8 +347,9 @@ def render_report(df: pl.DataFrame, meta: dict[str, object]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def run(ledger_path: Path, out_root: Path = REPORTS_ROOT, prices_db: Path = PRICES_DB,
-        trackrecord_db: Path = TRACKRECORD_DB) -> Path:
+def run(
+    ledger_path: Path, out_root: Path = REPORTS_ROOT, prices_db: Path = PRICES_DB, trackrecord_db: Path = TRACKRECORD_DB
+) -> Path:
     run_ts = datetime.now(UTC)
     trades = load_trades(ledger_path)
     if trades.is_empty():
@@ -299,13 +358,25 @@ def run(ledger_path: Path, out_root: Path = REPORTS_ROOT, prices_db: Path = PRIC
     prices = load_prices(tickers, prices_db)
     s_rows = load_s_rows(list({(t["tweet_id"], t["ticker"]) for t in trades.iter_rows(named=True)}), trackrecord_db)
     df = enrich(trades, prices, s_rows)
-    code_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True,
-                                 cwd=Path(__file__).parent, check=False).stdout.strip() or "unknown"
+    code_commit = (
+        subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent,
+            check=False,
+        ).stdout.strip()
+        or "unknown"
+    )
     meta: dict[str, object] = {
-        "run_ts": run_ts.isoformat(timespec="seconds"), "code_commit": code_commit,
+        "run_ts": run_ts.isoformat(timespec="seconds"),
+        "code_commit": code_commit,
         "command": f"uv run python -m src.perf.e_account {ledger_path}",
-        "ledger": str(ledger_path), "prices_db": str(prices_db), "trackrecord_db": str(trackrecord_db),
-        "trades": df.height, "closed": int(df.get_column("closed").sum()),
+        "ledger": str(ledger_path),
+        "prices_db": str(prices_db),
+        "trackrecord_db": str(trackrecord_db),
+        "trades": df.height,
+        "closed": int(df.get_column("closed").sum()),
         "attributed": int(df.get_column("se_gap").is_not_null().sum()),
         "split_suspects": int(df.get_column("split_suspect").sum()),
         "review_status": "未经独立复核(强制审核制度 2026-06-10 废止)",
@@ -315,8 +386,13 @@ def run(ledger_path: Path, out_root: Path = REPORTS_ROOT, prices_db: Path = PRIC
     df.write_parquet(out_dir / "e_account.parquet")
     (out_dir / "E_ACCOUNT_REPORT.md").write_text(render_report(df, meta), encoding="utf-8")
     (out_dir / "e_run_meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
-    logger.info("E 账快照完成: {} 笔(closed {} / attributed {})/ 产物 {}",
-                df.height, meta["closed"], meta["attributed"], out_dir)
+    logger.info(
+        "E 账快照完成: {} 笔(closed {} / attributed {})/ 产物 {}",
+        df.height,
+        meta["closed"],
+        meta["attributed"],
+        out_dir,
+    )
     return out_dir
 
 

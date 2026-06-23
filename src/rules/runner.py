@@ -50,8 +50,7 @@ def load_undecided(db_path: Path = DEFAULT_SNAPSHOT_DB) -> pl.DataFrame:
         if "rule_decisions" not in tables:
             return con.execute("SELECT * FROM signal_candidates").pl()
         return con.execute(
-            "SELECT c.* FROM signal_candidates c LEFT JOIN rule_decisions d USING (signal_id) "
-            "WHERE d.signal_id IS NULL"
+            "SELECT c.* FROM signal_candidates c LEFT JOIN rule_decisions d USING (signal_id) WHERE d.signal_id IS NULL"
         ).pl()
     finally:
         con.close()
@@ -79,16 +78,18 @@ def fetch_recent_bearish(
         if owned:
             conn.close()
     df = pl.DataFrame(rows, schema=_BEARISH_SCHEMA, orient="row")
-    return (df.filter(pl.col("handle").is_in(sorted(handles)))
-            .with_columns(pl.col("call_ts").str.to_datetime(time_zone="UTC")))
+    return df.filter(pl.col("handle").is_in(sorted(handles))).with_columns(
+        pl.col("call_ts").str.to_datetime(time_zone="UTC")
+    )
 
 
 def persist_decisions(decisions: pl.DataFrame, db_path: Path = DEFAULT_SNAPSHOT_DB) -> int:
     """决策行幂等落库(signal_id 已有决策的跳过不覆盖——决策是终态),返回新插入行数。"""
     if decisions.is_empty():
         return 0
-    batch = (decisions.unique(subset=["signal_id"], keep="first", maintain_order=True)
-             .with_columns(pl.lit(datetime.now(UTC)).alias("decided_ts")))
+    batch = decisions.unique(subset=["signal_id"], keep="first", maintain_order=True).with_columns(
+        pl.lit(datetime.now(UTC)).alias("decided_ts")
+    )
     assert_writable_path(db_path)  # 防参数转置:绝不对 stock-picker 侧文件开写连接
     db_path.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(db_path))
@@ -97,12 +98,15 @@ def persist_decisions(decisions: pl.DataFrame, db_path: Path = DEFAULT_SNAPSHOT_
         con.register("dec_batch", batch)
         cols = ", ".join((*OUT_SCHEMA.names(), "decided_ts"))
         before = con.execute("SELECT count(*) FROM rule_decisions").fetchone()
-        con.execute(f"INSERT INTO rule_decisions ({cols}) SELECT {cols} FROM dec_batch "
-                    f"WHERE signal_id NOT IN (SELECT signal_id FROM rule_decisions)")
+        con.execute(
+            f"INSERT INTO rule_decisions ({cols}) SELECT {cols} FROM dec_batch "
+            f"WHERE signal_id NOT IN (SELECT signal_id FROM rule_decisions)"
+        )
         after = con.execute("SELECT count(*) FROM rule_decisions").fetchone()
         inserted = int(after[0]) - int(before[0])  # type: ignore[index]
-        logger.info("rule_decisions 落库: 批内 {} / 新增 {} / 已存在 {}",
-                    batch.height, inserted, batch.height - inserted)
+        logger.info(
+            "rule_decisions 落库: 批内 {} / 新增 {} / 已存在 {}", batch.height, inserted, batch.height - inserted
+        )
         return inserted
     finally:
         con.close()
@@ -133,13 +137,25 @@ def run_decision_cycle(
     handle_wilson = {h: w for h, w in zip(board["handle"], board["wilson_lo"], strict=True) if w is not None}
     bearish = fetch_recent_bearish(ts, set(handle_wilson), conn=calls_conn)
     decisions = decide(
-        cands, decision_ts=ts, pdt=pdt, prices=prices, portfolio=portfolio,
-        handle_wilson=handle_wilson, recent_bearish=bearish, kill_switch=kill_switch,
-        blocked_handles=blocked_handles, blocked_tickers=blocked_tickers, params=params,
+        cands,
+        decision_ts=ts,
+        pdt=pdt,
+        prices=prices,
+        portfolio=portfolio,
+        handle_wilson=handle_wilson,
+        recent_bearish=bearish,
+        kill_switch=kill_switch,
+        blocked_handles=blocked_handles,
+        blocked_tickers=blocked_tickers,
+        params=params,
     )
     inserted = persist_decisions(decisions, db_path)
     followed = decisions.filter(pl.col("decision") == "followed").height
-    logger.info("decision cycle 完成: 未决 {} / 出决策 {} / followed {} / 新落库 {}",
-                cands.height, decisions.height, followed, inserted)
-    return {"undecided": cands.height, "decided": decisions.height,
-            "followed": followed, "inserted": inserted}
+    logger.info(
+        "decision cycle 完成: 未决 {} / 出决策 {} / followed {} / 新落库 {}",
+        cands.height,
+        decisions.height,
+        followed,
+        inserted,
+    )
+    return {"undecided": cands.height, "decided": decisions.height, "followed": followed, "inserted": inserted}

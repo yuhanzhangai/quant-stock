@@ -33,14 +33,31 @@ from src.signals.paths import (
 
 DEFAULT_STATE_PATH = SIGNALS_DATA_DIR / "calls_poller_state.json"
 
-_CALL_COLUMNS = ("tweet_id", "handle", "author_id", "ticker", "direction", "call_ts", "call_date",
-                 "confidence", "conviction")
+_CALL_COLUMNS = (
+    "tweet_id",
+    "handle",
+    "author_id",
+    "ticker",
+    "direction",
+    "call_ts",
+    "call_date",
+    "confidence",
+    "conviction",
+)
 _TS_IDX = _CALL_COLUMNS.index("call_ts")
-_CALL_SCHEMA = pl.Schema({
-    "tweet_id": pl.String, "handle": pl.String, "author_id": pl.String, "ticker": pl.String,
-    "direction": pl.String, "call_ts": pl.String, "call_date": pl.String,
-    "confidence": pl.Float64, "conviction": pl.String,
-})
+_CALL_SCHEMA = pl.Schema(
+    {
+        "tweet_id": pl.String,
+        "handle": pl.String,
+        "author_id": pl.String,
+        "ticker": pl.String,
+        "direction": pl.String,
+        "call_ts": pl.String,
+        "call_date": pl.String,
+        "confidence": pl.Float64,
+        "conviction": pl.String,
+    }
+)
 
 
 @dataclass
@@ -101,8 +118,7 @@ def poll_new_calls(
     if conn is None:
         conn = connect_readonly(TRACKRECORD_DB)
     try:
-        sql = (f"SELECT {', '.join(_CALL_COLUMNS)} FROM analyst_calls "
-               f"WHERE is_call = 1 AND call_ts > ? ORDER BY call_ts")
+        sql = f"SELECT {', '.join(_CALL_COLUMNS)} FROM analyst_calls WHERE is_call = 1 AND call_ts > ? ORDER BY call_ts"
         rows = conn.execute(sql, (since,)).fetchall()
     finally:
         if owned:
@@ -132,16 +148,23 @@ def measure_ingest_latency(sample_days: float = 14.0) -> dict[str, float | int]:
     latency = fetched_at - epoch(created_at)。两库各拉一个 frame 后 polars join(不 ATTACH)。"""
     since = _iso(datetime.now(UTC) - timedelta(days=sample_days))
     with closing(connect_readonly(TRACKRECORD_DB)) as c:
-        ids = [r[0] for r in c.execute(
-            "SELECT DISTINCT tweet_id FROM analyst_calls WHERE is_call = 1 AND call_ts > ?", (since,))]
+        ids = [
+            r[0]
+            for r in c.execute(
+                "SELECT DISTINCT tweet_id FROM analyst_calls WHERE is_call = 1 AND call_ts > ?", (since,)
+            )
+        ]
     with closing(connect_readonly(TWEETS_DB)) as c:
         tw_rows = c.execute("SELECT id, created_at, fetched_at FROM tweets").fetchall()
     calls = pl.DataFrame({"tweet_id": ids}, schema={"tweet_id": pl.String})
-    tweets = pl.DataFrame(tw_rows, schema={"tweet_id": pl.String, "created_at": pl.String, "fetched_at": pl.Int64},
-                          orient="row")
+    tweets = pl.DataFrame(
+        tw_rows, schema={"tweet_id": pl.String, "created_at": pl.String, "fetched_at": pl.Int64}, orient="row"
+    )
     joined = calls.join(tweets, on="tweet_id", how="inner").with_columns(
-        (pl.col("fetched_at") - pl.col("created_at").str.to_datetime(time_zone="UTC").dt.epoch(time_unit="s"))
-        .alias("latency_s"))
+        (pl.col("fetched_at") - pl.col("created_at").str.to_datetime(time_zone="UTC").dt.epoch(time_unit="s")).alias(
+            "latency_s"
+        )
+    )
     if joined.is_empty():
         raise RuntimeError(f"近 {sample_days} 天无可 JOIN 的 call/tweet 样本")
     lat = joined.get_column("latency_s")
@@ -159,6 +182,9 @@ def measure_ingest_latency(sample_days: float = 14.0) -> dict[str, float | int]:
 
 if __name__ == "__main__":
     stats = measure_ingest_latency()
-    logger.info("ingest latency 14d: n={n} p50={p50_s:.0f}s p90={p90_s:.0f}s p99={p99_s:.0f}s "
-                "max={max_s:.0f}s min={min_s:.0f}s neg_n={neg_n} orphan_n={orphan_n}", **stats)
+    logger.info(
+        "ingest latency 14d: n={n} p50={p50_s:.0f}s p90={p90_s:.0f}s p99={p99_s:.0f}s "
+        "max={max_s:.0f}s min={min_s:.0f}s neg_n={neg_n} orphan_n={orphan_n}",
+        **stats,
+    )
     logger.info("建议 overlap_hours >= p99 延迟 = {:.2f}h(再留余量)", stats["p99_s"] / 3600)

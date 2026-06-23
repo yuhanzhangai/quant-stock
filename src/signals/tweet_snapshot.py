@@ -18,8 +18,22 @@ DEFAULT_SNAPSHOT_DB = SIGNALS_DATA_DIR / "signal_snapshots.duckdb"
 _CHUNK_SIZE = 500
 # tweets.db 源列(id 在快照表里改名 tweet_id 作主键,其余同名)
 _SRC_COLS = (
-    "id", "handle", "author_id", "username", "created_at", "fetched_at", "text", "url",
-    "media", "has_media", "blocked", "like_count", "retweet_count", "view_count", "tickers", "sentiment",
+    "id",
+    "handle",
+    "author_id",
+    "username",
+    "created_at",
+    "fetched_at",
+    "text",
+    "url",
+    "media",
+    "has_media",
+    "blocked",
+    "like_count",
+    "retweet_count",
+    "view_count",
+    "tickers",
+    "sentiment",
 )
 _SNAP_COLS = ("tweet_id", *_SRC_COLS[1:])
 
@@ -67,8 +81,7 @@ def _assert_snapshot_ts_tz(con: duckdb.DuckDBPyConnection) -> None:
     """守卫:snapshot_ts 必须 TIMESTAMPTZ。旧 schema(naive TIMESTAMP)按 session 时区取墙钟,
     与新行混写后两种语义不可区分——拒绝继续写,提示手动迁移。"""
     row = con.execute(
-        "SELECT data_type FROM duckdb_columns() "
-        "WHERE table_name = 'tweet_snapshots' AND column_name = 'snapshot_ts'"
+        "SELECT data_type FROM duckdb_columns() WHERE table_name = 'tweet_snapshots' AND column_name = 'snapshot_ts'"
     ).fetchone()
     if row is None or row[0] != "TIMESTAMP WITH TIME ZONE":
         raise RuntimeError(
@@ -120,7 +133,10 @@ def snapshot_tweets(
             con.executemany(f"INSERT OR IGNORE INTO tweet_snapshots ({', '.join(_SNAP_COLS)}) VALUES ({ph})", new_rows)
         logger.info(
             "tweet 快照完成: 请求 {} / 新增 {} / 已存在 {} / 孤儿 {}",
-            len(ids), len(new_rows), len(existing), len(orphans),
+            len(ids),
+            len(new_rows),
+            len(existing),
+            len(orphans),
         )
         return len(new_rows)
     finally:

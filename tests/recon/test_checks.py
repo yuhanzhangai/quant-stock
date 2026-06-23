@@ -39,10 +39,25 @@ CREATE VIEW v_order_filled AS SELECT order_id, sum(qty) AS filled_qty,
 """
 
 
-def _order(con, oid, seq, status, *, sid="sig_t1_AAA", ticker="AAA", side="buy", qty=10,
-           submitted=_SUBMITTED, corrects=None, exit_reason=None, trigger=None):
-    con.execute("INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                [oid, seq, sid, ticker, side, qty, submitted, status, corrects, exit_reason, trigger])
+def _order(
+    con,
+    oid,
+    seq,
+    status,
+    *,
+    sid="sig_t1_AAA",
+    ticker="AAA",
+    side="buy",
+    qty=10,
+    submitted=_SUBMITTED,
+    corrects=None,
+    exit_reason=None,
+    trigger=None,
+):
+    con.execute(
+        "INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        [oid, seq, sid, ticker, side, qty, submitted, status, corrects, exit_reason, trigger],
+    )
 
 
 def _fill(con, fid, oid, *, ts=_FILL, qty=10, price=100.0, voids=None):
@@ -130,10 +145,11 @@ def test_a4_stale_submitted_warn_then_halt(ledger):
     same_day = [f for f in run_checks(ledger, now=_NOW).findings if f.check_id == "A4"]
     assert not same_day
     # 2 个交易日后(周三)→ warn;4 个交易日后(周五)→ halt
-    for now, expected in ((datetime(2026, 6, 10, 18, 0, tzinfo=UTC), "warn"),
-                          (datetime(2026, 6, 12, 18, 0, tzinfo=UTC), "halt")):
-        found = [f for f in run_checks(ledger, now=now).findings
-                 if f.check_id == "A4" and f.order_id == "ord_stuck"]
+    for now, expected in (
+        (datetime(2026, 6, 10, 18, 0, tzinfo=UTC), "warn"),
+        (datetime(2026, 6, 12, 18, 0, tzinfo=UTC), "halt"),
+    ):
+        found = [f for f in run_checks(ledger, now=now).findings if f.check_id == "A4" and f.order_id == "ord_stuck"]
         assert found and found[0].severity == expected, (now, expected)
 
 
@@ -152,8 +168,9 @@ def test_a5_correction_row_exempt(ledger):
     _order(ledger, "ord_fix", 0, "filled")  # 误记终态
     _fill(ledger, "fil_fix", "ord_fix")
     _order(ledger, "ord_fix", 1, "partial", corrects=0)  # r3 更正行:终态封锁唯一豁免
-    found = [f for f in run_checks(ledger, now=_now_after_exit()).findings
-             if f.check_id == "A5" and f.order_id == "ord_fix"]
+    found = [
+        f for f in run_checks(ledger, now=_now_after_exit()).findings if f.check_id == "A5" and f.order_id == "ord_fix"
+    ]
     assert not found
 
 
@@ -163,15 +180,17 @@ def test_a5_correction_resets_terminal_lock(ledger):
     _order(ledger, "ord_b", 1, "filled")  # 误记终态
     _order(ledger, "ord_b", 2, "submitted", corrects=1)  # 更正回非终态:锁重置
     _order(ledger, "ord_b", 3, "expired")  # 正常迁移,不应报
-    assert not [f for f in run_checks(ledger, now=_now_after_exit()).findings
-                if f.check_id == "A5" and f.order_id == "ord_b"]
+    assert not [
+        f for f in run_checks(ledger, now=_now_after_exit()).findings if f.check_id == "A5" and f.order_id == "ord_b"
+    ]
     # 反例:更正为终态值后,再来非更正行仍须报
     _order(ledger, "ord_b2", 0, "filled")
     _fill(ledger, "fil_b2", "ord_b2")
     _order(ledger, "ord_b2", 1, "expired", corrects=0)  # 更正后仍是终态
     _order(ledger, "ord_b2", 2, "cancelled")  # 终态后非更正行 → 违规
-    found = [f for f in run_checks(ledger, now=_now_after_exit()).findings
-             if f.check_id == "A5" and f.order_id == "ord_b2"]
+    found = [
+        f for f in run_checks(ledger, now=_now_after_exit()).findings if f.check_id == "A5" and f.order_id == "ord_b2"
+    ]
     assert found and "seq=1" in found[0].message
 
 
@@ -185,8 +204,9 @@ def test_a6_relation_chain_violations(ledger):
 
 
 def test_a7_timeline_warns(ledger):
-    ledger.execute("INSERT INTO signals VALUES ('sig_back', ?, ?, 'followed')",
-                   [_CALL, _CALL - timedelta(minutes=1)])  # ingested 早于 call
+    ledger.execute(
+        "INSERT INTO signals VALUES ('sig_back', ?, ?, 'followed')", [_CALL, _CALL - timedelta(minutes=1)]
+    )  # ingested 早于 call
     _fill(ledger, "fil_early", "ord_1", ts=_SUBMITTED - timedelta(minutes=6), qty=0.1)  # 超 5min 容差
     result = run_checks(ledger, now=_now_after_exit())
     msgs = [f.message for f in result.findings if f.check_id == "A7"]
@@ -197,8 +217,11 @@ def test_a7_timeline_warns(ledger):
 
 def test_a7_within_tolerance_silent(ledger):
     _fill(ledger, "fil_close", "ord_2", ts=_SUBMITTED + timedelta(days=30) - timedelta(minutes=4), qty=0.1)
-    assert not [f for f in run_checks(ledger, now=_now_after_exit()).findings
-                if f.check_id == "A7" and f.actual == "fill_id=fil_close"]
+    assert not [
+        f
+        for f in run_checks(ledger, now=_now_after_exit()).findings
+        if f.check_id == "A7" and f.actual == "fill_id=fil_close"
+    ]
 
 
 def test_a8_negative_position_halts(ledger):
@@ -219,8 +242,12 @@ def test_a9_watermark_stale_and_empty(ledger):
 
 def test_missing_table_reported_not_crash():
     con = duckdb.connect()
-    con.execute(_DDL.replace("CREATE TABLE ingest_watermark (poll_ts TIMESTAMPTZ, "
-                             "last_seen_call_ts TIMESTAMPTZ, calls_seen INTEGER);", ""))
+    con.execute(
+        _DDL.replace(
+            "CREATE TABLE ingest_watermark (poll_ts TIMESTAMPTZ, last_seen_call_ts TIMESTAMPTZ, calls_seen INTEGER);",
+            "",
+        )
+    )
     result = run_checks(con, now=_NOW)
     a9 = [f for f in result.findings if f.check_id == "A9"]
     assert result.result == "halt" and a9 and "检查无法执行" in a9[0].message

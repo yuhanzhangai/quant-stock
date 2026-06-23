@@ -67,8 +67,9 @@ def snapshot_db(tmp_path: Path) -> Path:
     return tmp_path / "out" / "signal_snapshots.duckdb"
 
 
-def insert_call(c: sqlite3.Connection, tweet_id: str, handle: str, ticker: str,
-                ts: datetime, direction: str = "bullish") -> None:
+def insert_call(
+    c: sqlite3.Connection, tweet_id: str, handle: str, ticker: str, ts: datetime, direction: str = "bullish"
+) -> None:
     c.execute(
         "INSERT INTO analyst_calls (tweet_id, author_id, handle, ticker, direction, call_ts, call_date,"
         " is_call, confidence, conviction) VALUES (?, 'a1', ?, ?, ?, ?, ?, 1, 0.9, 'high')",
@@ -79,10 +80,16 @@ def insert_call(c: sqlite3.Connection, tweet_id: str, handle: str, ticker: str,
 
 def insert_tweet(c: sqlite3.Connection, tweet_id: str, handle: str, ts: datetime, blocked: int = 0) -> None:
     c.execute(
-        "INSERT INTO tweets (id, handle, created_at, fetched_at, text, url, blocked)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (tweet_id, handle, _iso(ts), int(ts.timestamp()) + 60,
-         f"text of {tweet_id}", f"https://x.com/{handle}/status/{tweet_id}", blocked),
+        "INSERT INTO tweets (id, handle, created_at, fetched_at, text, url, blocked) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            tweet_id,
+            handle,
+            _iso(ts),
+            int(ts.timestamp()) + 60,
+            f"text of {tweet_id}",
+            f"https://x.com/{handle}/status/{tweet_id}",
+            blocked,
+        ),
     )
     c.commit()
 
@@ -92,10 +99,10 @@ def _poll(conn: sqlite3.Connection) -> pl.DataFrame:
     return df
 
 
-def _build(calls: pl.DataFrame, leaderboard_csv: Path, snapshot_db: Path,
-           tweets_conn: sqlite3.Connection) -> pl.DataFrame:
-    return build_candidates(calls, leaderboard_path=leaderboard_csv,
-                            snapshot_db=snapshot_db, tweets_conn=tweets_conn)
+def _build(
+    calls: pl.DataFrame, leaderboard_csv: Path, snapshot_db: Path, tweets_conn: sqlite3.Connection
+) -> pl.DataFrame:
+    return build_candidates(calls, leaderboard_path=leaderboard_csv, snapshot_db=snapshot_db, tweets_conn=tweets_conn)
 
 
 def test_happy_path_signals_schema(calls_conn, tweets_conn, leaderboard_csv, snapshot_db) -> None:
@@ -118,11 +125,11 @@ def test_happy_path_signals_schema(calls_conn, tweets_conn, leaderboard_csv, sna
 
 def test_filters_tier_horizon_direction(calls_conn, tweets_conn, leaderboard_csv, snapshot_db) -> None:
     now = datetime.now(UTC)
-    insert_call(calls_conn, "t1", "carol", "NVDA", now)              # PROVEN_BAD_1REGIME:精确匹配挡掉
-    insert_call(calls_conn, "t2", "dave", "NVDA", now)               # TRACKING
-    insert_call(calls_conn, "t3", "frank", "NVDA", now)              # PROVEN 但只有 5d,21d 口径无此人
-    insert_call(calls_conn, "t4", "nobody", "NVDA", now)             # 不在榜
-    insert_call(calls_conn, "t5", "alice", "NVDA", now, "bearish")   # PROVEN 但反向
+    insert_call(calls_conn, "t1", "carol", "NVDA", now)  # PROVEN_BAD_1REGIME:精确匹配挡掉
+    insert_call(calls_conn, "t2", "dave", "NVDA", now)  # TRACKING
+    insert_call(calls_conn, "t3", "frank", "NVDA", now)  # PROVEN 但只有 5d,21d 口径无此人
+    insert_call(calls_conn, "t4", "nobody", "NVDA", now)  # 不在榜
+    insert_call(calls_conn, "t5", "alice", "NVDA", now, "bearish")  # PROVEN 但反向
     for t in ("t1", "t2", "t3", "t4", "t5"):
         insert_tweet(tweets_conn, t, "x", now)
     cand = _build(_poll(calls_conn), leaderboard_csv, snapshot_db, tweets_conn)
@@ -172,8 +179,13 @@ def test_run_pipeline_idempotent(tmp_path, calls_conn, tweets_conn, leaderboard_
     now = datetime.now(UTC)
     insert_call(calls_conn, "t1", "alice", "NVDA", now - timedelta(hours=1))
     insert_tweet(tweets_conn, "t1", "alice", now - timedelta(hours=1))
-    kwargs = dict(state_path=tmp_path / "state.json", snapshot_db=snapshot_db,
-                  leaderboard_path=leaderboard_csv, calls_conn=calls_conn, tweets_conn=tweets_conn)
+    kwargs = dict(
+        state_path=tmp_path / "state.json",
+        snapshot_db=snapshot_db,
+        leaderboard_path=leaderboard_csv,
+        calls_conn=calls_conn,
+        tweets_conn=tweets_conn,
+    )
     r1 = run_pipeline(**kwargs)
     assert r1 == {"calls_seen": 1, "candidates": 1, "inserted": 1}
     r2 = run_pipeline(**kwargs)  # 水位已推进:无新喊单、零重插
@@ -202,10 +214,12 @@ def test_candidates_timestamps_are_timestamptz(calls_conn, tweets_conn, leaderbo
     persist_candidates(_build(_poll(calls_conn), leaderboard_csv, snapshot_db, tweets_conn), snapshot_db)
     con = duckdb.connect(str(snapshot_db), read_only=True)
     try:
-        types = dict(con.execute(
-            "SELECT column_name, data_type FROM duckdb_columns()"
-            " WHERE table_name = 'signal_candidates' AND column_name IN ('call_ts', 'ingested_ts')"
-        ).fetchall())
+        types = dict(
+            con.execute(
+                "SELECT column_name, data_type FROM duckdb_columns()"
+                " WHERE table_name = 'signal_candidates' AND column_name IN ('call_ts', 'ingested_ts')"
+            ).fetchall()
+        )
     finally:
         con.close()
     # naive TIMESTAMP 按 session 时区取墙钟,审计时间戳必须 TIMESTAMPTZ(预研 high 发现,守卫不回退)

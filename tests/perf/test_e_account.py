@@ -32,25 +32,33 @@ CREATE VIEW v_order_filled AS SELECT order_id, sum(qty) AS filled_qty,
 """
 
 # 美东 14:00 = UTC 18:00(EDT);entry_date 即 fill 当日
-_T1_ENTRY = datetime(2026, 4, 6, 18, 0, tzinfo=UTC)   # Mon
-_T1_EXIT = datetime(2026, 5, 5, 18, 0, tzinfo=UTC)    # Tue
-_T2_ENTRY = datetime(2026, 1, 5, 18, 0, tzinfo=UTC)   # Mon
-_T2_EXIT = datetime(2026, 1, 15, 18, 0, tzinfo=UTC)   # Thu(止损早退)
-_T3_ENTRY = datetime(2026, 6, 1, 18, 0, tzinfo=UTC)   # Mon,未平仓
+_T1_ENTRY = datetime(2026, 4, 6, 18, 0, tzinfo=UTC)  # Mon
+_T1_EXIT = datetime(2026, 5, 5, 18, 0, tzinfo=UTC)  # Tue
+_T2_ENTRY = datetime(2026, 1, 5, 18, 0, tzinfo=UTC)  # Mon
+_T2_EXIT = datetime(2026, 1, 15, 18, 0, tzinfo=UTC)  # Thu(止损早退)
+_T3_ENTRY = datetime(2026, 6, 1, 18, 0, tzinfo=UTC)  # Mon,未平仓
 
 _PRICES = [
     # AAA:E 窗 100→110(+10%);S 窗(04-07→05-06)100→105(+5%)→ window_diff=+5%
-    ("AAA", "2026-04-06", 100.0), ("AAA", "2026-05-05", 110.0),
-    ("AAA", "2026-04-07", 100.0), ("AAA", "2026-05-06", 105.0),
+    ("AAA", "2026-04-06", 100.0),
+    ("AAA", "2026-05-05", 110.0),
+    ("AAA", "2026-04-07", 100.0),
+    ("AAA", "2026-05-06", 105.0),
     # SPY:T1 窗 500→510(+2%);T2 窗 500→505(+1%)
-    ("SPY", "2026-04-06", 500.0), ("SPY", "2026-05-05", 510.0),
-    ("SPY", "2026-01-05", 500.0), ("SPY", "2026-01-15", 505.0),
+    ("SPY", "2026-04-06", 500.0),
+    ("SPY", "2026-05-05", 510.0),
+    ("SPY", "2026-01-05", 500.0),
+    ("SPY", "2026-01-15", 505.0),
     # BBB:entry 50 / 早退日 46 / hold21(2026-02-04)55 → early_exit_diff=(46-55)/50=-18%
-    ("BBB", "2026-01-05", 50.0), ("BBB", "2026-01-15", 46.0), ("BBB", "2026-02-04", 55.0),
+    ("BBB", "2026-01-05", 50.0),
+    ("BBB", "2026-01-15", 46.0),
+    ("BBB", "2026-02-04", 55.0),
     # CCC:未平仓,最新收盘 120
-    ("CCC", "2026-06-01", 100.0), ("CCC", "2026-06-10", 120.0),
+    ("CCC", "2026-06-01", 100.0),
+    ("CCC", "2026-06-10", 120.0),
     # DDD:复权嫌疑(NVDA 式 10:1)——fill 按当时真价 1149,缓存被后向复权回填成 114.9
-    ("DDD", "2026-01-05", 114.9), ("DDD", "2026-01-15", 120.0),
+    ("DDD", "2026-01-05", 114.9),
+    ("DDD", "2026-01-15", 120.0),
     ("SPY", "2026-06-01", 700.0),
 ]
 
@@ -60,10 +68,13 @@ def dbs(tmp_path: Path) -> tuple[Path, Path, Path]:
     ledger = tmp_path / "ledger.duckdb"
     con = duckdb.connect(str(ledger))
     con.execute(_DDL)
-    for sid, tid, tk in [("sig_t1_AAA", "t1", "AAA"), ("sig_t2_BBB", "t2", "BBB"),
-                         ("sig_t3_CCC", "t3", "CCC"), ("sig_t4_DDD", "t4", "DDD")]:
-        con.execute("INSERT INTO signals VALUES (?,?,?,?,?,?)",
-                    [sid, tid, tk, "shay", _T2_ENTRY, _T2_ENTRY])
+    for sid, tid, tk in [
+        ("sig_t1_AAA", "t1", "AAA"),
+        ("sig_t2_BBB", "t2", "BBB"),
+        ("sig_t3_CCC", "t3", "CCC"),
+        ("sig_t4_DDD", "t4", "DDD"),
+    ]:
+        con.execute("INSERT INTO signals VALUES (?,?,?,?,?,?)", [sid, tid, tk, "shay", _T2_ENTRY, _T2_ENTRY])
     legs = [  # (oid, sid, tk, side, qty, fill_ts, avg, call_to_submit_ms, exit_reason)
         ("ord_1b", "sig_t1_AAA", "AAA", "buy", 10, _T1_ENTRY, 100.0, 3_600_000, None),
         ("ord_1s", "sig_t1_AAA", "AAA", "sell", 10, _T1_EXIT, 110.0, None, "hold_21d"),
@@ -75,8 +86,9 @@ def dbs(tmp_path: Path) -> tuple[Path, Path, Path]:
         ("ord_4s", "sig_t4_DDD", "DDD", "sell", 4, _T2_EXIT, 120.0, None, "hold_21d"),
     ]
     for oid, sid, tk, side, qty, ts, avg, ms, reason in legs:
-        con.execute("INSERT INTO orders VALUES (?,0,?,?,?,?,?,?,?, 'filled')",
-                    [oid, sid, tk, side, qty, ts, ms, reason])
+        con.execute(
+            "INSERT INTO orders VALUES (?,0,?,?,?,?,?,?,?, 'filled')", [oid, sid, tk, side, qty, ts, ms, reason]
+        )
         con.execute("INSERT INTO fills VALUES (?,?,?,?,?,NULL)", [f"fil_{oid}", oid, ts, qty, avg])
     con.close()
 
@@ -89,9 +101,11 @@ def dbs(tmp_path: Path) -> tuple[Path, Path, Path]:
 
     tr = tmp_path / "tr.db"
     tc = sqlite3.connect(tr)
-    tc.execute("CREATE TABLE call_outcomes (tweet_id TEXT, ticker TEXT, horizon_days INTEGER,"
-               "entry_date TEXT, entry_close REAL, exit_date TEXT, exit_close REAL,"
-               "abnormal_return REAL, status TEXT)")
+    tc.execute(
+        "CREATE TABLE call_outcomes (tweet_id TEXT, ticker TEXT, horizon_days INTEGER,"
+        "entry_date TEXT, entry_close REAL, exit_date TEXT, exit_close REAL,"
+        "abnormal_return REAL, status TEXT)"
+    )
     # T1 的 S 行:entry_close=100 → entry_diff_bps=0;abnormal +5%
     tc.execute("INSERT INTO call_outcomes VALUES ('t1','AAA',21,'2026-04-07',100,'2026-05-06',105,0.05,'evaluated')")
     tc.execute("INSERT INTO call_outcomes VALUES ('t2','BBB',21,'2026-01-06',50,'2026-02-04',55,0.10,'evaluated')")

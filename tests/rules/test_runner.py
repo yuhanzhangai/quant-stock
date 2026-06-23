@@ -59,21 +59,37 @@ def _iso(dt: datetime) -> str:
     return dt.astimezone(UTC).isoformat(timespec="seconds")
 
 
-def insert_candidate(db: Path, sid: str, handle: str, ticker: str, call_ts: datetime,
-                     direction: str = "bullish") -> None:
+def insert_candidate(
+    db: Path, sid: str, handle: str, ticker: str, call_ts: datetime, direction: str = "bullish"
+) -> None:
     con = duckdb.connect(str(db))
     try:
         con.execute(
             "INSERT INTO signal_candidates VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [sid, f"tw_{sid}", handle, "a1", "PROVEN", date(2026, 6, 9), ticker, direction,
-             call_ts, datetime.now(UTC), f"text {sid}", f"https://x/{sid}", call_ts, False, "high", 0.9],
+            [
+                sid,
+                f"tw_{sid}",
+                handle,
+                "a1",
+                "PROVEN",
+                date(2026, 6, 9),
+                ticker,
+                direction,
+                call_ts,
+                datetime.now(UTC),
+                f"text {sid}",
+                f"https://x/{sid}",
+                call_ts,
+                False,
+                "high",
+                0.9,
+            ],
         )
     finally:
         con.close()
 
 
-def insert_bearish_call(c: sqlite3.Connection, tweet_id: str, handle: str, ticker: str,
-                        ts: datetime) -> None:
+def insert_bearish_call(c: sqlite3.Connection, tweet_id: str, handle: str, ticker: str, ts: datetime) -> None:
     c.execute(
         "INSERT INTO analyst_calls (tweet_id, author_id, handle, ticker, direction, call_ts, call_date,"
         " is_call, confidence, conviction) VALUES (?, 'a1', ?, ?, 'bearish', ?, ?, 1, 0.8, 'high')",
@@ -92,22 +108,27 @@ def test_load_undecided_requires_candidates_table(tmp_path: Path):
 def test_fetch_recent_bearish_window_and_proven_filter(calls_conn: sqlite3.Connection):
     insert_bearish_call(calls_conn, "b1", "alice", "GOOGL", datetime(2026, 6, 7, 12, 0, tzinfo=UTC))
     insert_bearish_call(calls_conn, "b2", "alice", "TSLA", datetime(2026, 5, 20, 12, 0, tzinfo=UTC))  # 窗外
-    insert_bearish_call(calls_conn, "b3", "dave", "NVDA", datetime(2026, 6, 8, 12, 0, tzinfo=UTC))    # 非 PROVEN
+    insert_bearish_call(calls_conn, "b3", "dave", "NVDA", datetime(2026, 6, 8, 12, 0, tzinfo=UTC))  # 非 PROVEN
     df = fetch_recent_bearish(DECISION_TS, {"alice", "bob"}, conn=calls_conn)
     assert df.get_column("ticker").to_list() == ["GOOGL"]
 
 
-def test_cycle_end_to_end_with_idempotent_rerun(db_path: Path, leaderboard_csv: Path,
-                                                calls_conn: sqlite3.Connection):
+def test_cycle_end_to_end_with_idempotent_rerun(db_path: Path, leaderboard_csv: Path, calls_conn: sqlite3.Connection):
     insert_candidate(db_path, "s_follow", "alice", "AAPL", MON)
-    insert_candidate(db_path, "s_conflict", "bob", "GOOG", MON)        # alice 看空 GOOGL → issuer 冲突
-    insert_candidate(db_path, "s_pending", "bob", "TSLA",
-                     datetime(2026, 6, 9, 13, 0, tzinfo=UTC))          # T_entry=06-10,本轮不裁决
+    insert_candidate(db_path, "s_conflict", "bob", "GOOG", MON)  # alice 看空 GOOGL → issuer 冲突
+    insert_candidate(
+        db_path, "s_pending", "bob", "TSLA", datetime(2026, 6, 9, 13, 0, tzinfo=UTC)
+    )  # T_entry=06-10,本轮不裁决
     insert_bearish_call(calls_conn, "b1", "alice", "GOOGL", datetime(2026, 6, 7, 12, 0, tzinfo=UTC))
 
-    kw: dict = {"prices": {"AAPL": 50.0, "GOOG": 200.0, "TSLA": 300.0},
-                "pdt": PdtState(0, 100_000.0), "db_path": db_path, "decision_ts": DECISION_TS,
-                "leaderboard_path": leaderboard_csv, "calls_conn": calls_conn}
+    kw: dict = {
+        "prices": {"AAPL": 50.0, "GOOG": 200.0, "TSLA": 300.0},
+        "pdt": PdtState(0, 100_000.0),
+        "db_path": db_path,
+        "decision_ts": DECISION_TS,
+        "leaderboard_path": leaderboard_csv,
+        "calls_conn": calls_conn,
+    }
     stats = run_decision_cycle(**kw)
     assert stats == {"undecided": 3, "decided": 2, "followed": 1, "inserted": 2}
 
@@ -125,11 +146,15 @@ def test_cycle_end_to_end_with_idempotent_rerun(db_path: Path, leaderboard_csv: 
     assert stats2 == {"undecided": 1, "decided": 0, "followed": 0, "inserted": 0}
 
 
-def test_pending_decided_next_session(db_path: Path, leaderboard_csv: Path,
-                                      calls_conn: sqlite3.Connection):
+def test_pending_decided_next_session(db_path: Path, leaderboard_csv: Path, calls_conn: sqlite3.Connection):
     insert_candidate(db_path, "s_pending", "bob", "TSLA", datetime(2026, 6, 9, 13, 0, tzinfo=UTC))
-    kw: dict = {"prices": {"TSLA": 300.0}, "pdt": PdtState(0, 100_000.0), "db_path": db_path,
-                "leaderboard_path": leaderboard_csv, "calls_conn": calls_conn}
+    kw: dict = {
+        "prices": {"TSLA": 300.0},
+        "pdt": PdtState(0, 100_000.0),
+        "db_path": db_path,
+        "leaderboard_path": leaderboard_csv,
+        "calls_conn": calls_conn,
+    }
     assert run_decision_cycle(decision_ts=DECISION_TS, **kw)["decided"] == 0
     stats = run_decision_cycle(decision_ts=datetime(2026, 6, 10, 19, 30, tzinfo=UTC), **kw)
     assert stats == {"undecided": 1, "decided": 1, "followed": 1, "inserted": 1}
@@ -139,6 +164,7 @@ def test_persist_decisions_never_overwrites(db_path: Path):
     import polars as pl
 
     from src.rules.engine import OUT_SCHEMA
+
     first = pl.DataFrame([("s1", "skipped", "signal_stale", "v0.1")], schema=OUT_SCHEMA, orient="row")
     again = pl.DataFrame([("s1", "followed", "all_gates_passed", "v0.1")], schema=OUT_SCHEMA, orient="row")
     assert persist_decisions(first, db_path) == 1

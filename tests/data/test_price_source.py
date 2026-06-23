@@ -37,6 +37,7 @@ def _src(prices_db: Path, *, cache_db: Path | None = None, quote=None, daily=Non
 
 # ── price_at(信号成交价)──
 
+
 def test_price_at_returns_raw_intraday(prices_db: Path) -> None:
     now = datetime.now(UTC)
     src = _src(prices_db, quote=lambda t: (122.3, now))
@@ -77,6 +78,7 @@ def test_price_at_requires_tz(prices_db: Path) -> None:
 
 
 # ── close_on(每日 mark)──
+
 
 def test_close_on_prefers_prices_db_adjusted(prices_db: Path) -> None:
     src = _src(prices_db, daily=lambda t, s, e: {date(2026, 6, 10): 999.0})  # 不该被用到
@@ -141,6 +143,7 @@ def test_cache_takes_precedence_over_prices_db(prices_db: Path, tmp_path: Path) 
 
 def test_warm_daily_close_reports(prices_db: Path, tmp_path: Path) -> None:
     """预热:prices.db 已有的算 covered;缺的经 yfinance 拉 fetched;yfinance 也无的 missing。"""
+
     def daily(t, s, e):
         return {date(2026, 6, 11): 50.0} if t == "AMD" else {}
 

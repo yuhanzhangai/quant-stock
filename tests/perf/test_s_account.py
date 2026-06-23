@@ -50,8 +50,10 @@ def synthetic_dbs(tmp_path: Path) -> tuple[Path, Path]:
     for i, r in enumerate(rows):
         # ingest_lag: 信号 0-4 = 1h(≤2h 桶),信号 5 = 30h(1–3d 桶);fetched_at 统一 call+10min
         lag_s = 3_600 if i < 5 else 108_000
-        con.execute("INSERT INTO signal_candidates VALUES (?,?,?,?,?,?,?, to_timestamp(?), to_timestamp(?))",
-                    [*r, _EPOCH, _EPOCH + lag_s])
+        con.execute(
+            "INSERT INTO signal_candidates VALUES (?,?,?,?,?,?,?, to_timestamp(?), to_timestamp(?))",
+            [*r, _EPOCH, _EPOCH + lag_s],
+        )
         con.execute("INSERT INTO tweet_snapshots VALUES (?, ?)", [r[1], _EPOCH + 600])
     con.close()
 
@@ -69,11 +71,14 @@ def synthetic_dbs(tmp_path: Path) -> tuple[Path, Path]:
         # t5 无行 → unmatched
     ]
     for tid, fwd, bench, abn, hit, status in outcome:
-        tr.execute("INSERT INTO call_outcomes VALUES (?,?,21,'2026-05-02',100,'2026-06-02',110,?,?,?,?,?)",
-                   (tid, "AAA", fwd, bench, abn, hit, status))
+        tr.execute(
+            "INSERT INTO call_outcomes VALUES (?,?,21,'2026-05-02',100,'2026-06-02',110,?,?,?,?,?)",
+            (tid, "AAA", fwd, bench, abn, hit, status),
+        )
     # 干扰行:同 tweet 的 1d horizon,JOIN 必须只取 21
-    tr.execute("INSERT INTO call_outcomes VALUES "
-               "('t0','AAA',1,'2026-05-02',100,'2026-05-03',99,-0.01,0,-0.01,0,'evaluated')")
+    tr.execute(
+        "INSERT INTO call_outcomes VALUES ('t0','AAA',1,'2026-05-02',100,'2026-05-03',99,-0.01,0,-0.01,0,'evaluated')"
+    )
     tr.commit()
     tr.close()
     return sig_db, tr_db
