@@ -77,3 +77,7 @@ team/tsay_failures.log
 
 # internal agent-team coordination (not part of the project)
 team/
+
+# local tooling (not part of the project)
+CLAUDE.md
+.claude/
