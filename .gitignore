@@ -74,3 +74,6 @@ reports/**/*.log
 team/health.md
 team/health_alerts.log
 team/tsay_failures.log
+
+# internal agent-team coordination (not part of the project)
+team/
